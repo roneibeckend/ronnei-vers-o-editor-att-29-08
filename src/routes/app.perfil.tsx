@@ -328,7 +328,7 @@ function ProfilePage() {
                   </button>
                 )}
               </div>
-              <h3 className="mt-4 font-display text-xl font-bold truncate w-full px-2 text-white">{profile?.name || profile?.full_name || "Estudante"}</h3>
+              <h3 className="mt-4 font-display text-xl font-bold truncate w-full px-2 text-white">{profile?.name || profile?.full_name || (user?.user_metadata as any)?.name || (user?.user_metadata as any)?.full_name || user?.email?.split("@")[0] || "Aluno"}</h3>
 
               <p className="text-sm text-white/40">Membro desde {profile?.created_at ? format(new Date(profile.created_at), "dd/MM/yyyy") : "—"}</p>
               
