@@ -6,6 +6,7 @@ import { IMG } from "@/lib/platform-data";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { validatePassword } from "@/lib/password-validation";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -29,6 +30,7 @@ const ENABLE_APPLE_LOGIN = false;
 
 function LoginPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -243,6 +245,10 @@ function LoginPage() {
 
         toast.success("Conta criada!", { description: "Você já pode acessar sua área de membros." });
 
+        // Remove qualquer dado em cache de um usuário anterior neste navegador
+        await queryClient.cancelQueries();
+        queryClient.clear();
+
         const urlParams = new URLSearchParams(window.location.search);
         const redirectTo = urlParams.get('redirectTo');
         navigate({ to: redirectTo || "/inicio", replace: true });
@@ -251,6 +257,10 @@ function LoginPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Bem-vindo de volta!");
+
+        await queryClient.cancelQueries();
+        queryClient.clear();
+
         const urlParams = new URLSearchParams(window.location.search);
         const redirectTo = urlParams.get('redirectTo');
         navigate({ to: redirectTo || "/inicio" });

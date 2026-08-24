@@ -8,13 +8,33 @@ export function useAuth() {
   const queryClient = useQueryClient();
   const { data: session, isLoading: isLoadingSession } = useQuery({
     queryKey: ["auth-session"],
-    staleTime: 1000 * 60 * 30, // 30 minutes
-    gcTime: 1000 * 60 * 60, // 1 hour
+    staleTime: 0,
+    gcTime: 1000 * 60 * 5,
     queryFn: async () => {
       const { data } = await supabase.auth.getSession();
       return data.session;
     },
   });
+
+  // Mantém a sessão em cache sincronizada com o estado real do Supabase.
+  // Sem isso, o cache podia manter a sessão de um usuário anterior (ex.: admin)
+  // e exibir o nome/e-mail errado depois de um novo login no mesmo navegador.
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
+      const cached = queryClient.getQueryData<any>(["auth-session"]);
+      const changedUser = cached?.user?.id !== newSession?.user?.id;
+
+      queryClient.setQueryData(["auth-session"], newSession ?? null);
+
+      if (changedUser || event === "SIGNED_OUT") {
+        queryClient.removeQueries({ queryKey: ["user-profile"] });
+        queryClient.removeQueries({ queryKey: ["user-role"] });
+        queryClient.removeQueries({ queryKey: ["admin-permissions"] });
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [queryClient]);
+
 
   const { data: profile, isLoading: isLoadingProfile } = useQuery({
     queryKey: ["user-profile", session?.user?.id],
