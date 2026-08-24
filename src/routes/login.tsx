@@ -207,7 +207,7 @@ function LoginPage() {
               name,
               phone: phone.replace(/\D/g, "") // Enviar apenas dígitos
             },
-            emailRedirectTo: `${window.location.origin}/inicio`,
+            emailRedirectTo: authCallbackUrl("/app"),
           },
         });
         if (error) throw error;
