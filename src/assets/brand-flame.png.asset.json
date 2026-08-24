@@ -1,11 +1,11 @@
 {
-  "version": 1,
   "asset_id": "e8f6c949-dba5-4a52-8ee8-ac8c50cb25ff",
-  "project_id": "188d301c-e736-4692-9777-b32267cd801a",
-  "url": "/__l5e/assets-v1/e8f6c949-dba5-4a52-8ee8-ac8c50cb25ff/brand-flame.png",
-  "r2_key": "a/v1/188d301c-e736-4692-9777-b32267cd801a/e8f6c949-dba5-4a52-8ee8-ac8c50cb25ff/brand-flame.png",
-  "original_filename": "brand-flame.png",
-  "size": 15159,
   "content_type": "image/png",
-  "created_at": "2026-08-23T18:30:10Z"
+  "created_at": "2026-08-23T18:30:10Z",
+  "original_filename": "brand-flame.png",
+  "project_id": "cac2b68e-b9e1-49c9-a49c-b3d048396221",
+  "r2_key": "a/v1/cac2b68e-b9e1-49c9-a49c-b3d048396221/e8f6c949-dba5-4a52-8ee8-ac8c50cb25ff/brand-flame.png",
+  "size": 15159,
+  "url": "/__l5e/assets-v1/e8f6c949-dba5-4a52-8ee8-ac8c50cb25ff/brand-flame.png",
+  "version": 1
 }

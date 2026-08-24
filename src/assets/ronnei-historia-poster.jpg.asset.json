@@ -1,11 +1,11 @@
 {
-  "version": 1,
   "asset_id": "a16d9dc5-57a5-4be0-ab61-e3b9468579b8",
-  "project_id": "188d301c-e736-4692-9777-b32267cd801a",
-  "url": "/__l5e/assets-v1/a16d9dc5-57a5-4be0-ab61-e3b9468579b8/ronnei-historia-poster.jpg",
-  "r2_key": "a/v1/188d301c-e736-4692-9777-b32267cd801a/a16d9dc5-57a5-4be0-ab61-e3b9468579b8/ronnei-historia-poster.jpg",
-  "original_filename": "ronnei-historia-poster.jpg",
-  "size": 83888,
   "content_type": "image/jpeg",
-  "created_at": "2026-08-23T17:43:28Z"
+  "created_at": "2026-08-23T17:43:28Z",
+  "original_filename": "ronnei-historia-poster.jpg",
+  "project_id": "cac2b68e-b9e1-49c9-a49c-b3d048396221",
+  "r2_key": "a/v1/cac2b68e-b9e1-49c9-a49c-b3d048396221/a16d9dc5-57a5-4be0-ab61-e3b9468579b8/ronnei-historia-poster.jpg",
+  "size": 83888,
+  "url": "/__l5e/assets-v1/a16d9dc5-57a5-4be0-ab61-e3b9468579b8/ronnei-historia-poster.jpg",
+  "version": 1
 }
