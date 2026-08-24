@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { completeAuthFromUrl } from "@/lib/auth-callback";
 
 export const Route = createFileRoute("/inicio")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Entrando na área de membros — Espetinho na Veia" },
