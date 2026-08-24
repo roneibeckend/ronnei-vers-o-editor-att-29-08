@@ -214,11 +214,8 @@ type RevealVariant = "up" | "down" | "left" | "right" | "scale" | "blur" | "rota
 
 function Reveal({
   children,
-  delay = 0,
-  variant = "up",
   as: Tag = "div",
   className = "",
-  immediate = false,
 }: {
   children: React.ReactNode;
   delay?: 0 | 1 | 2 | 3 | 4 | 5 | 6;
@@ -227,80 +224,54 @@ function Reveal({
   className?: string;
   immediate?: boolean;
 }) {
-  const ref = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    const node = ref.current;
-    if (!node) return;
-
-    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-
-    if (immediate) {
-      node.dataset.visible = "true";
-      return;
-    }
-    
-    // Fallback: Check if element is likely in initial viewport
-    const rect = node.getBoundingClientRect();
-    const windowH = typeof window !== "undefined" ? window.innerHeight : 800;
-    if (rect.top >= 0 && rect.top < windowH + 100) {
-      node.dataset.visible = "true";
-      return;
-    }
-
-    const rootMargin = isMobile ? "0px 0px 400px 0px" : "0px 0px 100px 0px";
-    
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            (e.target as HTMLElement).dataset.visible = "true";
-            io.unobserve(e.target);
-          }
-        }
-      },
-      { threshold: 0.01, rootMargin },
-    );
-    io.observe(node);
-    
-    // Force visible after a reasonable time if observer fails
-    const forceVisible = setTimeout(() => {
-      if (node && node.dataset.visible !== "true") {
-        node.dataset.visible = "true";
-      }
-    }, 2000);
-    
-    return () => {
-      io.disconnect();
-      clearTimeout(forceVisible);
-    };
-  }, [immediate]);
-  const props: Record<string, unknown> = {
-    ref: ref as React.Ref<HTMLElement>,
-    className,
-    "data-reveal": variant,
-  };
-  if (delay) props["data-reveal-delay"] = String(delay);
-  return <Tag {...(props as Record<string, unknown>)}>{children}</Tag>;
+  // PERFORMANCE: conteúdo sempre visível.
+  // Nenhum IntersectionObserver ou timer para liberar a renderização.
+  return <Tag className={className}>{children}</Tag>;
 }
 
 function ScrollProgress() {
-  const [pct, setPct] = useState(0);
+  const barRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
-    const onScroll = () => {
+    let raf = 0;
+
+    const update = () => {
+      raf = 0;
+
       const h = document.documentElement;
-      const scrolled = h.scrollTop;
       const max = h.scrollHeight - h.clientHeight;
-      setPct(max > 0 ? (scrolled / max) * 100 : 0);
+      const pct = max > 0 ? h.scrollTop / max : 0;
+
+      if (barRef.current) {
+        barRef.current.style.transform = `scaleX(${Math.min(1, Math.max(0, pct))})`;
+      }
     };
-    onScroll();
+
+    const onScroll = () => {
+      if (!raf) {
+        raf = window.requestAnimationFrame(update);
+      }
+    };
+
+    update();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
   }, []);
+
   return (
     <div className="fixed inset-x-0 top-0 z-[60] h-[3px] bg-transparent">
       <div
-        className="h-full bg-fire shadow-fire transition-[width] duration-100"
-        style={{ width: `${pct}%` }}
+        ref={barRef}
+        className="h-full bg-fire shadow-fire"
+        style={{
+          transform: "scaleX(0)",
+          transformOrigin: "left center",
+          willChange: "transform",
+        }}
       />
     </div>
   );
@@ -621,8 +592,6 @@ function Hero() {
             <button
               type="button"
               onClick={() => setVideoOpen(true)}
-              onPointerEnter={() => warmUpVideo(isMobile ? heroVideoMobile.url : heroVideoDesktop.url)}
-              onPointerDown={() => warmUpVideo(isMobile ? heroVideoMobile.url : heroVideoDesktop.url)}
               aria-label="Assistir à história do Ronnei"
 
               className="group relative mx-auto block w-full max-w-md overflow-hidden rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ember)] lg:mx-0"
@@ -723,22 +692,18 @@ function Hero() {
           </button>
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-[min(420px,85vh*9/16)] animate-scale-in"
+            className="relative w-full max-w-4xl animate-scale-in"
           >
 
             <div className="glass gradient-border overflow-hidden rounded-2xl p-1 shadow-fire relative bg-black group/intro">
-              <div className="relative aspect-[9/16] max-h-[85vh] w-full overflow-hidden rounded-xl bg-black shadow-2xl">
+              <div className="relative aspect-video max-h-[85vh] w-full overflow-hidden rounded-xl bg-black shadow-2xl">
                 <Suspense fallback={<div className="flex h-full items-center justify-center text-white"><Loader2 className="animate-spin" /></div>}>
-                  <VideoPlayer 
-                    src={heroVideoDesktop.url}
-                    srcMobile={heroVideoMobile.url}
-                    poster={heroVideoPoster.url}
-                    videoId="ronnei-history"
-                    isIntro={true}
-                    autoStart
-                    aspect="portrait"
-                    className="w-full h-full"
-                    onEnded={() => setVideoOpen(false)}
+                  <iframe
+                    src="https://www.youtube-nocookie.com/embed/ZowrRHEwP7I?autoplay=1&rel=0&playsinline=1"
+                    title="Ronnei — história do Espetos Grill"
+                    className="h-full w-full"
+                    allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                    allowFullScreen
                   />
 
                 </Suspense>
