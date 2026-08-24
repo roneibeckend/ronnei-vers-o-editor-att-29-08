@@ -71,8 +71,22 @@ export const Route = createFileRoute("/app/ebooks/$ebookId")({
     }
 
     const ebook = ebookRes.data;
-    const chapters = chaptersRes.data || [];
-    const isEnrolled = !!enrollmentRes.data;
+    let chapters = chaptersRes.data || [];
+    let isEnrolled = !!enrollmentRes.data;
+
+    // E-books gratuitos: garante matrícula para liberar módulos/capítulos (RLS)
+    if (userId && !isEnrolled && (ebook.price || 0) === 0) {
+      const { data: enrolled } = await supabase.rpc("enroll_free_ebook", { p_ebook_id: params.ebookId });
+      if (enrolled) {
+        isEnrolled = true;
+        const [refetchEbook, refetchChapters] = await Promise.all([
+          supabase.from("ebooks").select(`modules:ebook_modules ( id, title, order_index )`).eq("id", params.ebookId).single(),
+          supabase.from("ebook_chapters").select(`id, title, content, video_url, reading_minutes, order_index, module_id`).eq("ebook_id", params.ebookId),
+        ]);
+        if (refetchChapters.data) chapters = refetchChapters.data;
+        if (refetchEbook.data?.modules) (ebook as any).modules = refetchEbook.data.modules;
+      }
+    }
 
     // Mapeia os capítulos para seus respectivos módulos
     const modulesWithChapters = (ebook.modules || []).map((mod: any) => ({
