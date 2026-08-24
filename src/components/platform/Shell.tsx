@@ -127,7 +127,7 @@ export function Shell({ children }: { children: ReactNode }) {
             width={36}
             height={36}
             decoding="async"
-            className="h-9 w-9 object-contain"
+            className="h-9 w-9 object-contain brightness-0 invert"
           />
         </div>
         <div className="min-w-0">
