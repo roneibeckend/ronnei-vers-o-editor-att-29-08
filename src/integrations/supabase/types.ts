@@ -2724,6 +2724,7 @@ export type Database = {
         Args: { p_amount: number; p_partner_id: string }
         Returns: undefined
       }
+      enroll_free_ebook: { Args: { p_ebook_id: string }; Returns: boolean }
       finalize_ebook_completion: { Args: { _ebook_id: string }; Returns: Json }
       finish_ranking_campaign: {
         Args: { _campaign_id: string }
