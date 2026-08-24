@@ -152,7 +152,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-sidebar bg-emerald-500" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold text-sidebar-foreground truncate">{profile?.name || user?.email?.split('@')[0] || "Estudante"}</div>
+          <div className="text-sm font-semibold text-sidebar-foreground truncate">{profile?.name || (user?.user_metadata as any)?.name || (user?.user_metadata as any)?.full_name || user?.email?.split('@')[0] || "Aluno"}</div>
           <div className="text-[10px] font-bold uppercase tracking-widest text-primary">Aluno ativo</div>
         </div>
       </div>
