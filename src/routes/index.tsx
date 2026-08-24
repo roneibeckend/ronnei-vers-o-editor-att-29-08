@@ -542,9 +542,9 @@ function Nav() {
           <a href="#bonus" className="hover:text-foreground transition">Bônus</a>
           <a href="#faq" className="hover:text-foreground transition">FAQ</a>
         </nav>
-        <button onClick={() => window.location.href = getCheckoutUrl(localStorage.getItem('affiliate_referrer_code') || undefined)} className="btn-fire shrink-0 !min-h-0 !py-2 !px-4 text-xs sm:!px-5 sm:text-sm">
+        <a href="#oferta" onClick={() => trackInitiateCheckout("nav-cta")} className="btn-fire shrink-0 !min-h-0 !py-2 !px-4 text-xs sm:!px-5 sm:text-sm">
           Quero o eBook
-        </button>
+        </a>
 
       </div>
     </header>
@@ -668,9 +668,9 @@ function Hero() {
 
           {/* CTAs on the right */}
           <Reveal variant="up" delay={4} immediate className="flex w-full flex-col items-stretch gap-3 sm:max-w-sm sm:mx-auto lg:mx-0 lg:max-w-xs lg:items-stretch lg:justify-self-start">
-            <button onClick={() => window.location.href = getCheckoutUrl(localStorage.getItem('affiliate_referrer_code') || undefined)} className="btn-fire shine-on-hover w-full justify-center !text-base !font-bold lg:min-h-[56px]">
+            <a href="#oferta" onClick={() => trackInitiateCheckout("hero-cta")} className="btn-fire shine-on-hover w-full justify-center !text-base !font-bold lg:min-h-[56px]">
               Quero começar agora
-            </button>
+            </a>
 
             <a href="#beneficios" className="btn-ghost-fire w-full justify-center text-center !text-base !font-bold lg:min-h-[56px]">
               Ver o que aprendo
@@ -890,10 +890,10 @@ function AuthorSolution() {
                 </div>
               ))}
               <div className="flex items-center justify-center sm:col-span-2 lg:col-span-1">
-                <button onClick={() => window.location.href = getCheckoutUrl(localStorage.getItem('affiliate_referrer_code') || undefined)} className="btn-fire shine-on-hover relative w-full justify-center text-center">
+                <a href="#oferta" onClick={() => trackInitiateCheckout("about-cta")} className="btn-fire shine-on-hover relative w-full justify-center text-center">
                   <span>Quero o método</span>
                   <ArrowRight className="absolute right-5 h-4 w-4" />
-                </button>
+                </a>
 
               </div>
             </div>
@@ -1079,9 +1079,9 @@ function ProfitCalculator() {
 
         {/* CTA pós-simulador */}
         <div className="mt-8 flex flex-col items-center gap-2">
-          <button onClick={() => window.location.href = getCheckoutUrl(localStorage.getItem('affiliate_referrer_code') || undefined)} className="btn-fire shine-on-hover !text-base !px-8 !py-4 w-full max-w-sm justify-center">
+          <a href="#oferta" onClick={() => trackInitiateCheckout("simulator-cta")} className="btn-fire shine-on-hover !text-base !px-8 !py-4 w-full max-w-sm justify-center">
             Quero faturar isso também <ArrowRight className="h-4 w-4" />
-          </button>
+          </a>
 
           <span className="text-[11px] uppercase tracking-widest text-muted-foreground">
             Método completo por R$ 47,90
@@ -1282,9 +1282,9 @@ function Bonuses() {
 
         {/* CTA pós-bônus */}
         <div className="mx-auto mt-6 flex max-w-xl flex-col items-center gap-2">
-          <button onClick={() => window.location.href = getCheckoutUrl(localStorage.getItem('affiliate_referrer_code') || undefined)} className="btn-fire shine-on-hover !text-base !px-8 !py-4 w-full justify-center">
+          <a href="#oferta" onClick={() => trackInitiateCheckout("bonus-cta")} className="btn-fire shine-on-hover !text-base !px-8 !py-4 w-full justify-center">
             Quero o eBook + os 4 bônus <ArrowRight className="h-4 w-4" />
-          </button>
+          </a>
 
           <span className="text-[11px] uppercase tracking-widest text-muted-foreground">
             Tudo isso por R$ 47,90 · acesso imediato
@@ -1691,9 +1691,9 @@ function FinalCTA() {
             Cada dia sem o método é dinheiro deixado na tábua. Comece hoje, com garantia de 7 dias.
           </p>
           <div className="mt-10 flex justify-center">
-            <button onClick={() => window.location.href = getCheckoutUrl(localStorage.getItem('affiliate_referrer_code') || undefined)} className="btn-fire shine-on-hover w-full sm:w-auto text-base sm:text-lg sm:!px-10 sm:!py-5 justify-center">
+            <a href="#oferta" onClick={() => trackInitiateCheckout("final-cta")} className="btn-fire shine-on-hover w-full sm:w-auto text-base sm:text-lg sm:!px-10 sm:!py-5 justify-center">
               Quero o eBook agora <ArrowRight className="h-5 w-5" />
-            </button>
+            </a>
 
           </div>
         </div>
@@ -1926,9 +1926,9 @@ function StickyMobileCTA() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 px-3 pt-3 backdrop-blur-xl md:hidden safe-bottom"
       style={{ paddingBottom: "0.75rem" }}
     >
-      <button onClick={() => window.location.href = getCheckoutUrl(localStorage.getItem('affiliate_referrer_code') || undefined)} className="btn-fire w-full !py-3 text-sm">
+      <a href="#oferta" onClick={() => trackInitiateCheckout("sticky-cta")} className="btn-fire w-full !py-3 text-sm">
         Quero o eBook por R$ 47,90 <ArrowRight className="h-4 w-4" />
-      </button>
+      </a>
 
     </div>
   );
