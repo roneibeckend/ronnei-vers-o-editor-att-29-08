@@ -6,6 +6,7 @@ import { IMG } from "@/lib/platform-data";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { validatePassword } from "@/lib/password-validation";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -29,6 +30,7 @@ const ENABLE_APPLE_LOGIN = false;
 
 function LoginPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
