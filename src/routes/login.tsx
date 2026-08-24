@@ -245,6 +245,10 @@ function LoginPage() {
 
         toast.success("Conta criada!", { description: "Você já pode acessar sua área de membros." });
 
+        // Remove qualquer dado em cache de um usuário anterior neste navegador
+        await queryClient.cancelQueries();
+        queryClient.clear();
+
         const urlParams = new URLSearchParams(window.location.search);
         const redirectTo = urlParams.get('redirectTo');
         navigate({ to: redirectTo || "/inicio", replace: true });
@@ -253,6 +257,10 @@ function LoginPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Bem-vindo de volta!");
+
+        await queryClient.cancelQueries();
+        queryClient.clear();
+
         const urlParams = new URLSearchParams(window.location.search);
         const redirectTo = urlParams.get('redirectTo');
         navigate({ to: redirectTo || "/inicio" });
