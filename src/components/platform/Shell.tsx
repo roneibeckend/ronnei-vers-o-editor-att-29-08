@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Bell, Rocket } from "lucide-react";
 import { useNotifications } from "@/hooks/use-notifications";
 import { PwaInstallBanner } from "./PwaInstallBanner";
+import { PwaInstallModal } from "./PwaInstallModal";
+
 import { OnboardingLauncher } from "./OnboardingGuide";
 import {
   Home,
@@ -295,7 +297,11 @@ export function Shell({ children }: { children: ReactNode }) {
         <main className="min-w-0 min-h-0 flex-1 overflow-y-auto overflow-x-hidden scrollbar-hidden-mobile custom-scrollbar [-webkit-overflow-scrolling:touch] px-4 py-4 pb-safe-scroll lg:px-8 lg:py-8 3xl:max-w-[1800px] 3xl:mx-auto w-full">
           <Outlet />
         </main>
-        <PwaInstallBanner />
+        <div className="hidden sm:block">
+          <PwaInstallBanner />
+        </div>
+        <PwaInstallModal />
+
       </div>
     </div>
   );
