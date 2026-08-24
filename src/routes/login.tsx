@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { validatePassword } from "@/lib/password-validation";
 import { useQueryClient } from "@tanstack/react-query";
+import { authCallbackUrl } from "@/lib/auth-callback";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
