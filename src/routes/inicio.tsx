@@ -18,8 +18,16 @@ function InicioPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Redireciona para o dashboard principal dentro de /app
-    navigate({ to: "/app", replace: true });
+    let cancelled = false;
+    (async () => {
+      // Links antigos de confirmação apontam para /inicio: conclui a sessão antes de redirecionar.
+      const result = await completeAuthFromUrl();
+      if (cancelled) return;
+      navigate({ to: result.status === "success" ? result.redirectTo : "/app", replace: true });
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
   return null;
