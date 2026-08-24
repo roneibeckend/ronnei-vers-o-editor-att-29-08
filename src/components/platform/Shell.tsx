@@ -271,15 +271,32 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
           <div className="flex items-center gap-2">
             <OnboardingLauncher />
-            <Link 
-              to="/app/notificacoes"
-              className="relative grid h-10 w-10 place-items-center rounded-md border border-white/10 hover:border-primary/50 transition-colors touch-target"
+            <button
+              type="button"
+              aria-label="Notificações"
+              aria-pressed={pathname === "/app/notificacoes"}
+              onClick={() => {
+                if (pathname === "/app/notificacoes") {
+                  if (typeof window !== "undefined" && window.history.length > 1) {
+                    window.history.back();
+                  } else {
+                    navigate({ to: "/app" });
+                  }
+                  return;
+                }
+                navigate({ to: "/app/notificacoes" });
+              }}
+              className={`relative grid h-10 w-10 place-items-center rounded-md border transition-colors touch-target ${
+                pathname === "/app/notificacoes"
+                  ? "border-primary/60 bg-primary/10 text-primary"
+                  : "border-white/10 hover:border-primary/50"
+              }`}
             >
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
                 <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary animate-pulse" />
               )}
-            </Link>
+            </button>
             <Link
               to="/app/perfil"
               className="flex items-center gap-2 rounded-md border border-white/10 py-1 pl-1 pr-3 transition-colors hover:border-primary/50 touch-target"
