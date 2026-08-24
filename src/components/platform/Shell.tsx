@@ -38,7 +38,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import brandFlame from "@/assets/brand-flame.png.asset.json";
 
 type NavItem = {
   to: string;
@@ -122,7 +121,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <div className="flex shrink-0 items-center gap-3 border-b border-sidebar-border px-5 py-4">
         <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary">
           <img
-            src={brandFlame.url}
+            src="/favicon.png"
             alt=""
             aria-hidden
             width={36}
