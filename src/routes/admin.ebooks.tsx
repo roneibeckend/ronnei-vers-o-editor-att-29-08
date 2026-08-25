@@ -80,6 +80,46 @@ export const Route = createFileRoute("/admin/ebooks")({
   component: AdminEbooksPage,
 });
 
+
+function AdminEbookCover({ ebook }: { ebook: any }) {
+  const local10k =
+    String(ebook?.title || "").toLowerCase().includes("10k")
+      ? '/media/ebook-zero-10k.jpg'
+      : "";
+
+  const candidates = [
+    local10k,
+    ebook?.cover_url,
+    ebook?.cover,
+  ].filter(
+    (value, index, all): value is string =>
+      typeof value === "string" &&
+      value.trim().length > 0 &&
+      !value.includes("/__l5e/") &&
+      all.indexOf(value) === index
+  );
+
+  const [candidateIndex, setCandidateIndex] = useState(0);
+
+  if (candidateIndex >= candidates.length) {
+    return (
+      <div className="h-12 w-8 rounded bg-white/5 flex items-center justify-center text-white/20 shrink-0">
+        <BookOpen className="h-4 w-4" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={candidates[candidateIndex]}
+      alt={ebook.title}
+      className="h-12 w-8 object-cover rounded bg-white/5 shrink-0"
+      loading="lazy"
+      onError={() => setCandidateIndex((current) => current + 1)}
+    />
+  );
+}
+
 function AdminEbooksPage() {
   const [ebooks, setEbooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -270,13 +310,7 @@ function AdminEbooksPage() {
                 <tr key={ebook.id} className="hover:bg-white/[0.02] transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
-                      {ebook.cover_url || ebook.cover ? (
-                        <img src={ebook.cover_url || ebook.cover} alt={ebook.title} className="h-12 w-8 object-cover rounded bg-white/5" />
-                      ) : (
-                        <div className="h-12 w-8 rounded bg-white/5 flex items-center justify-center text-white/20">
-                          <BookOpen className="h-4 w-4" />
-                        </div>
-                      )}
+                      <AdminEbookCover ebook={ebook} />
                       <div>
                         <div className="font-bold">{ebook.title}</div>
                         <div className="text-[10px] text-white/20 uppercase tracking-tighter">

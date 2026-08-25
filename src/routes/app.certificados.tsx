@@ -4,7 +4,6 @@ import { PageHeader } from "@/components/platform/Shell";
 import { courses as baseCourses, student as fallbackStudent } from "@/lib/platform-data";
 import { useEffect, useRef, useState } from "react";
 import jsPDF from "jspdf";
-import rubricaAsset from "@/assets/rubrica-ronnei.png.asset.json";
 import { useServerFn } from "@tanstack/react-start";
 import { getStudentCertificates } from "@/lib/certificates-student.functions";
 import { useQuery } from "@tanstack/react-query";
@@ -481,7 +480,7 @@ function FullCertificate({ cert }: { cert: any }) {
             <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
               <div className="text-center">
                 <img
-                  src={rubricaAsset.url}
+                  src="/media/rubrica-ronnei.png"
                   alt="Assinatura de Ronei da Silva"
                   crossOrigin="anonymous"
                   className="mx-auto h-16 w-auto max-w-[240px] object-contain"

@@ -96,129 +96,305 @@ export const deleteMaterial = createServerFn({ method: "POST" })
     return { success: true };
   });
 
-export const getMaterialDownloadUrl = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: any) => z.object({ materialId: z.string().uuid() }).parse(data))
-  .handler(async ({ data, context }: { data: any, context: any }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const userId = context.userId;
+export const getMaterialDownloadUrl = createServerFn({ method: "POST" })
+  .inputValidator((data: any) =>
+    z.object({
+      materialId: z.string().uuid(),
+      accessToken: z.string().min(20),
+    }).parse(data)
+  )
+  .handler(async ({ data }: { data: any }) => {
+    const { supabaseAdmin } = await import(
+      "@/integrations/supabase/client.server"
+    );
 
-    // 1. Fetch material to identify associations
-    const { data: material, error: fetchError } = await supabaseAdmin
+    /*
+     * IMPORTANTE:
+     * O token chega no corpo POST.
+     * Não dependemos mais de um Authorization header implícito
+     * do TanStack/browser.
+     */
+    const {
+      data: authData,
+      error: authError,
+    } = await supabaseAdmin.auth.getUser(
+      data.accessToken
+    );
+
+    const user = authData?.user;
+
+    if (authError || !user) {
+      console.warn(
+        "[material-download] sessão inválida:",
+        authError?.message || "usuário ausente"
+      );
+
+      throw new Error(
+        "Sua sessão expirou. Entre novamente na plataforma."
+      );
+    }
+
+    const userId = user.id;
+
+    const {
+      data: material,
+      error: fetchError,
+    } = await supabaseAdmin
       .from("platform_materials")
       .select("*")
       .eq("id", data.materialId)
       .maybeSingle();
 
     if (fetchError) {
-      console.error("Erro ao buscar material:", fetchError);
-      throw new Error("Erro ao buscar material.");
+      console.error(
+        "[material-download] erro material:",
+        fetchError
+      );
+
+      throw new Error(
+        "Não foi possível localizar o material."
+      );
     }
+
     if (!material) {
-      console.warn(`[getMaterialDownloadUrl] Material ${data.materialId} not found for user ${userId}`);
-      throw new Error("Material não encontrado.");
+      throw new Error(
+        "Material não encontrado."
+      );
     }
 
-    // 2. Authorization check
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: userId,
-      _role: "admin"
-    });
+    if (!material.is_active) {
+      throw new Error(
+        "Material indisponível."
+      );
+    }
 
-    const isAdminUser = isAdmin;
-    if (!isAdminUser) {
-      const mParent = material as any;
-      let parentStatus: string | undefined;
-      if (mParent.course_id) {
-        const { data: c } = await supabaseAdmin
-          .from("courses").select("status").eq("id", mParent.course_id).maybeSingle();
-        parentStatus = (c as any)?.status;
-      } else if (mParent.ebook_id) {
-        const { data: e } = await supabaseAdmin
-          .from("ebooks").select("status").eq("id", mParent.ebook_id).maybeSingle();
-        parentStatus = (e as any)?.status;
+    /*
+     * A autorização é feita server-side com o usuário
+     * validado acima. O service role nunca vai para o browser.
+     */
+    const {
+      data: isAdmin,
+      error: roleError,
+    } = await supabaseAdmin.rpc(
+      "has_role",
+      {
+        _user_id: userId,
+        _role: "admin",
       }
-      if (parentStatus === 'draft') throw new Error("Acesso negado: Conteúdo ainda não publicado.");
+    );
 
+    if (roleError) {
+      console.error(
+        "[material-download] erro de role:",
+        roleError
+      );
 
-    // Check if material is assigned to a course/ebook the user is enrolled in
-    const mAny = material as any;
-    if (mAny.course_id) {
-        const { data: enrollment } = await supabaseAdmin
+      throw new Error(
+        "Não foi possível validar sua permissão."
+      );
+    }
+
+    if (!isAdmin) {
+      const item = material as any;
+
+      if (item.course_id) {
+        const {
+          data: course,
+        } = await supabaseAdmin
+          .from("courses")
+          .select("status")
+          .eq("id", item.course_id)
+          .maybeSingle();
+
+        if ((course as any)?.status === "draft") {
+          throw new Error(
+            "Conteúdo ainda não publicado."
+          );
+        }
+
+        const {
+          data: enrollment,
+        } = await supabaseAdmin
           .from("course_enrollments")
           .select("id")
-          .eq("course_id", mAny.course_id)
+          .eq("course_id", item.course_id)
           .eq("user_id", userId)
           .maybeSingle();
-        
-        if (!enrollment) throw new Error("Acesso negado: Você não possui matrícula neste curso.");
-      } else if (mAny.ebook_id) {
-        const { data: enrollment } = await supabaseAdmin
+
+        if (!enrollment) {
+          throw new Error(
+            "Você não possui matrícula neste curso."
+          );
+        }
+      } else if (item.ebook_id) {
+        const {
+          data: ebook,
+        } = await supabaseAdmin
+          .from("ebooks")
+          .select("status")
+          .eq("id", item.ebook_id)
+          .maybeSingle();
+
+        if ((ebook as any)?.status === "draft") {
+          throw new Error(
+            "Conteúdo ainda não publicado."
+          );
+        }
+
+        const {
+          data: enrollment,
+        } = await supabaseAdmin
           .from("ebook_enrollments")
           .select("id")
-          .eq("ebook_id", mAny.ebook_id)
+          .eq("ebook_id", item.ebook_id)
           .eq("user_id", userId)
           .maybeSingle();
 
-        if (!enrollment) throw new Error("Acesso negado: Você não possui acesso a este e-book.");
-      } else {
-
-        // Generic material check if no specific association (maybe public if is_active)
-        if (!material.is_active) throw new Error("Material indisponível.");
+        if (!enrollment) {
+          throw new Error(
+            "Você não possui acesso a este e-book."
+          );
+        }
       }
     }
 
-    // 3. Generate Signed URL
-    const originalFileUrl = material.file_url;
-    if (!originalFileUrl) throw new Error("Este material não possui um arquivo para download.");
+    const originalFileUrl =
+      material.file_url;
 
-    try {
-      let bucketName = "platform-materials";
-      let filePath = originalFileUrl;
+    if (!originalFileUrl) {
+      throw new Error(
+        "Este material não possui arquivo para download."
+      );
+    }
 
-      // Se o file_url for uma URL completa, extrair o bucket e o path
-      if (originalFileUrl.startsWith('http')) {
-        if (originalFileUrl.includes('/storage/v1/object/public/')) {
-          const parts = originalFileUrl.split('/storage/v1/object/public/');
-          const fullPath = parts[1]; // Ex: "platform-materials/filename.pdf"
-          const firstSlash = fullPath.indexOf('/');
-          if (firstSlash !== -1) {
-            bucketName = fullPath.substring(0, firstSlash);
-            filePath = fullPath.substring(firstSlash + 1);
-          } else {
-            bucketName = fullPath;
-            filePath = ""; // Caso inválido, mas tratamos abaixo
-          }
-        } else {
-          // Fallback para extrair apenas o nome do arquivo se for outra URL
-          const simpleParts = originalFileUrl.split('/');
-          filePath = simpleParts[simpleParts.length - 1];
+    let bucketName =
+      "platform-materials";
+
+    let filePath =
+      String(originalFileUrl);
+
+    /*
+     * Os uploads do Admin são salvos usando getPublicUrl().
+     * Extraímos apenas bucket/path dessa URL.
+     */
+    if (/^https?:\/\//i.test(filePath)) {
+      let parsed: URL;
+
+      try {
+        parsed = new URL(filePath);
+      } catch {
+        throw new Error(
+          "URL do arquivo inválida."
+        );
+      }
+
+      const markers = [
+        "/storage/v1/object/public/",
+        "/storage/v1/object/sign/",
+      ];
+
+      let storagePath:
+        | string
+        | null = null;
+
+      for (const marker of markers) {
+        const index =
+          parsed.pathname.indexOf(marker);
+
+        if (index !== -1) {
+          storagePath =
+            parsed.pathname.slice(
+              index + marker.length
+            );
+
+          break;
         }
       }
 
-      if (!filePath) throw new Error("Caminho do arquivo não identificado.");
-
-      console.log(`Gerando link assinado para bucket: ${bucketName}, path: ${filePath}`);
-
-      const { data: signedData, error: signedError } = await supabaseAdmin.storage
-        .from(bucketName)
-        .createSignedUrl(filePath, 60 * 5); // 5 minutos
-
-      if (signedError) {
-        console.error("Erro ao gerar URL assinada:", signedError);
-        throw new Error(`Erro no storage do provedor: ${signedError.message}`);
+      if (!storagePath) {
+        throw new Error(
+          "O arquivo não pertence ao Storage configurado."
+        );
       }
 
-      if (!signedData?.signedUrl) {
-        throw new Error("O link de download não pôde ser gerado.");
+      storagePath =
+        decodeURIComponent(storagePath);
+
+      const slash =
+        storagePath.indexOf("/");
+
+      if (slash < 1) {
+        throw new Error(
+          "Caminho do Storage inválido."
+        );
       }
 
-      return { url: signedData.signedUrl };
-    } catch (e: any) {
-      console.error("Erro fatal ao gerar link de download:", e);
-      throw new Error(`Erro ao acessar o arquivo: ${e.message || 'Desconhecido'}`);
+      bucketName =
+        storagePath.slice(0, slash);
+
+      filePath =
+        storagePath.slice(slash + 1);
     }
+
+    if (!filePath) {
+      throw new Error(
+        "Caminho do arquivo não identificado."
+      );
+    }
+
+    let downloadName =
+      filePath.split("/").pop()
+      || `material-${data.materialId}`;
+
+    try {
+      downloadName =
+        decodeURIComponent(downloadName);
+    } catch {
+      // Mantém o nome original.
+    }
+
+    /*
+     * Evita caracteres problemáticos no Content-Disposition.
+     */
+    downloadName =
+      downloadName
+        .replace(/[\r\n"]/g, "_")
+        .slice(0, 180);
+
+    /*
+     * A opção download força Content-Disposition attachment.
+     * Isso é fundamental no mobile.
+     */
+    const {
+      data: signedData,
+      error: signedError,
+    } = await supabaseAdmin.storage
+      .from(bucketName)
+      .createSignedUrl(
+        filePath,
+        60 * 5,
+        {
+          download: downloadName,
+        }
+      );
+
+    if (
+      signedError ||
+      !signedData?.signedUrl
+    ) {
+      console.error(
+        "[material-download] signed URL:",
+        signedError
+      );
+
+      throw new Error(
+        "Não foi possível preparar o arquivo para download."
+      );
+    }
+
+    return {
+      url: signedData.signedUrl,
+      filename: downloadName,
+    };
   });
-
-
 

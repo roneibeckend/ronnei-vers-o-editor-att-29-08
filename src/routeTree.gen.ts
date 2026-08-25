@@ -32,6 +32,7 @@ import { Route as AppCursosRouteImport } from './routes/app.cursos'
 import { Route as AppCertificadosRouteImport } from './routes/app.certificados'
 import { Route as AppAoVivoRouteImport } from './routes/app.ao-vivo'
 import { Route as AppAfiliadosRouteImport } from './routes/app.afiliados'
+import { Route as ApiMaterialDownloadRouteImport } from './routes/api.material-download'
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminSuporteRouteImport } from './routes/admin.suporte'
 import { Route as AdminStatusRouteImport } from './routes/admin.status'
@@ -183,6 +184,11 @@ const AppAfiliadosRoute = AppAfiliadosRouteImport.update({
   id: '/afiliados',
   path: '/afiliados',
   getParentRoute: () => AppRoute,
+} as any)
+const ApiMaterialDownloadRoute = ApiMaterialDownloadRouteImport.update({
+  id: '/api/material-download',
+  path: '/api/material-download',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AdminUsuariosRoute = AdminUsuariosRouteImport.update({
   id: '/usuarios',
@@ -397,6 +403,7 @@ export interface FileRoutesByFullPath {
   '/admin/status': typeof AdminStatusRoute
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
+  '/api/material-download': typeof ApiMaterialDownloadRoute
   '/app/afiliados': typeof AppAfiliadosRouteWithChildren
   '/app/ao-vivo': typeof AppAoVivoRoute
   '/app/certificados': typeof AppCertificadosRoute
@@ -456,6 +463,7 @@ export interface FileRoutesByTo {
   '/admin/status': typeof AdminStatusRoute
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
+  '/api/material-download': typeof ApiMaterialDownloadRoute
   '/app/ao-vivo': typeof AppAoVivoRoute
   '/app/certificados': typeof AppCertificadosRoute
   '/app/financeiro': typeof AppFinanceiroRoute
@@ -516,6 +524,7 @@ export interface FileRoutesById {
   '/admin/status': typeof AdminStatusRoute
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
+  '/api/material-download': typeof ApiMaterialDownloadRoute
   '/app/afiliados': typeof AppAfiliadosRouteWithChildren
   '/app/ao-vivo': typeof AppAoVivoRoute
   '/app/certificados': typeof AppCertificadosRoute
@@ -579,6 +588,7 @@ export interface FileRouteTypes {
     | '/admin/status'
     | '/admin/suporte'
     | '/admin/usuarios'
+    | '/api/material-download'
     | '/app/afiliados'
     | '/app/ao-vivo'
     | '/app/certificados'
@@ -638,6 +648,7 @@ export interface FileRouteTypes {
     | '/admin/status'
     | '/admin/suporte'
     | '/admin/usuarios'
+    | '/api/material-download'
     | '/app/ao-vivo'
     | '/app/certificados'
     | '/app/financeiro'
@@ -697,6 +708,7 @@ export interface FileRouteTypes {
     | '/admin/status'
     | '/admin/suporte'
     | '/admin/usuarios'
+    | '/api/material-download'
     | '/app/afiliados'
     | '/app/ao-vivo'
     | '/app/certificados'
@@ -740,6 +752,7 @@ export interface RootRouteChildren {
   PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
   TermosDeUsoRoute: typeof TermosDeUsoRoute
   VerificarCertificadoRoute: typeof VerificarCertificadoRoute
+  ApiMaterialDownloadRoute: typeof ApiMaterialDownloadRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   ApiPublicDailyFinancialReportRoute: typeof ApiPublicDailyFinancialReportRoute
   ApiPublicDailyUpdatesReportRoute: typeof ApiPublicDailyUpdatesReportRoute
@@ -910,6 +923,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/afiliados'
       preLoaderRoute: typeof AppAfiliadosRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/api/material-download': {
+      id: '/api/material-download'
+      path: '/api/material-download'
+      fullPath: '/api/material-download'
+      preLoaderRoute: typeof ApiMaterialDownloadRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/admin/usuarios': {
       id: '/admin/usuarios'
@@ -1320,6 +1340,7 @@ const rootRouteChildren: RootRouteChildren = {
   PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
   TermosDeUsoRoute: TermosDeUsoRoute,
   VerificarCertificadoRoute: VerificarCertificadoRoute,
+  ApiMaterialDownloadRoute: ApiMaterialDownloadRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   ApiPublicDailyFinancialReportRoute: ApiPublicDailyFinancialReportRoute,
   ApiPublicDailyUpdatesReportRoute: ApiPublicDailyUpdatesReportRoute,

@@ -8,8 +8,6 @@ import { generateEditableMenuPPTX } from "@/lib/pptx-generator";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useServerFn } from "@tanstack/react-start";
-import { getMaterialDownloadUrl } from "@/lib/materials.functions";
 
 
 export const Route = createFileRoute("/app/materiais")({
@@ -18,7 +16,6 @@ export const Route = createFileRoute("/app/materiais")({
 });
 
 function MaterialsPage() {
-  const fetchDownloadUrl = useServerFn(getMaterialDownloadUrl);
   const { data, isLoading, error } = useQuery({
 
     queryKey: ["platform-materials"],
@@ -52,14 +49,92 @@ function MaterialsPage() {
 
     if (fileUrl) {
       try {
-        const { url } = await fetchDownloadUrl({ data: { materialId } });
-        window.open(url, "_blank");
-        toast.success(`Download de "${title}" iniciado!`);
+        let {
+          data: sessionData,
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          throw sessionError;
+        }
+
+        let accessToken =
+          sessionData.session?.access_token;
+
+        if (!accessToken) {
+          const {
+            data: refreshed,
+            error: refreshError,
+          } =
+            await supabase.auth.refreshSession();
+
+          if (
+            refreshError ||
+            !refreshed.session?.access_token
+          ) {
+            throw new Error(
+              "Sua sessão expirou. Entre novamente."
+            );
+          }
+
+          accessToken =
+            refreshed.session.access_token;
+        }
+
+        const form =
+          document.createElement("form");
+
+        form.method = "POST";
+        form.action =
+          "/api/material-download";
+        form.target = "_self";
+        form.style.display = "none";
+
+        const materialInput =
+          document.createElement("input");
+
+        materialInput.type = "hidden";
+        materialInput.name =
+          "materialId";
+        materialInput.value =
+          materialId;
+
+        const tokenInput =
+          document.createElement("input");
+
+        tokenInput.type = "hidden";
+        tokenInput.name =
+          "accessToken";
+        tokenInput.value =
+          accessToken;
+
+        form.appendChild(materialInput);
+        form.appendChild(tokenInput);
+
+        document.body.appendChild(form);
+
+        toast.success(
+          `Iniciando download de "${title}"...`
+        );
+
+        form.submit();
+
+        window.setTimeout(
+          () => form.remove(),
+          5000
+        );
       } catch (err: any) {
-        console.error("Erro ao obter link de download:", err);
-        const errorMessage = err.message || "Erro ao acessar o arquivo. Tente novamente mais tarde.";
-        toast.error(errorMessage);
+        console.error(
+          "[materiais] falha ao iniciar download:",
+          err
+        );
+
+        toast.error(
+          err?.message ||
+            "Não foi possível iniciar o download."
+        );
       }
+
       return;
     }
 

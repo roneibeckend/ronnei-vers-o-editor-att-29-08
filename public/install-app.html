@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1,viewport-fit=cover"
+  >
+
+  <meta name="theme-color" content="#1a0d08">
+
+  <title>Instalar Ronnei na Veia</title>
+
+  <script>
+    window.__RNV_INSTALL_PROMPT__ = null;
+
+    window.addEventListener(
+      "beforeinstallprompt",
+      function (event) {
+        event.preventDefault();
+
+        window.__RNV_INSTALL_PROMPT__ = event;
+
+        window.dispatchEvent(
+          new Event("rnv-install-ready")
+        );
+      },
+      { passive: false }
+    );
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js", {
+          scope: "/",
+          updateViaCache: "none"
+        })
+        .then(function (registration) {
+          registration.update();
+        })
+        .catch(function (error) {
+          console.error(
+            "[RNV PWA] Service Worker:",
+            error
+          );
+        });
+    }
+  </script>
+
+  <link
+    rel="manifest"
+    href="/manifest.json?v=20260824-final"
+  >
+
+  <link
+    rel="icon"
+    href="/icons/icon-192x192.png"
+    type="image/png"
+  >
+
+  <link
+    rel="apple-touch-icon"
+    href="/icons/apple-touch-icon.png"
+  >
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: #080808;
+      color: #fff;
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      padding:
+        calc(24px + env(safe-area-inset-top))
+        20px
+        calc(24px + env(safe-area-inset-bottom));
+      display: grid;
+      place-items: center;
+    }
+
+    .card {
+      width: min(440px, 100%);
+      padding: 28px;
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 26px;
+      background:
+        radial-gradient(
+          circle at 50% 0%,
+          rgba(255,79,26,.16),
+          transparent 45%
+        ),
+        #101010;
+      box-shadow: 0 30px 80px rgba(0,0,0,.45);
+    }
+
+    .logo {
+      width: 72px;
+      height: 72px;
+      display: block;
+      margin: 0 auto 18px;
+      object-fit: contain;
+    }
+
+    h1 {
+      margin: 0;
+      text-align: center;
+      font-size: 26px;
+      line-height: 1.1;
+    }
+
+    .subtitle {
+      margin: 12px auto 0;
+      max-width: 340px;
+      text-align: center;
+      color: rgba(255,255,255,.58);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .status {
+      margin-top: 22px;
+      padding: 13px 14px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      background: rgba(255,255,255,.035);
+      color: rgba(255,255,255,.72);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .status.ok {
+      border-color: rgba(52,211,153,.25);
+      color: #9cecc8;
+    }
+
+    .status.warn {
+      border-color: rgba(251,146,60,.25);
+      color: #fdba74;
+    }
+
+    button,
+    .back {
+      width: 100%;
+      min-height: 50px;
+      border-radius: 14px;
+      font-weight: 800;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    #install {
+      margin-top: 16px;
+      border: 0;
+      background:
+        linear-gradient(
+          135deg,
+          #ff3d16,
+          #ff7417
+        );
+      color: white;
+    }
+
+    #install:disabled {
+      opacity: .55;
+      cursor: wait;
+    }
+
+    .back {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,.09);
+      color: rgba(255,255,255,.72);
+      background: rgba(255,255,255,.035);
+    }
+
+    .manual {
+      display: none;
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(251,146,60,.18);
+      background: rgba(251,146,60,.05);
+    }
+
+    .manual strong {
+      display: block;
+      margin-bottom: 8px;
+      color: #fdba74;
+      font-size: 13px;
+    }
+
+    .manual p {
+      margin: 7px 0;
+      color: rgba(255,255,255,.65);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    details {
+      margin-top: 18px;
+      color: rgba(255,255,255,.4);
+      font-size: 11px;
+    }
+
+    #diagnostics {
+      margin-top: 8px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.45;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="card">
+    <img
+      class="logo"
+      src="/icons/icon-192x192.png"
+      alt=""
+    >
+
+    <h1>Instalar Ronnei na Veia</h1>
+
+    <p class="subtitle">
+      Instalação oficial do aplicativo pela tecnologia PWA do seu navegador.
+    </p>
+
+    <div id="status" class="status">
+      Verificando seu navegador e preparando a instalação…
+    </div>
+
+    <button id="install" type="button">
+      Instalar aplicativo
+    </button>
+
+    <a class="back" href="/app">
+      Voltar para a plataforma
+    </a>
+
+    <div id="manual" class="manual">
+      <strong>Instalação pelo navegador</strong>
+
+      <div id="manualText"></div>
+    </div>
+
+    <details>
+      <summary>Diagnóstico técnico</summary>
+      <div id="diagnostics"></div>
+    </details>
+  </main>
+
+  <script>
+    (function () {
+      const installButton =
+        document.getElementById("install");
+
+      const status =
+        document.getElementById("status");
+
+      const manual =
+        document.getElementById("manual");
+
+      const manualText =
+        document.getElementById("manualText");
+
+      const diagnostics =
+        document.getElementById("diagnostics");
+
+      let promptEvent =
+        window.__RNV_INSTALL_PROMPT__;
+
+      let accepted = false;
+
+      const ua =
+        navigator.userAgent || "";
+
+      const ios =
+        /iphone|ipad|ipod/i.test(ua);
+
+      const android =
+        /android/i.test(ua);
+
+      const chrome =
+        /chrome|crios/i.test(ua) &&
+        !/edg|opr|samsungbrowser/i.test(ua);
+
+      const samsung =
+        /samsungbrowser/i.test(ua);
+
+      const standalone =
+        window.matchMedia(
+          "(display-mode: standalone)"
+        ).matches ||
+        Boolean(navigator.standalone);
+
+      function line(text) {
+        diagnostics.textContent +=
+          text + "\n";
+      }
+
+      function showManual() {
+        manual.style.display = "block";
+
+        if (ios) {
+          manualText.innerHTML =
+            "<p>Abra esta página no <b>Safari</b>.</p>" +
+            "<p>Toque em <b>Compartilhar</b> e depois em <b>Adicionar à Tela de Início</b>.</p>";
+          return;
+        }
+
+        if (samsung) {
+          manualText.innerHTML =
+            "<p>No Samsung Internet, abra o menu.</p>" +
+            "<p>Escolha <b>Adicionar página a</b> → <b>Tela inicial</b>.</p>";
+          return;
+        }
+
+        if (android && chrome) {
+          manualText.innerHTML =
+            "<p>No Chrome, abra o menu <b>⋮</b>.</p>" +
+            "<p>Escolha <b>Adicionar à tela inicial</b> ou <b>Instalar app</b>.</p>" +
+            "<p>Se o Chrome aceitar e o aplicativo não aparecer, a falha ocorreu na criação do WebAPK pelo Android/Chrome, não no site.</p>";
+          return;
+        }
+
+        manualText.innerHTML =
+          "<p>Abra o menu do navegador e procure por <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.</p>";
+      }
+
+      async function diagnosticsCheck() {
+        line(
+          "URL: " + location.href
+        );
+
+        line(
+          "Secure context: " +
+          String(window.isSecureContext)
+        );
+
+        line(
+          "Standalone: " +
+          String(standalone)
+        );
+
+        line(
+          "ServiceWorker API: " +
+          String("serviceWorker" in navigator)
+        );
+
+        try {
+          const response =
+            await fetch(
+              "/manifest.json?diagnostic=" +
+              Date.now(),
+              {
+                cache: "no-store",
+                credentials: "omit"
+              }
+            );
+
+          line(
+            "Manifest HTTP: " +
+            response.status +
+            " " +
+            response.headers.get(
+              "content-type"
+            )
+          );
+
+          const manifest =
+            await response.json();
+
+          line(
+            "Manifest id: " +
+            manifest.id
+          );
+
+          line(
+            "Manifest start_url: " +
+            manifest.start_url
+          );
+
+          line(
+            "Manifest display: " +
+            manifest.display
+          );
+
+          for (
+            const icon of
+            manifest.icons || []
+          ) {
+            const iconResponse =
+              await fetch(
+                icon.src +
+                "?diagnostic=" +
+                Date.now(),
+                {
+                  cache: "no-store",
+                  credentials: "omit"
+                }
+              );
+
+            line(
+              "Icon " +
+              icon.sizes +
+              ": HTTP " +
+              iconResponse.status +
+              " " +
+              iconResponse.headers.get(
+                "content-type"
+              )
+            );
+          }
+        } catch (error) {
+          line(
+            "Manifest ERROR: " +
+            String(error)
+          );
+        }
+
+        try {
+          if (
+            "serviceWorker" in
+            navigator
+          ) {
+            const registration =
+              await navigator.serviceWorker.ready;
+
+            line(
+              "SW scope: " +
+              registration.scope
+            );
+
+            line(
+              "SW active: " +
+              String(
+                registration.active
+                  ?.state || "none"
+              )
+            );
+
+            line(
+              "SW script: " +
+              String(
+                registration.active
+                  ?.scriptURL || "none"
+              )
+            );
+          }
+        } catch (error) {
+          line(
+            "SW ERROR: " +
+            String(error)
+          );
+        }
+
+        line(
+          "beforeinstallprompt: " +
+          String(Boolean(promptEvent))
+        );
+
+        line(
+          "User-Agent: " + ua
+        );
+      }
+
+      function ready() {
+        promptEvent =
+          window.__RNV_INSTALL_PROMPT__;
+
+        status.textContent =
+          "O navegador confirmou que o aplicativo pode ser instalado.";
+
+        status.className =
+          "status ok";
+
+        installButton.disabled =
+          false;
+
+        diagnostics.textContent +=
+          "beforeinstallprompt: true\n";
+      }
+
+      window.addEventListener(
+        "rnv-install-ready",
+        ready
+      );
+
+      window.addEventListener(
+        "appinstalled",
+        function () {
+          status.textContent =
+            "O navegador confirmou a solicitação de instalação. Procure “Ronnei na Veia” na sua lista de aplicativos.";
+
+          status.className =
+            "status ok";
+
+          installButton.disabled =
+            true;
+
+          installButton.textContent =
+            "Solicitação confirmada";
+        }
+      );
+
+      if (standalone) {
+        status.textContent =
+          "O Ronnei na Veia já está aberto como aplicativo.";
+
+        status.className =
+          "status ok";
+
+        installButton.disabled =
+          true;
+
+        installButton.textContent =
+          "Aplicativo instalado";
+      } else if (ios) {
+        status.textContent =
+          "No iPhone/iPad a instalação deve ser feita pelo Safari.";
+
+        status.className =
+          "status warn";
+
+        installButton.disabled =
+          false;
+
+        showManual();
+      } else {
+        installButton.disabled =
+          false;
+
+        if (promptEvent) {
+          ready();
+        }
+      }
+
+      installButton.addEventListener(
+        "click",
+        async function () {
+          if (standalone) return;
+
+          if (ios) {
+            showManual();
+            return;
+          }
+
+          promptEvent =
+            window.__RNV_INSTALL_PROMPT__ ||
+            promptEvent;
+
+          if (!promptEvent) {
+            status.textContent =
+              "O navegador ainda não liberou o prompt automático. Use a instalação pelo menu abaixo.";
+
+            status.className =
+              "status warn";
+
+            showManual();
+
+            return;
+          }
+
+          installButton.disabled =
+            true;
+
+          installButton.textContent =
+            "Abrindo instalação…";
+
+          try {
+            await promptEvent.prompt();
+
+            const choice =
+              await promptEvent.userChoice;
+
+            window.__RNV_INSTALL_PROMPT__ =
+              null;
+
+            promptEvent = null;
+
+            if (
+              choice.outcome ===
+              "accepted"
+            ) {
+              accepted = true;
+
+              status.textContent =
+                "O Chrome aceitou a instalação. O Android está processando o aplicativo.";
+
+              status.className =
+                "status ok";
+
+              installButton.textContent =
+                "Instalação solicitada";
+
+              setTimeout(
+                function () {
+                  if (!accepted) return;
+
+                  status.textContent =
+                    "Se o ícone do aplicativo ainda não apareceu, o Chrome não concluiu a criação do WebAPK. Use o modo de compatibilidade abaixo.";
+
+                  status.className =
+                    "status warn";
+
+                  showManual();
+                },
+                20000
+              );
+
+              return;
+            }
+
+            status.textContent =
+              "A instalação foi cancelada.";
+
+            status.className =
+              "status warn";
+
+            installButton.disabled =
+              false;
+
+            installButton.textContent =
+              "Tentar novamente";
+          } catch (error) {
+            status.textContent =
+              "O navegador não conseguiu abrir a instalação. Use o modo de compatibilidade abaixo.";
+
+            status.className =
+              "status warn";
+
+            line(
+              "Prompt ERROR: " +
+              String(error)
+            );
+
+            showManual();
+
+            installButton.disabled =
+              false;
+
+            installButton.textContent =
+              "Tentar novamente";
+          }
+        }
+      );
+
+      setTimeout(
+        function () {
+          if (
+            !window.__RNV_INSTALL_PROMPT__ &&
+            !standalone &&
+            !ios
+          ) {
+            status.textContent =
+              "O navegador não liberou o prompt automático. Você ainda pode instalar pelo menu do navegador.";
+
+            status.className =
+              "status warn";
+
+            showManual();
+          }
+        },
+        32000
+      );
+
+      diagnosticsCheck();
+    })();
+  </script>
+</body>
+</html>

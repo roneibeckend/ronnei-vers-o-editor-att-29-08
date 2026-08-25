@@ -202,12 +202,51 @@ function AdminMaterialsPage() {
                     <button 
                       onClick={async () => {
                         try {
-                          const urlParts = m.file_url.split('/');
-                          const fileName = urlParts[urlParts.length - 1];
-                          const { url } = await fetchDownloadUrl({ data: { filePath: fileName } });
-                          window.open(url, "_blank");
-                        } catch (err) {
-                          toast.error("Erro ao baixar arquivo.");
+                          const {
+                            data: sessionData,
+                          } = await supabase.auth.getSession();
+
+                          let accessToken =
+                            sessionData.session?.access_token;
+
+                          if (!accessToken) {
+                            const {
+                              data: refreshed,
+                              error: refreshError,
+                            } = await supabase.auth.refreshSession();
+
+                            if (
+                              refreshError ||
+                              !refreshed.session?.access_token
+                            ) {
+                              throw new Error(
+                                "Sessão expirada."
+                              );
+                            }
+
+                            accessToken =
+                              refreshed.session.access_token;
+                          }
+
+                          const { url } =
+                            await fetchDownloadUrl({
+                              data: {
+                                materialId: m.id,
+                                accessToken,
+                              },
+                            });
+
+                          window.location.assign(url);
+                        } catch (err: any) {
+                          console.error(
+                            "[admin/materiais] download:",
+                            err
+                          );
+
+                          toast.error(
+                            err?.message ||
+                            "Erro ao baixar arquivo."
+                          );
                         }
                       }}
                       className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-white/5 text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition"

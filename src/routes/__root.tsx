@@ -147,7 +147,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
-      { rel: "manifest", href: "/manifest.json" },
+      { rel: "manifest", href: "/manifest.json?v=20260824-final" },
       { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
       // Fontes self-hosted (subset latino, variáveis) com preload: sem round-trip
       // para o Google Fonts e sem CSS externo bloqueando a renderização.
@@ -192,6 +192,68 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR" className="dark">
       <head>
+        <script
+          data-rnv-pwa-bootstrap
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function () {
+                if (window.__RNV_PWA_BOOTSTRAPPED__) return;
+
+                window.__RNV_PWA_BOOTSTRAPPED__ = true;
+                window.__RNV_PWA_PROMPT__ = null;
+
+                window.addEventListener(
+                  "beforeinstallprompt",
+                  function (event) {
+                    event.preventDefault();
+
+                    window.__RNV_PWA_PROMPT__ = event;
+
+                    window.dispatchEvent(
+                      new Event("rnv-pwa-ready")
+                    );
+
+                    console.info(
+                      "[RNV PWA] beforeinstallprompt capturado"
+                    );
+                  },
+                  { passive: false }
+                );
+
+                window.addEventListener(
+                  "appinstalled",
+                  function () {
+                    window.__RNV_PWA_PROMPT__ = null;
+
+                    console.info(
+                      "[RNV PWA] appinstalled recebido"
+                    );
+                  }
+                );
+
+                if ("serviceWorker" in navigator) {
+                  navigator.serviceWorker
+                    .register(
+                      "/sw.js",
+                      {
+                        scope: "/",
+                        updateViaCache: "none"
+                      }
+                    )
+                    .then(function (registration) {
+                      return registration.update();
+                    })
+                    .catch(function (error) {
+                      console.error(
+                        "[RNV PWA] Falha no Service Worker:",
+                        error
+                      );
+                    });
+                }
+              })();
+            `,
+          }}
+        />
         <HeadContent />
       </head>
       <body className="antialiased overflow-x-hidden selection:bg-primary/30">
@@ -257,6 +319,8 @@ function RootComponent() {
     };
   }, [router]);
   
+
+
   useAffiliateTracking();
 
   return (

@@ -63,32 +63,10 @@ import {
   optAuthor as author,
   optLogoMark as logo,
 } from "@/assets/optimized";
-import heroVideoDesktop from "@/assets/ronnei-historia-desktop.mp4.asset.json";
-import heroVideoMobile from "@/assets/ronnei-historia-mobile.mp4.asset.json";
-import heroVideoPoster from "@/assets/ronnei-historia-poster.jpg.asset.json";
 import printWhats1 from "@/assets/opt/print-whats-1.webp";
 import printWhats2 from "@/assets/opt/print-whats-2.webp";
 import printWhats3 from "@/assets/opt/print-whats-3.webp";
 import printPix from "@/assets/opt/print-pix.webp";
-
-
-const importVideoPlayer = () =>
-  import("@/components/platform/VideoPlayer").then(m => ({ default: m.VideoPlayer }));
-
-const VideoPlayer = lazy(importVideoPlayer);
-
-/** Baixa o chunk do player e aquece o início do arquivo de vídeo no cache. */
-let videoWarmed = false;
-function warmUpVideo(url: string) {
-  if (videoWarmed) return;
-  videoWarmed = true;
-  void importVideoPlayer().catch(() => undefined);
-  try {
-    void fetch(url, { headers: { Range: "bytes=0-800000" } }).catch(() => undefined);
-  } catch {
-    /* cache warming is best-effort */
-  }
-}
 
 
 // Widget da assistente: chunk separado, carregado só quando a seção aparece.
@@ -233,6 +211,9 @@ function ScrollProgress() {
   const barRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    // No mobile a barra fica oculta e nenhum listener de scroll é criado.
+    if (window.matchMedia("(max-width: 767px)").matches) return;
+
     let raf = 0;
 
     const update = () => {
@@ -263,7 +244,7 @@ function ScrollProgress() {
   }, []);
 
   return (
-    <div className="fixed inset-x-0 top-0 z-[60] h-[3px] bg-transparent">
+    <div className="fixed inset-x-0 top-0 z-[60] hidden h-[3px] bg-transparent md:block">
       <div
         ref={barRef}
         className="h-full bg-fire shadow-fire"
@@ -482,8 +463,18 @@ function GuaranteeSeal({ className = "" }: { className?: string }) {
 function Nav() {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener("scroll", onScroll);
+    let last = window.scrollY > 40;
+    setScrolled(last);
+
+    const onScroll = () => {
+      const next = window.scrollY > 40;
+      if (next !== last) {
+        last = next;
+        setScrolled(next);
+      }
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
   return (
@@ -524,36 +515,9 @@ function Nav() {
 
 function Hero() {
   const [videoOpen, setVideoOpen] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  // Baixa o código do player quando o navegador estiver ocioso, para que o
-  // modal abra instantaneamente ao toque (sem esperar o chunk).
-  useEffect(() => {
-    const idle = (window as any).requestIdleCallback as undefined | ((cb: () => void) => number);
-    const run = () => void importVideoPlayer().catch(() => undefined);
-    if (idle) {
-      const handle = idle(run);
-      return () => (window as any).cancelIdleCallback?.(handle);
-    }
-    const t = window.setTimeout(run, 2500);
-    return () => window.clearTimeout(t);
-  }, []);
-
-
-  useEffect(() => {
-    if (!videoOpen) {
-      setIsPlaying(false);
-      return;
-    }
-    setIsPlaying(true);
+    if (!videoOpen) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setVideoOpen(false);
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
@@ -565,10 +529,14 @@ function Hero() {
 
   return (
     <section id="top" className="relative overflow-hidden pt-16 pb-8 sm:pt-24 sm:pb-14 lg:pt-28 lg:pb-16">
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute left-1/2 top-0 h-[320px] w-[600px] -translate-x-1/2 rounded-full bg-[color:var(--ember)]/25 blur-3xl sm:h-[520px] sm:w-[960px] animate-pulse-glow" />
-        <div className="absolute right-0 top-40 h-[280px] w-[280px] rounded-full bg-[color:var(--gold)]/15 blur-3xl" />
-      </div>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          background:
+            "radial-gradient(ellipse 88% 68% at 50% 4%, oklch(0.63 0.24 27 / 0.30) 0%, oklch(0.63 0.24 27 / 0.16) 40%, transparent 74%), radial-gradient(ellipse 42% 34% at 88% 30%, oklch(0.82 0.15 85 / 0.08) 0%, transparent 72%)",
+        }}
+      />
 
       <div className="mx-auto flex max-w-[1200px] flex-col items-center px-4 text-center sm:px-6 3xl:max-w-[1500px]">
 
@@ -692,21 +660,30 @@ function Hero() {
           </button>
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-4xl animate-scale-in"
+            className="relative w-full max-w-[min(420px,85vh*9/16)] animate-scale-in"
           >
 
             <div className="glass gradient-border overflow-hidden rounded-2xl p-1 shadow-fire relative bg-black group/intro">
-              <div className="relative aspect-video max-h-[85vh] w-full overflow-hidden rounded-xl bg-black shadow-2xl">
-                <Suspense fallback={<div className="flex h-full items-center justify-center text-white"><Loader2 className="animate-spin" /></div>}>
-                  <iframe
-                    src="https://www.youtube-nocookie.com/embed/ZowrRHEwP7I?autoplay=1&rel=0&playsinline=1"
-                    title="Ronnei — história do Espetos Grill"
-                    className="h-full w-full"
-                    allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-                    allowFullScreen
-                  />
-
-                </Suspense>
+              <div className="relative aspect-[9/16] max-h-[85vh] w-full overflow-hidden rounded-xl bg-black shadow-2xl">
+                <video
+                    autoPlay
+                    controls
+                    playsInline
+                    preload="metadata"
+                    className="h-full w-full bg-black object-contain"
+                    onEnded={() => setVideoOpen(false)}
+                  >
+                    <source
+                      src="/media/ronnei-historia-mobile.mp4"
+                      type="video/mp4"
+                      media="(max-width: 767px)"
+                    />
+                    <source
+                      src="/media/ronnei-historia-desktop.mp4"
+                      type="video/mp4"
+                    />
+                    Seu navegador não suporta reprodução de vídeo.
+                  </video>
               </div>
             </div>
           </div>
@@ -797,8 +774,7 @@ function AuthorSolution() {
         <div className="grid items-center gap-10 lg:grid-cols-[auto_1fr]">
           {/* Slideshow */}
           <div className="relative mx-auto lg:mx-0">
-            <div className="absolute -inset-3 -z-10 rounded-3xl bg-fire opacity-25 blur-2xl" />
-            <div className="relative h-[260px] w-[260px] overflow-hidden rounded-3xl shadow-fire sm:h-[300px] sm:w-[300px]">
+            <div className="relative h-[260px] w-[260px] overflow-hidden rounded-3xl shadow-2xl sm:h-[300px] sm:w-[300px]">
               {slides.map((s, i) => (
                 <img
                   key={s.src}
@@ -1749,6 +1725,17 @@ function Footer() {
           Suporte de segunda a sexta, das 9h às 18h.
         </p>
         <p>© {new Date().getFullYear()} Ronnei na Veia. Todos os direitos reservados. Este produto não garante retornos financeiros — os resultados dependem da aplicação do método.</p>
+        <p className="mt-2 opacity-80">
+          Desenvolvido por{" "}
+          <a
+            href="https://ardevs.com.br"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-colors hover:text-foreground"
+          >
+            AR Devs
+          </a>
+        </p>
       </div>
     </footer>
   );
@@ -1919,106 +1906,9 @@ function AuroraBackdrop() {
 }
 
 function LandingPage() {
-  useEffect(() => {
-    // Ativa o estado oculto das animações somente agora (após hidratação).
-    // Antes disso o HTML já está visível, evitando "tela vazia" no mobile.
-    const reduceMotion =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!reduceMotion) {
-      document.documentElement.setAttribute("data-reveal-js", "");
-    }
-
-    // Assign varied reveal variants per section so animations don't all feel the same.
-    // Order below matches <main> children.
-
-    const variantsBySection: Array<{ headline: string; card: string }> = [
-      { headline: "up",    card: "up"     }, // Hero
-      { headline: "clip",  card: "scale"  }, // ForYou
-      { headline: "up",    card: "left"   }, // Objection
-      { headline: "up",    card: "tilt"   }, // Benefits
-      { headline: "up",    card: "up"     }, // ProfitCalculator
-      { headline: "right", card: "right"  }, // AuthorSolution
-      { headline: "clip",  card: "tilt"   }, // SocialProof
-      { headline: "left",  card: "rotate" }, // Modules
-      { headline: "clip",  card: "scale"  }, // Bonuses
-      { headline: "up",    card: "blur"   }, // NotForYou
-      { headline: "up",    card: "blur"   }, // Offer
-      { headline: "up",    card: "up"     }, // FAQ
-    ];
-
-    const sections = Array.from(document.querySelectorAll<HTMLElement>("main > section, main > div"));
-    sections.forEach((section, sIdx) => {
-      const v = variantsBySection[sIdx] ?? { headline: "up", card: "up" };
-      const headline = section.querySelector<HTMLElement>("h2");
-      if (headline && !headline.hasAttribute("data-reveal")) {
-        headline.setAttribute("data-reveal", v.headline);
-      }
-      const cards = Array.from(
-        section.querySelectorAll<HTMLElement>(".glass, .rounded-2xl, .rounded-3xl"),
-      );
-      cards.forEach((n, i) => {
-        if (!n.hasAttribute("data-reveal")) {
-          n.setAttribute("data-reveal", v.card);
-          const delay = ((i % 6) + 1) as 1 | 2 | 3 | 4 | 5 | 6;
-          if (delay > 1) n.setAttribute("data-reveal-delay", String(delay - 1));
-        }
-      });
-    });
-
-    const revealNow = (n: HTMLElement) => {
-      if (n.dataset.visible !== "true") {
-        n.dataset.visible = "true";
-        // Remove individual observers to save memory once visible
-        io.unobserve(n);
-      }
-    };
-
-    const isMobile = window.innerWidth < 768;
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            revealNow(e.target as HTMLElement);
-          }
-        }
-      },
-      { 
-        threshold: 0, 
-        rootMargin: isMobile ? "0px 0px 600px 0px" : "0px 0px 200px 0px" 
-      },
-    );
-
-    const nodes = Array.from(document.querySelectorAll<HTMLElement>("[data-reveal]"));
-    nodes.forEach((n) => {
-      const r = n.getBoundingClientRect();
-      // Increase buffer to reveal earlier and avoid "popping"
-      if (r.top < window.innerHeight + (isMobile ? 300 : 100)) {
-        revealNow(n);
-      } else {
-        io.observe(n);
-      }
-    });
-
-    const onScroll = () => {
-      const vh = window.innerHeight;
-      const buffer = isMobile ? 400 : 200;
-      for (const n of nodes) {
-        if (n.dataset.visible === "true") continue;
-        const r = n.getBoundingClientRect();
-        if (r.top < vh + buffer) {
-          revealNow(n);
-        }
-      }
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      io.disconnect();
-      window.removeEventListener("scroll", onScroll);
-      document.documentElement.removeAttribute("data-reveal-js");
-    };
-  }, []);
+  // PERFORMANCE:
+  // A landing é sempre visível. Nenhum observer, medição de layout
+  // ou liberação de conteúdo depende do scroll.
 
   return (
     <div className="min-h-dvh pb-24 md:pb-0">

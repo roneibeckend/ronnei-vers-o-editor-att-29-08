@@ -638,7 +638,6 @@ html[data-reveal-js] [data-reveal],
 html[data-reveal-js] [data-reveal][data-visible="true"] {
   opacity: 1 !important;
   transform: none !important;
-  filter: none !important;
   clip-path: none !important;
   transition: none !important;
   transition-delay: 0s !important;
@@ -658,9 +657,5 @@ html[data-reveal-js] [data-reveal][data-visible="true"] {
   .animate-aurora,
   .animate-aurora-2 {
     animation: none !important;
-  }
-
-  .animate-pulse-glow {
-    filter: none !important;
   }
 }

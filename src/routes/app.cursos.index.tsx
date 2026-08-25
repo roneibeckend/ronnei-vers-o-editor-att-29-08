@@ -24,6 +24,25 @@ export const Route = createFileRoute("/app/cursos/")({
   component: CoursesPage,
 });
 
+
+function resolveEbookCover(e: any) {
+  // Capa migrada para a VPS.
+  if ('ee1a776c-6c7d-4a88-a980-7e671ad8d4fb' && e?.id === 'ee1a776c-6c7d-4a88-a980-7e671ad8d4fb' && '/media/ebook-zero-10k.jpg') {
+    return '/media/ebook-zero-10k.jpg';
+  }
+
+  // Nunca tenta carregar assets internos do antigo Lovable.
+  for (const raw of [e?.cover_url, e?.cover]) {
+    if (typeof raw !== "string" || !raw.trim()) continue;
+    if (raw.includes("/__l5e/")) continue;
+
+    const resolved = optimizedImage(raw);
+    if (resolved) return resolved;
+  }
+
+  return IMG.hero;
+}
+
 function CoursesPage() {
   const { courseEnrollments, ebookEnrollments, isLoading: isLoadingEnrollments } = useEnrollments();
   const { startedCount, finishedCount, totalProgress, streak, isLoading: isLoadingProgress } = useProgress();
@@ -341,7 +360,7 @@ function CoursesPage() {
               <article key={e.id} className="glass card-tilt group overflow-hidden rounded-2xl border border-white/5 transition-all hover:border-fire/30 flex flex-col h-full relative z-[1]">
                 <div className="relative aspect-video w-full bg-muted/20 shrink-0 overflow-hidden">
                   <img 
-                    src={optimizedImage(e.cover_url || e.cover) || IMG.hero} 
+                    src={resolveEbookCover(e) || IMG.hero} 
                     alt={e.title} 
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" 
 
@@ -449,7 +468,7 @@ function CoursesPage() {
               <article key={e.id} className="glass overflow-hidden rounded-2xl border border-white/5 opacity-80 transition-opacity hover:opacity-100 flex flex-col h-full relative z-[1]">
                 <div className="relative aspect-video w-full bg-muted/20 grayscale-[0.3] overflow-hidden">
                   <img 
-                    src={optimizedImage(e.cover_url || e.cover) || IMG.hero} 
+                    src={resolveEbookCover(e) || IMG.hero} 
                     alt={e.title} 
                     className="h-full w-full object-cover" 
 
