@@ -33,14 +33,14 @@ function getYouTubeId(url: string) {
 }
 
 function getDriveId(url: string) {
-  const match = url.match(/\/file\/d\/([^/]+)/) || url.match(/[?&]id=([^&]+)/);
+  const match = url.match(/\/file\/d\/([^/?#]+)/) || url.match(/[?&]id=([^&#]+)/);
   return match?.[1] ?? '';
 }
 
-/** Proxy route: streams the Drive file so the native player can render a clean UI with audio. */
-function getDriveStream(url: string) {
+function getDrivePreviewUrl(url: string) {
   const id = getDriveId(url);
-  return id ? `/api/public/drive-video?id=${encodeURIComponent(id)}` : url;
+  if (!id) return url;
+  return `https://drive.google.com/file/d/${encodeURIComponent(id)}/preview?autoplay=1`;
 }
 
 /**
@@ -93,11 +93,13 @@ export function VideoPlayer({
 
   const isYouTube = isYouTubeUrl(src);
   const isDrive = isDriveUrl(src);
-  // Only YouTube keeps an iframe. Google Drive files are streamed through our
-  // proxy so the browser's own (single, clean) control bar is used and audio works.
-  const isEmbed = isYouTube;
+  // Google Drive public downloads regularly return quota/HTML pages and the
+  // original files are very large. Use Drive's preview player so Google serves
+  // its mobile/adaptive stream instead of forcing the browser to download the
+  // whole source video through our proxy.
+  const isEmbed = isYouTube || isDrive;
   const baseSrc = useLight && srcMobile ? srcMobile : src;
-  const playableSrc = isDrive ? getDriveStream(baseSrc) : baseSrc;
+  const playableSrc = baseSrc;
   const driveId = isDrive ? getDriveId(src) : '';
   const cleanPoster = poster || (driveId ? `https://drive.google.com/thumbnail?id=${driveId}&sz=w1200` : undefined);
   const frameClass = aspect === 'portrait' ? 'aspect-[9/16]' : 'aspect-video';
@@ -242,11 +244,15 @@ export function VideoPlayer({
   }, [autoStart, startPlayback, playableSrc]);
 
 
-  // ---- YouTube: render the iframe only after the user taps play
+  // ---- External embeds: render the iframe only after the user taps play
   if (isEmbed) {
     const ytId = getYouTubeId(src);
-    const embedUrl = `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1`;
-    const thumb = poster || (ytId ? `https://i.ytimg.com/vi/${ytId}/hq720.jpg` : undefined);
+    const embedUrl = isYouTube
+      ? `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1`
+      : getDrivePreviewUrl(baseSrc);
+    const thumb = isYouTube
+      ? poster || (ytId ? `https://i.ytimg.com/vi/${ytId}/hq720.jpg` : undefined)
+      : cleanPoster;
 
 
     return (
