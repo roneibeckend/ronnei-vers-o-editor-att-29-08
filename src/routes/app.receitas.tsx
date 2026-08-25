@@ -70,7 +70,7 @@ function RecipesPage() {
           {filtered.map((r: any) => (
             <article key={r.id} className="glass card-tilt overflow-hidden rounded-2xl flex flex-col h-full">
               <div className="aspect-video overflow-hidden">
-                <img src={r.image_url || "/placeholder.svg"} alt={r.name} className="h-full w-full object-cover" loading="lazy" />
+                <img src={r.image_url || "/placeholder.svg"} alt={r.name} className="h-full w-full object-cover" loading="lazy" decoding="async" width={1400} height={875} />
                 {r.video_url && (
                   <button 
                     onClick={(e) => {
