@@ -197,11 +197,11 @@ export function PostPurchaseOffer({
                         : 'bg-white/5 border-white/5 hover:border-white/10'
                     }`}
                   >
-                    <div className="h-14 w-20 sm:h-20 sm:w-32 rounded-lg overflow-hidden shrink-0 bg-muted/20">
+                    <div className="h-14 w-20 sm:h-20 sm:w-32 rounded-lg overflow-hidden shrink-0 bg-black/60">
                       <img 
                         src={optimizedImage(offer.cover_url) || IMG.hero} 
                         alt={offer.title} 
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-contain"
                       />
                     </div>
                     <div className="flex-1 min-w-0">
