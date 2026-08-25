@@ -1035,10 +1035,10 @@ function ProfitCalculator() {
 
 function SocialProof() {
   const prints = [
-    { src: printWhats1, alt: "Print de WhatsApp: aluno faturou R$ 480 no primeiro fim de semana", tag: "R$ 480 / fim de semana" },
+    { src: printWhats1, alt: "Print de WhatsApp: aluno bateu recorde de faturamento vendendo espetinho", tag: "Recorde de faturamento" },
     { src: printWhats2, alt: "Print de Instagram: aluna de Goiânia vendeu 320 espetinhos em um sábado", tag: "320 espetos / sábado" },
     { src: printWhats3, alt: "Print de WhatsApp: aluno corrigiu precificação após o eBook", tag: "Precificação corrigida" },
-    { src: printPix, alt: "Print de recebimentos via Pix de um vendedor de espetinhos", tag: "Pix caindo direto" },
+    { src: printPix, alt: "Print de WhatsApp: aluno começou do zero e lucrou R$ 500 na primeira semana", tag: "R$ 500 na 1ª semana" },
   ];
   return (
     <section id="depoimentos" className="relative py-14 sm:py-20">
