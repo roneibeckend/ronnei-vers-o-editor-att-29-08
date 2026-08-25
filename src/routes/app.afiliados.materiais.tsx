@@ -10,6 +10,8 @@ import {
   Loader2
 } from "lucide-react";
 import { useState } from "react";
+import { downloadFromResponse, openExternal } from "@/lib/download";
+
 
 export const Route = createFileRoute("/app/afiliados/materiais")({
   component: AffiliateMaterialsPage,
