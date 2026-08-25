@@ -233,13 +233,11 @@ export function AdminReportEmail(props: AdminReportEmailProps) {
           {/* Header */}
           <Section className="rnv-dark" {...({ bgcolor: C.black } as any)} style={{ backgroundColor: C.black, borderBottom: `3px solid ${C.orange}`, padding: "22px 24px" }}>
             <Row>
-              <Column style={{ width: "56px", verticalAlign: "middle" }}>
-                <Img src={EMAIL_ASSETS.logo} width="48" height="48" alt={BRAND.name} style={{ borderRadius: "50%", display: "block" }} />
+              <Column style={{ width: "150px", verticalAlign: "middle" }}>
+                <Img src={EMAIL_ASSETS.lockup} width="140" alt={BRAND.name} style={{ display: "block", width: "140px", height: "auto" }} />
               </Column>
               <Column style={{ verticalAlign: "middle", paddingLeft: "12px" }}>
-                <Text className="rnv-inv" style={{ margin: 0, fontSize: "16px", fontWeight: 800, color: C.white, fontFamily: FONT }}>
-                  {BRAND.name}
-                </Text>
+
                 <Text style={{ margin: "2px 0 0", fontSize: "12px", color: "#FF8A3D", fontWeight: 700, letterSpacing: "0.6px", fontFamily: FONT }}>
                   {props.reportType.toUpperCase()}
                 </Text>
