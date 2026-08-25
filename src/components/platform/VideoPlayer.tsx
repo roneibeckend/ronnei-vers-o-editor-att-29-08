@@ -40,7 +40,7 @@ function getDriveId(url: string) {
 function getDrivePreviewUrl(url: string) {
   const id = getDriveId(url);
   if (!id) return url;
-  return `https://drive.google.com/file/d/${encodeURIComponent(id)}/preview`;
+  return `https://drive.google.com/file/d/${encodeURIComponent(id)}/preview?autoplay=1`;
 }
 
 /**
@@ -249,7 +249,7 @@ export function VideoPlayer({
     const ytId = getYouTubeId(src);
     const embedUrl = isYouTube
       ? `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1`
-      : getDrivePreviewUrl(src);
+      : getDrivePreviewUrl(baseSrc);
     const thumb = isYouTube
       ? poster || (ytId ? `https://i.ytimg.com/vi/${ytId}/hq720.jpg` : undefined)
       : cleanPoster;
