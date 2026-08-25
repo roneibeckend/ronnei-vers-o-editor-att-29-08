@@ -6,6 +6,8 @@ import { IMG } from "@/lib/platform-data";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { validatePassword } from "@/lib/password-validation";
+import { checkSession } from "@/lib/session-guard";
+
 import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/login")({
