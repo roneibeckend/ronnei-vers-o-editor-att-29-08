@@ -63,6 +63,7 @@ import {
   optAuthor as author,
 } from "@/assets/optimized";
 import brandLockup from "@/assets/ronnei-lockup.png.asset.json";
+import heroVideoCover from "@/assets/espeto-imparavel-hero.png.asset.json";
 
 import printWhats1 from "@/assets/opt/print-whats-1.webp";
 import printWhats2 from "@/assets/opt/print-whats-2.webp";
