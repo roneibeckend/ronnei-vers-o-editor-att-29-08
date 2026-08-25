@@ -30,6 +30,7 @@ import {
   Wallet,
   Video,
 } from "lucide-react";
+import brandLockup from "@/assets/ronnei-lockup.png.asset.json";
 import { student } from "@/lib/platform-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
