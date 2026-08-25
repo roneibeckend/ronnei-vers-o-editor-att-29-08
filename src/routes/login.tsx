@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import brandLockup from "@/assets/ronnei-lockup.png.asset.json";
+const brandLockup = { url: "/brand-lockup.webp" };
 import { Flame, Mail, Lock, ArrowRight, Loader2, User, Phone } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
