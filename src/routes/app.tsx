@@ -8,23 +8,16 @@ import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } fr
 export const Route = createFileRoute("/app")({
   ssr: false,
   loader: async ({ context: { queryClient } }) => {
-    let { data: { session } } = await supabase.auth.getSession();
+    const check = await checkSession();
 
-    // Confirma que o token ainda é válido no servidor. Tokens revogados/expirados
-    // ficavam salvos no navegador e geravam recarga infinita entre /login e /app.
-    if (session) {
-      const { data: userData, error } = await supabase.auth.getUser();
-      if (error || !userData.user) {
-        try {
-          await supabase.auth.signOut({ scope: "local" });
-        } catch {
-          /* ignora */
-        }
-        session = null;
+    // Só derruba a sessão quando o servidor confirma que o token é inválido.
+    // Falha de rede (PWA offline) mantém o usuário logado.
+    if (check === "invalid") {
+      try {
+        await supabase.auth.signOut({ scope: "local" });
+      } catch {
+        /* ignora */
       }
-    }
-
-    if (!session) {
       const currentPath = typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/app';
       throw redirect({
         to: '/login',
@@ -33,6 +26,12 @@ export const Route = createFileRoute("/app")({
         },
       });
     }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw redirect({ to: '/login', search: { redirectTo: '/app' } });
+    }
+
 
 
     // Parallel prefetch common app data
