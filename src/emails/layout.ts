@@ -40,8 +40,10 @@ export const BRAND = {
 
 export const EMAIL_ASSETS = {
   logo: `${ASSET_BASE}/email-logo.png`,
+  lockup: `${ASSET_BASE}/email-lockup.png`,
   banner: `${ASSET_BASE}/email-banner.jpg`,
 };
+
 
 export const LINKS = {
   dashboard: `${BRAND.site}/app`,
