@@ -26,8 +26,12 @@ import {
   useIsMobile,
 } from "@/hooks/use-mobile";
 
-const STORAGE_KEY =
-  "pwa-install-modal-seen-final";
+import {
+  useAuth,
+} from "@/hooks/use-auth";
+
+const STORAGE_KEY_BASE =
+  "pwa-install-modal-seen";
 
 function isIos() {
   if (
