@@ -74,7 +74,7 @@ function AdminStudentProfilePage() {
     try {
       const [{ data: courses }, { data: ebooks }] = await Promise.all([
         supabase.from('courses').select('id, title').eq('status', 'active'),
-        supabase.from('ebooks').select('id, title')
+        supabase.from('ebooks').select('id, title').eq('status', 'active')
       ]);
       setAvailableProducts({ 
         courses: courses || [], 

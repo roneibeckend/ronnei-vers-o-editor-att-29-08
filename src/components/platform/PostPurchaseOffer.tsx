@@ -92,12 +92,12 @@ export function PostPurchaseOffer({
         supabase.from('courses')
           .select('id, title, description, price, cover_url, status')
           .eq('is_locked', false)
-          .eq('status', 'published')
+          .eq('status', 'active')
           .neq('id', originalProductId),
         supabase.from('ebooks')
           .select('id, title, description, price, cover_url, status')
           .eq('is_locked', false)
-          .eq('status', 'published')
+          .eq('status', 'active')
           .neq('id', originalProductId)
       ]);
 

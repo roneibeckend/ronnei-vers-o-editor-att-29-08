@@ -76,8 +76,6 @@ function AdminCursosPage() {
 
       if (statusFilter !== "all") {
         query = query.eq('status', statusFilter);
-      } else {
-        query = query.neq('status', 'archived');
       }
 
       const { data, error, count } = await query
@@ -154,7 +152,7 @@ function AdminCursosPage() {
         .update({ status: newStatus })
         .eq('id', id);
       if (error) throw error;
-      toast.success(`Curso ${newStatus === 'published' ? 'publicado' : 'desatualizado'}`);
+      toast.success(newStatus === 'active' ? 'Curso ativado e visível para alunos.' : 'Curso desativado.');
       fetchData();
     } catch (error: any) {
       toast.error("Erro ao alterar status: " + error.message);
@@ -240,9 +238,9 @@ function AdminCursosPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="bg-white/5 border border-white/10 px-4 py-2 rounded-lg text-sm outline-none focus:border-[#ff6a00] appearance-none cursor-pointer"
           >
-            <option value="all">Todos (menos arquivados)</option>
-            <option value="published">Publicados</option>
-            <option value="draft">Rascunhos</option>
+            <option value="all">Todos</option>
+            <option value="active">Ativos</option>
+            <option value="draft">Inativos</option>
           </select>
         </div>
       </div>
@@ -304,19 +302,19 @@ function AdminCursosPage() {
                   <td className="px-4 sm:px-6 py-4">
                     <span className={cn(
                       "px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-bold uppercase tracking-wider",
-                      course.status === 'published' ? "bg-green-500/10 text-green-500" : "bg-yellow-500/10 text-yellow-500"
+                      course.status === 'active' ? "bg-green-500/10 text-green-500" : "bg-yellow-500/10 text-yellow-500"
                     )}>
-                      {course.status === 'published' ? 'PUB' : 'RASC'}
+                      {course.status === 'active' ? 'ATIVO' : 'INATIVO'}
                     </span>
                   </td>
                   <td className="px-4 sm:px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-0.5 sm:gap-1">
                       <button 
-                        onClick={() => handleStatusChange(course.id, course.status === 'published' ? 'draft' : 'published')}
-                        title={course.status === 'published' ? 'Despublicar' : 'Publicar'}
+                        onClick={() => handleStatusChange(course.id, course.status === 'active' ? 'draft' : 'active')}
+                        title={course.status === 'active' ? 'Desativar' : 'Ativar'}
                         className="p-1.5 sm:p-2 text-white/40 hover:text-white transition-colors"
                       >
-                        {course.status === 'published' ? <Eye className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                        {course.status === 'active' ? <Eye className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
                       </button>
                       <button 
                         onClick={() => { setEditingItem(course); setActiveTab("info"); setIsModalOpen(true); }}
@@ -520,8 +518,8 @@ function AdminCursosPage() {
 
                   <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/5">
                     <div className="space-y-0.5">
-                      <div className="text-sm font-bold">Status da Publicação</div>
-                      <div className="text-[10px] text-white/40 uppercase tracking-widest">Defina se o curso estará visível para alunos</div>
+                      <div className="text-sm font-bold">Status do Conteúdo</div>
+                      <div className="text-[10px] text-white/40 uppercase tracking-widest">Conteúdos ativos aparecem para compra e acesso dos alunos</div>
                     </div>
                     <div className="flex gap-2">
                       <button 
@@ -532,17 +530,17 @@ function AdminCursosPage() {
                           editingItem?.status === 'draft' ? "bg-yellow-500/20 text-yellow-500 border border-yellow-500/50" : "bg-white/5 text-white/40 border border-transparent"
                         )}
                       >
-                        Rascunho
+                        Inativo
                       </button>
                       <button 
                         type="button"
-                        onClick={() => setEditingItem({...editingItem, status: 'published'})}
+                        onClick={() => setEditingItem({...editingItem, status: 'active'})}
                         className={cn(
                           "px-4 py-2 rounded-lg text-xs font-bold transition-all",
-                          editingItem?.status === 'published' ? "bg-green-500/20 text-green-500 border border-green-500/50" : "bg-white/5 text-white/40 border border-transparent"
+                          editingItem?.status === 'active' ? "bg-green-500/20 text-green-500 border border-green-500/50" : "bg-white/5 text-white/40 border border-transparent"
                         )}
                       >
-                        Publicado
+                        Ativo
                       </button>
                     </div>
                   </div>
