@@ -45,8 +45,8 @@ export function useProgress() {
         supabase.from("course_enrollments").select("course_id").eq("user_id", user.id),
         supabase.from("ebook_enrollments").select("ebook_id").eq("user_id", user.id),
         supabase.from("progress_tracking").select("item_type, item_id, started_at, completed_at").eq("user_id", user.id),
-        supabase.from("courses").select("id, price").eq("status", "published"),
-        supabase.from("ebooks").select("id, price").eq("status", "published"),
+        supabase.from("courses").select("id, price").in("status", ["published", "active"]),
+        supabase.from("ebooks").select("id, price").in("status", ["published", "active"]),
       ]);
 
       const enrolledCourseIds = (courseEnrollments || []).map((c: any) => c.course_id);
@@ -197,9 +197,15 @@ export function useProgress() {
 
 
 
-  const trackedItems = (globalProgressTracking?.tracking || []).filter(
-    (t: any) => t.item_type === 'course' || t.item_type === 'ebook'
-  );
+  // Universo válido: apenas conteúdos que ainda existem (cursos/e-books ativos ou matriculados).
+  // Registros antigos de conteúdo excluído não podem mais ser contados.
+  const validCourseIds = new Set<string>(globalProgressTracking?.courseIds || []);
+  const validEbookIds = new Set<string>(globalProgressTracking?.ebookIds || []);
+  const isValidItem = (t: any) =>
+    (t.item_type === 'course' && validCourseIds.has(t.item_id)) ||
+    (t.item_type === 'ebook' && validEbookIds.has(t.item_id));
+
+  const trackedItems = (globalProgressTracking?.tracking || []).filter(isValidItem);
 
   // Deduplica por tipo+id (evita contagem dupla de registros repetidos)
   const uniqueItems = Array.from(
@@ -213,16 +219,21 @@ export function useProgress() {
   );
   const finishedCount = Math.max(uniqueItems.filter((t) => !!t.completed_at).length, completedTrainings);
 
-  // Sequência (dias consecutivos com atividade de estudo)
+  // Sequência (dias consecutivos com atividade de estudo) — usa o fuso do aluno (BRT),
+  // pois em UTC uma aula vista à noite cairia no dia seguinte e quebraria a contagem.
+  const TZ = "America/Sao_Paulo";
+  const dayKey = (date: Date) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+
   const activityDates = new Set<string>();
   const pushDate = (value?: string | null) => {
     if (!value) return;
     const d = new Date(value);
-    if (!Number.isNaN(d.getTime())) activityDates.add(d.toISOString().slice(0, 10));
+    if (!Number.isNaN(d.getTime())) activityDates.add(dayKey(d));
   };
   (lessonProgress || []).forEach((p: any) => pushDate(p.updated_at));
   (ebookProgress || []).forEach((p: any) => pushDate(p.last_read_at || p.completed_at));
-  (globalProgressTracking?.tracking || []).forEach((t: any) => {
+  trackedItems.forEach((t: any) => {
     pushDate(t.started_at);
     pushDate(t.completed_at);
   });
@@ -230,13 +241,13 @@ export function useProgress() {
   let streak = 0;
   if (activityDates.size > 0) {
     const cursor = new Date();
-    const todayKey = cursor.toISOString().slice(0, 10);
-    if (!activityDates.has(todayKey)) cursor.setUTCDate(cursor.getUTCDate() - 1);
-    while (activityDates.has(cursor.toISOString().slice(0, 10))) {
+    if (!activityDates.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1);
+    while (activityDates.has(dayKey(cursor))) {
       streak += 1;
-      cursor.setUTCDate(cursor.getUTCDate() - 1);
+      cursor.setDate(cursor.getDate() - 1);
     }
   }
+
 
   return {
     streak,
