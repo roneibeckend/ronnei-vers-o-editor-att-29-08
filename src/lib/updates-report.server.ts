@@ -179,10 +179,10 @@ export function renderUpdatesReportEmail(data: UpdatesReportData) {
             <td bgcolor="${COLORS.black}" style="background-color:${COLORS.black};border-bottom:3px solid ${COLORS.orange};padding:20px;">
               <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td width="58" valign="middle"><img src="${escapeHtml(EMAIL_ASSETS.logo)}" width="48" height="48" alt="${escapeHtml(BRAND.name)}" style="display:block;width:48px;height:48px;border:0;border-radius:24px;"></td>
+                  <td width="150" valign="middle"><img src="${escapeHtml(EMAIL_ASSETS.lockup)}" width="140" alt="${escapeHtml(BRAND.name)}" style="display:block;width:140px;height:auto;border:0;"></td>
                   <td valign="middle" style="padding-left:12px;">
-                    <div style="color:${COLORS.white};font-family:${FONT};font-size:17px;line-height:22px;font-weight:bold;">${escapeHtml(BRAND.name)}</div>
                     <div style="color:#FF8A3D;font-family:${FONT};font-size:12px;line-height:18px;font-weight:bold;text-transform:uppercase;">Relatório de atualizações</div>
+
                     <div style="color:#D4D4D8;font-family:${FONT};font-size:12px;line-height:18px;">Referência: ${escapeHtml(data.formattedDate)}</div>
                   </td>
                 </tr>
