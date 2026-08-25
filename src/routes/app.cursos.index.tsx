@@ -118,14 +118,14 @@ function CoursesPage() {
       // Fast check: if no other products exist, skip modal
       const { data: otherCourses } = await supabase.from('courses')
         .select('id')
-        .in('status', ['published', 'active'])
+        .eq('status', 'active')
         .eq('is_locked', false)
         .neq('id', item.id)
         .limit(1);
 
       const { data: otherEbooks } = await supabase.from('ebooks')
         .select('id')
-        .in('status', ['published', 'active'])
+        .eq('status', 'active')
         .eq('is_locked', false)
         .neq('id', item.id)
         .limit(1);
