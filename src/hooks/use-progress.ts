@@ -45,8 +45,8 @@ export function useProgress() {
         supabase.from("course_enrollments").select("course_id").eq("user_id", user.id),
         supabase.from("ebook_enrollments").select("ebook_id").eq("user_id", user.id),
         supabase.from("progress_tracking").select("item_type, item_id, started_at, completed_at").eq("user_id", user.id),
-        supabase.from("courses").select("id, price").eq("status", "published"),
-        supabase.from("ebooks").select("id, price").eq("status", "published"),
+        supabase.from("courses").select("id, price").in("status", ["published", "active"]),
+        supabase.from("ebooks").select("id, price").in("status", ["published", "active"]),
       ]);
 
       const enrolledCourseIds = (courseEnrollments || []).map((c: any) => c.course_id);
