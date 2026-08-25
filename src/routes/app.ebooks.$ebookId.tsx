@@ -432,8 +432,8 @@ function EbookReaderPage() {
   const handlePurchase = async () => {
     if (isOfferEnabled) {
       // Check for available offers before showing modal
-      const { data: otherCourses } = await supabase.from('courses').select('id').eq('status', 'published').eq('is_locked', false).limit(1);
-      const { data: otherEbooks } = await supabase.from('ebooks').select('id').eq('status', 'published').eq('is_locked', false).neq('id', ebook.id).limit(1);
+      const { data: otherCourses } = await supabase.from('courses').select('id').in('status', ['published', 'active']).eq('is_locked', false).limit(1);
+      const { data: otherEbooks } = await supabase.from('ebooks').select('id').in('status', ['published', 'active']).eq('is_locked', false).neq('id', ebook.id).limit(1);
       
       const hasOffers = (otherCourses && otherCourses.length > 0) || (otherEbooks && otherEbooks.length > 0);
       
