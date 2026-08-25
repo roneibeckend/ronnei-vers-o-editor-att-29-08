@@ -8,6 +8,8 @@ import { generateEditableMenuPPTX } from "@/lib/pptx-generator";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { downloadFromResponse, openExternal } from "@/lib/download";
+
 
 
 export const Route = createFileRoute("/app/materiais")({
