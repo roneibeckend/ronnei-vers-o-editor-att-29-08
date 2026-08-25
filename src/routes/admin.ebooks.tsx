@@ -386,7 +386,7 @@ function AdminEbooksPage() {
                       <button 
                         onClick={async () => {
                           try {
-                            await fixEbookVisibility({ data: { ebook_id: ebook.id, user_email: 'newdroidsk8@gmail.com' } });
+                            await fixEbookVisibility({ data: { ebook_id: ebook.id } });
                             toast.success("Visibilidade corrigida!");
                             fetchData();
                           } catch (err: any) {
