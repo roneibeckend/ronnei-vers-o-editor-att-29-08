@@ -61,8 +61,9 @@ import {
   optChefWorking as chefWorking,
   optChefPortrait as chefPortrait,
   optAuthor as author,
-  optLogoMark as logo,
 } from "@/assets/optimized";
+import brandLockup from "@/assets/ronnei-lockup.png.asset.json";
+
 import printWhats1 from "@/assets/opt/print-whats-1.webp";
 import printWhats2 from "@/assets/opt/print-whats-2.webp";
 import printWhats3 from "@/assets/opt/print-whats-3.webp";
