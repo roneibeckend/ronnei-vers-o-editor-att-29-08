@@ -53,11 +53,16 @@ export function useProgress() {
         supabase.from("ebooks").select("id, price").eq("status", "active"),
       ]);
 
-      const enrolledCourseIds = (courseEnrollments || []).map((c: any) => c.course_id);
+      // Só entram no universo conteúdos que existem E estão ativos.
+      // Matrículas em conteúdo excluído ou inativo (rascunho/arquivado) não contam.
+      const activeCourseIds = new Set((activeCourses || []).map((c: any) => c.id));
+      const activeEbookIds = new Set((activeEbooks || []).map((e: any) => e.id));
+
+      const enrolledCourseIds = (courseEnrollments || []).map((c: any) => c.course_id).filter((id: string) => activeCourseIds.has(id));
       const freeCourseIds = (activeCourses || []).filter((c: any) => (c.price || 0) === 0).map((c: any) => c.id);
       const courseIds = Array.from(new Set([...enrolledCourseIds, ...freeCourseIds]));
 
-      const enrolledEbookIds = (ebookEnrollments || []).map((e: any) => e.ebook_id);
+      const enrolledEbookIds = (ebookEnrollments || []).map((e: any) => e.ebook_id).filter((id: string) => activeEbookIds.has(id));
       const freeEbookIds = (activeEbooks || []).filter((e: any) => (e.price || 0) === 0).map((e: any) => e.id);
       const ebookIds = Array.from(new Set([...enrolledEbookIds, ...freeEbookIds]));
 
