@@ -130,12 +130,13 @@ function AdminEbooksPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   
   const ITEMS_PER_PAGE = 8;
 
   useEffect(() => {
     fetchData();
-  }, [currentPage]);
+  }, [currentPage, statusFilter]);
 
   async function fetchData() {
     try {
@@ -146,6 +147,10 @@ function AdminEbooksPage() {
 
       if (searchTerm) {
         query = query.ilike('title', `%${searchTerm}%`);
+      }
+
+      if (statusFilter !== "all") {
+        query = query.eq('status', statusFilter);
       }
 
       const { data, error, count } = await query
@@ -227,6 +232,20 @@ function AdminEbooksPage() {
     }
   }
 
+  async function handleStatusChange(id: string, newStatus: string) {
+    try {
+      const { error } = await supabase
+        .from('ebooks')
+        .update({ status: newStatus })
+        .eq('id', id);
+      if (error) throw error;
+      toast.success(newStatus === 'active' ? 'E-book ativado e visível para alunos.' : 'E-book desativado.');
+      fetchData();
+    } catch (error: any) {
+      toast.error("Erro ao alterar status: " + error.message);
+    }
+  }
+
   async function handleDelete(ebook: any) {
     if (!confirm(`Tem certeza que deseja excluir permanentemente o e-book "${ebook.title}"? Todos os módulos, capítulos e progressos de alunos vinculados serão removidos.`)) return;
     try {
@@ -256,7 +275,8 @@ function AdminEbooksPage() {
               is_locked: false,
               category: "",
               cover_url: "",
-              payment_type: "unique"
+              payment_type: "unique",
+              status: "draft"
             }); 
             setIsModalOpen(true); 
           }}
@@ -283,6 +303,17 @@ function AdminEbooksPage() {
             className="w-full bg-white/5 border border-white/10 pl-10 pr-4 py-2 rounded-lg text-sm outline-none focus:border-[#ff6a00] transition-colors text-[16px] md:text-sm"
           />
         </div>
+        <div className="flex gap-2 w-full md:w-auto">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-white/5 border border-white/10 px-4 py-2 rounded-lg text-sm outline-none focus:border-[#ff6a00] appearance-none cursor-pointer"
+          >
+            <option value="all">Todos</option>
+            <option value="active">Ativos</option>
+            <option value="draft">Inativos</option>
+          </select>
+        </div>
       </div>
 
       {loading ? (
@@ -302,6 +333,7 @@ function AdminEbooksPage() {
                 <th className="px-6 py-4">Capa / Título</th>
                 <th className="px-6 py-4">Conteúdo</th>
                 <th className="px-6 py-4">Preço</th>
+                <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4 text-right">Ações</th>
               </tr>
             </thead>
@@ -330,8 +362,23 @@ function AdminEbooksPage() {
                   <td className="px-6 py-4">
                     <span className="text-gold font-bold">R$ {ebook.price?.toString().replace(".", ",")}</span>
                   </td>
+                  <td className="px-6 py-4">
+                    <span className={cn(
+                      "px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider",
+                      ebook.status === 'active' ? "bg-green-500/10 text-green-500" : "bg-yellow-500/10 text-yellow-500"
+                    )}>
+                      {ebook.status === 'active' ? 'ATIVO' : 'INATIVO'}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => handleStatusChange(ebook.id, ebook.status === 'active' ? 'draft' : 'active')}
+                        title={ebook.status === 'active' ? 'Desativar' : 'Ativar'}
+                        className="p-2 text-white/40 hover:text-white transition-colors"
+                      >
+                        {ebook.status === 'active' ? <Eye className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                      </button>
                       <button 
                         onClick={async () => {
                           try {
@@ -584,8 +631,34 @@ function AdminEbooksPage() {
                     onChange={(patch) => setEditingItem({ ...editingItem, ...patch })}
                   />
 
-
-
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/5 mt-6">
+                    <div className="space-y-0.5">
+                      <div className="text-sm font-bold">Status do Conteúdo</div>
+                      <div className="text-[10px] text-white/40 uppercase tracking-widest">Conteúdos ativos aparecem para compra e acesso dos alunos</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingItem({...editingItem, status: 'draft'})}
+                        className={cn(
+                          "px-4 py-2 rounded-lg text-xs font-bold transition-all",
+                          editingItem?.status === 'draft' ? "bg-yellow-500/20 text-yellow-500 border border-yellow-500/50" : "bg-white/5 text-white/40 border border-transparent"
+                        )}
+                      >
+                        Inativo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingItem({...editingItem, status: 'active'})}
+                        className={cn(
+                          "px-4 py-2 rounded-lg text-xs font-bold transition-all",
+                          editingItem?.status === 'active' ? "bg-green-500/20 text-green-500 border border-green-500/50" : "bg-white/5 text-white/40 border border-transparent"
+                        )}
+                      >
+                        Ativo
+                      </button>
+                    </div>
+                  </div>
                   <div className="flex justify-end pt-6 border-t border-white/5">
                     <button 
                       type="submit" 
