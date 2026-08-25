@@ -26,8 +26,12 @@ import {
   useIsMobile,
 } from "@/hooks/use-mobile";
 
-const STORAGE_KEY =
-  "pwa-install-modal-seen-final";
+import {
+  useAuth,
+} from "@/hooks/use-auth";
+
+const STORAGE_KEY_BASE =
+  "pwa-install-modal-seen";
 
 function isIos() {
   if (
@@ -54,6 +58,9 @@ export function PwaInstallModal() {
   const isMobile =
     useIsMobile();
 
+  const { user, isLoading } =
+    useAuth();
+
   const ios =
     isIos();
 
@@ -69,11 +76,16 @@ export function PwaInstallModal() {
   ] =
     useState(false);
 
+  const storageKey = user?.id
+    ? `${STORAGE_KEY_BASE}-${user.id}`
+    : STORAGE_KEY_BASE;
+
   useEffect(() => {
     if (
       !isMobile ||
       isStandalone ||
-      !canInstall
+      !canInstall ||
+      isLoading
     ) {
       return;
     }
@@ -87,7 +99,7 @@ export function PwaInstallModal() {
 
     if (
       localStorage.getItem(
-        STORAGE_KEY
+        storageKey
       )
     ) {
       return;
@@ -105,6 +117,8 @@ export function PwaInstallModal() {
     isMobile,
     isStandalone,
     canInstall,
+    isLoading,
+    storageKey,
   ]);
 
   useEffect(() => {
@@ -118,7 +132,7 @@ export function PwaInstallModal() {
 
     try {
       localStorage.setItem(
-        STORAGE_KEY,
+        storageKey,
         Date.now().toString()
       );
     } catch {
