@@ -128,27 +128,17 @@ export function Shell({ children }: { children: ReactNode }) {
   const SidebarInner = (
     <div className="flex h-dvh flex-col overflow-hidden bg-sidebar text-sidebar-foreground safe-top safe-bottom">
       {/* Brand */}
-      <div className="flex shrink-0 items-center gap-3 border-b border-sidebar-border px-5 py-4">
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary">
-          <img
-            src="/favicon.png"
-            alt=""
-            aria-hidden
-            width={36}
-            height={36}
-            decoding="async"
-            className="h-9 w-9 object-contain brightness-0 invert"
-          />
-        </div>
-        <div className="min-w-0">
-          <div className="font-display text-base font-extrabold uppercase leading-tight tracking-wide text-sidebar-foreground">
-            Ronnei <span className="text-primary">na Veia</span>
-          </div>
-          <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-sidebar-foreground/40">
-            Área de membros
-          </div>
-        </div>
+      <div className="flex shrink-0 items-center border-b border-sidebar-border px-5 py-5">
+        <img
+          src={brandLockup.url}
+          alt="Ronnei na Veia"
+          width={1920}
+          height={640}
+          decoding="async"
+          className="h-11 w-auto max-w-[190px] object-contain object-left"
+        />
       </div>
+
 
       {/* Student mini card */}
       <div className="mx-3 mt-3 flex shrink-0 items-center gap-3 rounded-lg border border-sidebar-border bg-sidebar-accent px-3 py-2.5">
