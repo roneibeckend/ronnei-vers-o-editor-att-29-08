@@ -25,6 +25,7 @@ import { generateCertificate } from "@/lib/certificates-student.functions";
 import EbookDownloadDialog from "@/components/platform/EbookDownloadDialog";
 import { registerEbookDownload } from "@/lib/ebook-download.functions";
 import { sanitizeRichHtml } from "@/lib/sanitize-html";
+import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
 
 
 
@@ -125,7 +126,7 @@ function EbookReaderPage() {
   const { data: interactivePreviewsStatus } = useQuery({
     queryKey: ['interactive-previews-status'],
     queryFn: async () => {
-      const { data } = await supabase.from('integrations').select('status').eq('category', 'interactive_previews').maybeSingle();
+      const data = await getIntegrationConfig('interactive_previews');
       return data?.status ?? false;
     }
   });
@@ -437,7 +438,7 @@ function EbookReaderPage() {
       
       const hasOffers = (otherCourses && otherCourses.length > 0) || (otherEbooks && otherEbooks.length > 0);
       
-      const { data } = await supabase.from('integrations').select('status').eq('category', 'offer_settings').maybeSingle();
+      const data = await getIntegrationConfig('offer_settings');
       if ((data && data.status === false) || !hasOffers) {
         await executeCheckout([]);
         return;
@@ -469,7 +470,7 @@ function EbookReaderPage() {
         }))
       ];
 
-      const { data: config } = await supabase.from('integrations').select('settings').eq('category', 'offer_settings').maybeSingle();
+      const config = await getIntegrationConfig('offer_settings');
       const settings = config?.settings as any;
       const discount = settings?.discountPercentage || 15;
 

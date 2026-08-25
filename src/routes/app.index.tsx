@@ -16,6 +16,7 @@ import { useEnrollments } from "@/hooks/use-enrollments";
 import { CourseCardSkeleton } from "@/components/ui/skeleton";
 import { PostPurchaseOffer } from "@/components/platform/PostPurchaseOffer";
 import { usePostPurchaseOfferStore } from "@/hooks/use-post-purchase-offer";
+import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
 
 export const Route = createFileRoute("/app/")({
   head: () => ({
@@ -296,7 +297,7 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
     e.stopPropagation();
     
     if (isOfferEnabled) {
-      const { data } = await supabase.from('integrations').select('settings').eq('category', 'offer_settings').maybeSingle();
+      const data = await getIntegrationConfig('offer_settings');
       if (data?.settings && typeof data.settings === 'object') {
         const s = data.settings as any;
         if (s.discountPercentage) setDiscountPercentage(s.discountPercentage);

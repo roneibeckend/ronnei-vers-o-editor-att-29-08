@@ -21,6 +21,7 @@ import { usePostPurchaseOfferStore } from "@/hooks/use-post-purchase-offer";
 import { getSignedVideoUrl } from "@/lib/video.functions";
 import { generateCertificate } from "@/lib/certificates-student.functions";
 import { motion, AnimatePresence } from "framer-motion";
+import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
 
 
 
@@ -106,7 +107,7 @@ function CoursePage() {
       
       const hasOffers = (otherCourses && otherCourses.length > 0) || (otherEbooks && otherEbooks.length > 0);
 
-      const { data } = await supabase.from('integrations').select('status').eq('category', 'offer_settings').maybeSingle();
+      const data = await getIntegrationConfig('offer_settings');
       if ((data && data.status === false) || !hasOffers) {
         await executeCheckout([]);
         return;
@@ -138,7 +139,7 @@ function CoursePage() {
         }))
       ];
 
-      const { data: config } = await supabase.from('integrations').select('settings').eq('category', 'offer_settings').maybeSingle();
+      const config = await getIntegrationConfig('offer_settings');
       const settings = config?.settings as any;
       const discount = settings?.discountPercentage || 15;
 
