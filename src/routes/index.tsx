@@ -63,6 +63,7 @@ import {
   optAuthor as author,
 } from "@/assets/optimized";
 import brandLockup from "@/assets/ronnei-lockup.png.asset.json";
+import heroVideoCover from "@/assets/espeto-imparavel-hero.png.asset.json";
 
 import printWhats1 from "@/assets/opt/print-whats-1.webp";
 import printWhats2 from "@/assets/opt/print-whats-2.webp";
@@ -118,7 +119,7 @@ export const Route = createFileRoute("/")({
       {
         rel: "preload",
         as: "image",
-        href: "https://i.ytimg.com/vi_webp/ZowrRHEwP7I/mqdefault.webp",
+        href: heroVideoCover.url,
         fetchpriority: "high",
       },
     ],
@@ -567,10 +568,8 @@ function Hero() {
               <div className="glass gradient-border relative overflow-hidden rounded-2xl p-1.5 shadow-fire">
                 <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-background ring-1 ring-white/10 shadow-2xl">
                   <img
-                    src="https://i.ytimg.com/vi_webp/ZowrRHEwP7I/mqdefault.webp"
-                    srcSet="https://i.ytimg.com/vi_webp/ZowrRHEwP7I/mqdefault.webp 320w, https://i.ytimg.com/vi_webp/ZowrRHEwP7I/sddefault.webp 640w"
-                    sizes="(max-width: 640px) 100vw, 480px"
-                    alt="Ronnei — história do Espetos Grill"
+                    src={heroVideoCover.url}
+                    alt="Método do Espeto Imparável — Ronnei na Veia"
                     loading="eager"
                     fetchPriority="high"
                     decoding="async"
