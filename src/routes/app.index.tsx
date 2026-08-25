@@ -197,20 +197,18 @@ function Dashboard() {
   }, [isLoadingEnrollments, isOfferEnabled]);
 
 
-  if (isLoadingItems || isLoadingEnrollments) {
-    return (
-      <div className="space-y-8">
-        <section>
-          <div className="mb-6 h-8 w-48 animate-pulse rounded-lg bg-white/5" />
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <CourseCardSkeleton key={i} />
-            ))}
-          </div>
-        </section>
-      </div>
-    );
-  }
+  const isLoadingShowcase = isLoadingItems || isLoadingEnrollments;
+
+  const visibleItems = (showcaseItems ?? [])
+    .map((item: any) => ({
+      ...item,
+      isEnrolled:
+        item.type === 'course'
+          ? isEnrolledInCourse(item.id) || (item.price || 0) === 0
+          : isEnrolledInEbook(item.id) || (item.price || 0) === 0,
+    }))
+    .filter((item: any) => !item.isEnrolled);
+
 
   return (
     <div className="space-y-8">
