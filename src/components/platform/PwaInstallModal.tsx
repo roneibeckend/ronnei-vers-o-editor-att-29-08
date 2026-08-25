@@ -132,7 +132,7 @@ export function PwaInstallModal() {
 
     try {
       localStorage.setItem(
-        STORAGE_KEY,
+        storageKey,
         Date.now().toString()
       );
     } catch {
