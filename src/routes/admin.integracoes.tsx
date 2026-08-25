@@ -62,6 +62,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { OAuthProvidersPanel } from "@/components/admin/OAuthProvidersPanel";
 import { CouponsPanel } from "@/components/admin/CouponsPanel";
+import { invalidateIntegrationConfig } from "@/lib/integration-settings";
 
 export const Route = createFileRoute('/admin/integracoes')({
   head: () => ({ meta: [{ title: "Centro de Integrações · Admin" }] }),
@@ -1394,7 +1395,9 @@ function OffersIntegrationPanel() {
         }, { onConflict: 'category' });
 
       if (error) throw error;
-      
+
+      invalidateIntegrationConfig();
+
       if (updates.status !== undefined && typeof window !== 'undefined' && (window as any).togglePostPurchaseOfferPopup) {
         (window as any).togglePostPurchaseOfferPopup(updates.status);
       }

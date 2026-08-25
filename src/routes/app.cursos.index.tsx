@@ -18,6 +18,7 @@ import { useProgress } from "@/hooks/use-progress";
 import { CourseCardSkeleton, Skeleton } from "@/components/ui/skeleton";
 import { PostPurchaseOffer } from "@/components/platform/PostPurchaseOffer";
 import { usePostPurchaseOfferStore } from "@/hooks/use-post-purchase-offer";
+import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
 
 export const Route = createFileRoute("/app/cursos/")({
   head: () => ({ meta: [{ title: "Meus cursos — Ronnei na Veia" }] }),
@@ -54,9 +55,10 @@ function CoursesPage() {
   const { data: interactivePreviewsStatus } = useQuery({
     queryKey: ['interactive-previews-status'],
     queryFn: async () => {
-      const { data } = await supabase.from('integrations').select('status').eq('category', 'interactive_previews').maybeSingle();
-      return data?.status ?? false;
-    }
+      return await getIntegrationStatus('interactive_previews');
+    },
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 30,
   });
 
   useEffect(() => {
@@ -109,7 +111,7 @@ function CoursesPage() {
 
     if (isOfferEnabled) {
       // Sync toggle state just in case
-      const { data: configData } = await supabase.from('integrations').select('status').eq('category', 'offer_settings').maybeSingle();
+      const configData = await getIntegrationConfig('offer_settings');
       if (configData && configData.status === false) {
         await executeCheckout(item, type, []);
         return;
@@ -168,8 +170,7 @@ function CoursesPage() {
       // actually, PostPurchaseOffer returns OfferItem[] which doesn't have the discounted price.
       // So we must fetch the discount here.
       
-      const { data: config } = await supabase.from('integrations').select('settings').eq('category', 'offer_settings').maybeSingle();
-      const settings = config?.settings as any;
+      const settings = (await getIntegrationSettings('offer_settings')) as any;
       const discount = settings?.discountPercentage || 15;
 
       products.forEach((p, i) => {

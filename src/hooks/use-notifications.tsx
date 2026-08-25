@@ -16,7 +16,8 @@ export function useNotifications() {
         const { data, error } = await supabase
           .from("notifications")
           .select("*")
-          .order("created_at", { ascending: false });
+          .order("created_at", { ascending: false })
+          .limit(50);
 
         if (error) {
           console.error("[useNotifications] Error fetching notifications:", error);
@@ -29,6 +30,8 @@ export function useNotifications() {
       }
     },
     enabled: !!user,
+    staleTime: 1000 * 60 * 2,
+    gcTime: 1000 * 60 * 10,
   });
 
   const { data: userNotifications = [] } = useQuery({
@@ -51,6 +54,8 @@ export function useNotifications() {
       }
     },
     enabled: !!user,
+    staleTime: 1000 * 60 * 2,
+    gcTime: 1000 * 60 * 10,
   });
 
   const unreadCount = notifications.filter(

@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { IMG } from '@/lib/platform-data';
 import { optimizedImage } from '@/lib/image-url';
 import { CouponInput, type AppliedCoupon } from '@/components/platform/CouponInput';
+import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
 
 
 interface OfferItem {
@@ -77,11 +78,7 @@ export function PostPurchaseOffer({
       setIsLoading(true);
       
       // Fetch dynamic settings
-      const { data: config } = await supabase
-        .from('integrations')
-        .select('settings')
-        .eq('category', 'offer_settings')
-        .maybeSingle();
+      const config = await getIntegrationConfig('offer_settings');
       
       if (config?.settings && typeof config.settings === 'object') {
         const s = config.settings as Record<string, any>;

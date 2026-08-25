@@ -13,10 +13,11 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/platform/Shell";
 import { supabase } from "@/integrations/supabase/client";
+import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
 
 export const Route = createFileRoute("/app/cursos/preview")({
   beforeLoad: async () => {
-    const { data } = await supabase.from('integrations').select('status').eq('category', 'interactive_previews').maybeSingle();
+    const data = await getIntegrationConfig('interactive_previews');
     if (data?.status === false) {
       throw redirect({ to: '/app/cursos' });
     }

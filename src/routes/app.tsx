@@ -3,6 +3,7 @@ import { Shell } from "@/components/platform/Shell";
 import { supabase } from "@/integrations/supabase/client";
 import { AsaasPaymentModal } from "@/components/platform/AsaasPaymentModal";
 import { OnboardingGuide } from "@/components/platform/OnboardingGuide";
+import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
 
 export const Route = createFileRoute("/app")({
   ssr: false,
@@ -52,8 +53,7 @@ export const Route = createFileRoute("/app")({
       queryClient.ensureQueryData({
         queryKey: ["interactive-previews-status"],
         queryFn: async () => {
-          const { data } = await supabase.from('integrations').select('status').eq('category', 'interactive_previews').maybeSingle();
-          return data?.status ?? false;
+          return await getIntegrationStatus('interactive_previews');
         }
       })
     ]);

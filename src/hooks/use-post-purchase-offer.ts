@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
 
 interface PostPurchaseOfferState {
   isEnabled: boolean;
@@ -12,13 +13,9 @@ export const usePostPurchaseOfferStore = create<PostPurchaseOfferState>((set) =>
   togglePostPurchaseOfferPopup: (enabled: boolean) => set({ isEnabled: enabled }),
   syncWithDatabase: async () => {
     try {
-      const { data, error } = await supabase
-        .from('integrations')
-        .select('status')
-        .eq('category', 'offer_settings')
-        .maybeSingle();
-      
-      if (!error && data) {
+      const data = await getIntegrationConfig('offer_settings');
+
+      if (data) {
         set({ isEnabled: data.status ?? false });
         // Cache the setting in localStorage for immediate retrieval on next load
         if (typeof window !== 'undefined') {
