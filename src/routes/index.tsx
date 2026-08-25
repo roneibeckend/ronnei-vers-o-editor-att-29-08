@@ -49,7 +49,7 @@ import {
   X,
 } from "lucide-react";
 
-import heroChefOriginal from "@/assets/hero-chef.asset.json";
+const heroChefOriginal = { url: "/media/hero-chef.webp" };
 import {
   optHeroChef as heroChef,
   optPlatter1 as platter1,
@@ -63,7 +63,7 @@ import {
   optAuthor as author,
 } from "@/assets/optimized";
 const brandLockup = { url: "/brand-lockup.webp" };
-import heroVideoCover from "@/assets/espeto-imparavel-hero.png.asset.json";
+const heroVideoCover = { url: "/media/espeto-imparavel-hero.webp" };
 
 import printWhats1 from "@/assets/opt/print-whats-1.webp";
 import printWhats2 from "@/assets/opt/print-whats-2.webp";
