@@ -8,6 +8,8 @@ import { generateEditableMenuPPTX } from "@/lib/pptx-generator";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { downloadFromResponse, openExternal } from "@/lib/download";
+
 
 
 export const Route = createFileRoute("/app/materiais")({
@@ -43,100 +45,61 @@ function MaterialsPage() {
 
   const handleDownload = async (materialId: string, title: string, fileUrl?: string, externalUrl?: string) => {
     if (externalUrl) {
-      window.open(externalUrl, "_blank");
+      openExternal(externalUrl);
       return;
     }
 
     if (fileUrl) {
       try {
-        let {
-          data: sessionData,
-          error: sessionError,
-        } = await supabase.auth.getSession();
+        const { data: sessionData, error: sessionError } =
+          await supabase.auth.getSession();
 
         if (sessionError) {
           throw sessionError;
         }
 
-        let accessToken =
-          sessionData.session?.access_token;
+        let accessToken = sessionData.session?.access_token;
 
         if (!accessToken) {
-          const {
-            data: refreshed,
-            error: refreshError,
-          } =
+          const { data: refreshed, error: refreshError } =
             await supabase.auth.refreshSession();
 
-          if (
-            refreshError ||
-            !refreshed.session?.access_token
-          ) {
-            throw new Error(
-              "Sua sessão expirou. Entre novamente."
-            );
+          if (refreshError || !refreshed.session?.access_token) {
+            throw new Error("Sua sessão expirou. Entre novamente.");
           }
 
-          accessToken =
-            refreshed.session.access_token;
+          accessToken = refreshed.session.access_token;
         }
 
-        const form =
-          document.createElement("form");
+        toast.loading(`Baixando "${title}"...`, { id: `dl-${materialId}` });
 
-        form.method = "POST";
-        form.action =
-          "/api/material-download";
-        form.target = "_self";
-        form.style.display = "none";
+        const body = new FormData();
+        body.set("materialId", materialId);
+        body.set("accessToken", accessToken);
 
-        const materialInput =
-          document.createElement("input");
+        // Busca via fetch + blob: o PWA nunca navega para fora,
+        // então o cliente continua dentro do app após baixar.
+        const response = await fetch("/api/material-download", {
+          method: "POST",
+          body,
+        });
 
-        materialInput.type = "hidden";
-        materialInput.name =
-          "materialId";
-        materialInput.value =
-          materialId;
+        await downloadFromResponse(response, `${title}`.trim() || "material");
 
-        const tokenInput =
-          document.createElement("input");
-
-        tokenInput.type = "hidden";
-        tokenInput.name =
-          "accessToken";
-        tokenInput.value =
-          accessToken;
-
-        form.appendChild(materialInput);
-        form.appendChild(tokenInput);
-
-        document.body.appendChild(form);
-
-        toast.success(
-          `Iniciando download de "${title}"...`
-        );
-
-        form.submit();
-
-        window.setTimeout(
-          () => form.remove(),
-          5000
-        );
+        toast.success(`"${title}" baixado.`, { id: `dl-${materialId}` });
       } catch (err: any) {
-        console.error(
-          "[materiais] falha ao iniciar download:",
-          err
-        );
+        console.error("[materiais] falha ao iniciar download:", err);
 
         toast.error(
-          err?.message ||
-            "Não foi possível iniciar o download."
+          err?.message || "Não foi possível iniciar o download.",
+          { id: `dl-${materialId}` }
         );
       }
 
       return;
     }
+
+
 
 
     try {
