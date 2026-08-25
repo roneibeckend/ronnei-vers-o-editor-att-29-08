@@ -61,10 +61,11 @@ function LoginPage() {
       }
     }
 
-    // Valida a sessão de verdade (getSession não checa o token no servidor).
-    // Sessão inválida/revogada era mantida no navegador e causava loop de recarga.
-    supabase.auth.getUser().then(async ({ data, error }) => {
-      if (error || !data.user) {
+    // Valida a sessão de verdade (getSession não checa o token no servidor),
+    // mas só encerra o login quando o servidor rejeita o token. Offline/rede
+    // instável (comum no PWA instalado) mantém a sessão salva.
+    checkSession().then(async (check) => {
+      if (check === "invalid") {
         try {
           await supabase.auth.signOut({ scope: "local" });
         } catch {
@@ -72,9 +73,11 @@ function LoginPage() {
         }
         return;
       }
+      if (check === "unknown") return;
       const target = redirectTo || "/inicio";
       navigate({ to: target, replace: true });
     });
+
 
 
     // Após o retorno do OAuth (Facebook), a sessão pode chegar de forma assíncrona
