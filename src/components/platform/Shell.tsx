@@ -263,10 +263,16 @@ export function Shell({ children }: { children: ReactNode }) {
           </Sheet>
 
           <div className="min-w-0 flex-1">
-            <div className="font-display text-lg font-extrabold uppercase tracking-wide sm:text-xl text-foreground">
-              Ronnei <span className="text-primary">na Veia</span>
-            </div>
+            <img
+              src={brandLockup.url}
+              alt="Ronnei na Veia"
+              width={1920}
+              height={640}
+              decoding="async"
+              className="h-9 w-auto max-w-[170px] object-contain object-left sm:h-10 sm:max-w-[200px]"
+            />
           </div>
+
           <div className="flex items-center gap-2">
             <OnboardingLauncher />
             <button
