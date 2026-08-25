@@ -110,6 +110,12 @@ export function usePwaInstall() {
   ] =
     useState<string | null>(null);
 
+  const [
+    isDismissed,
+    setIsDismissed,
+  ] =
+    useState(true);
+
   useEffect(() => {
     const refreshState = () => {
       setIsStandalone(
@@ -119,6 +125,18 @@ export function usePwaInstall() {
       setDeferredPrompt(
         globalPrompt()
       );
+
+      try {
+        setIsDismissed(
+          Boolean(
+            localStorage.getItem(
+              "pwa-prompt-dismissed"
+            )
+          )
+        );
+      } catch {
+        setIsDismissed(false);
+      }
     };
 
     refreshState();
@@ -284,11 +302,14 @@ export function usePwaInstall() {
       } catch {
         // ignore
       }
+
+      setIsDismissed(true);
     }, []);
 
   return {
     isVisible:
       !isStandalone &&
+      !isDismissed &&
       Boolean(deferredPrompt),
 
     isStandalone,
