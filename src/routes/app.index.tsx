@@ -197,20 +197,18 @@ function Dashboard() {
   }, [isLoadingEnrollments, isOfferEnabled]);
 
 
-  if (isLoadingItems || isLoadingEnrollments) {
-    return (
-      <div className="space-y-8">
-        <section>
-          <div className="mb-6 h-8 w-48 animate-pulse rounded-lg bg-white/5" />
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <CourseCardSkeleton key={i} />
-            ))}
-          </div>
-        </section>
-      </div>
-    );
-  }
+  const isLoadingShowcase = isLoadingItems || isLoadingEnrollments;
+
+  const visibleItems = (showcaseItems ?? [])
+    .map((item: any) => ({
+      ...item,
+      isEnrolled:
+        item.type === 'course'
+          ? isEnrolledInCourse(item.id) || (item.price || 0) === 0
+          : isEnrolledInEbook(item.id) || (item.price || 0) === 0,
+    }))
+    .filter((item: any) => !item.isEnrolled);
+
 
   return (
     <div className="space-y-8">
@@ -252,30 +250,40 @@ function Dashboard() {
         </section>
       )}
 
-      <section>
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="font-display text-2xl font-bold tracking-tight break-words">Novidades para você</h2>
-          <Link to="/app/cursos" className="text-sm font-medium text-gold hover:underline">Ver todos</Link>
+      <section id="novidades">
+        <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:justify-between">
+          <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight break-words min-w-0">Novidades para você</h2>
+          <Link to="/app/cursos" className="shrink-0 text-sm font-medium text-gold hover:underline">Ver todos</Link>
         </div>
-        
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 sm:gap-6">
-          {showcaseItems
-            ?.map((item: any) => ({
-              ...item,
-              isEnrolled: item.type === 'course' 
-                ? isEnrolledInCourse(item.id) || (item.price || 0) === 0
-                : isEnrolledInEbook(item.id) || (item.price || 0) === 0
-            }))
-            .filter((item: any) => !item.isEnrolled)
-            .map((item: any) => (
-              <CourseShowcaseCard 
-                key={`${item.type}-${item.id}`} 
-                item={item} 
-                isEnrolled={item.isEnrolled} 
+
+        {isLoadingShowcase ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 sm:gap-6">
+            {[1, 2, 3].map((i) => (
+              <CourseCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : visibleItems.length === 0 ? (
+          <div className="glass rounded-2xl p-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              Você já tem acesso a todo o conteúdo disponível. Novos lançamentos aparecem aqui.
+            </p>
+            <Link to="/app/cursos" className="btn-fire mt-4 inline-flex px-6 py-2 text-xs font-bold uppercase tracking-widest">
+              Ir para meus cursos
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 sm:gap-6">
+            {visibleItems.map((item: any) => (
+              <CourseShowcaseCard
+                key={`${item.type}-${item.id}`}
+                item={item}
+                isEnrolled={item.isEnrolled}
               />
             ))}
-        </div>
+          </div>
+        )}
       </section>
+
     </div>
   );
 }
