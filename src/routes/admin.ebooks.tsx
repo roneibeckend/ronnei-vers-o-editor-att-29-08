@@ -88,9 +88,9 @@ function AdminEbookCover({ ebook }: { ebook: any }) {
       : "";
 
   const candidates = [
-    local10k,
     ebook?.cover_url,
     ebook?.cover,
+    local10k,
   ].filter(
     (value, index, all): value is string =>
       typeof value === "string" &&
@@ -100,6 +100,10 @@ function AdminEbookCover({ ebook }: { ebook: any }) {
   );
 
   const [candidateIndex, setCandidateIndex] = useState(0);
+
+  useEffect(() => {
+    setCandidateIndex(0);
+  }, [ebook?.cover_url, ebook?.cover, ebook?.title]);
 
   if (candidateIndex >= candidates.length) {
     return (
