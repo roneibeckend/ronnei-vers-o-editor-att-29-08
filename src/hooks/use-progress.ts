@@ -34,7 +34,7 @@ export function useProgress() {
       if (!user?.id) return { lessonCount: 0, chapterCount: 0, tracking: [] };
 
       // Considera o mesmo universo exibido em "Seus Treinamentos":
-      // matrículas + conteúdos gratuitos publicados (mesma regra de app/cursos)
+      // matrículas + conteúdos gratuitos ativos (mesma regra de app/cursos)
       const [
         { data: courseEnrollments },
         { data: ebookEnrollments },
@@ -45,8 +45,8 @@ export function useProgress() {
         supabase.from("course_enrollments").select("course_id").eq("user_id", user.id),
         supabase.from("ebook_enrollments").select("ebook_id").eq("user_id", user.id),
         supabase.from("progress_tracking").select("item_type, item_id, started_at, completed_at").eq("user_id", user.id),
-        supabase.from("courses").select("id, price").in("status", ["published", "active"]),
-        supabase.from("ebooks").select("id, price").in("status", ["published", "active"]),
+        supabase.from("courses").select("id, price").eq("status", "active"),
+        supabase.from("ebooks").select("id, price").eq("status", "active"),
       ]);
 
       const enrolledCourseIds = (courseEnrollments || []).map((c: any) => c.course_id);

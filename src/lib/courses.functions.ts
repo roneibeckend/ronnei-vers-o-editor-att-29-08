@@ -20,7 +20,7 @@ const CourseSchema = z.object({
   cover_url: z.string().optional().nullable(),
   intro_video_url: z.string().optional().nullable(),
   level: z.string().default('beginner'),
-  status: z.enum(['draft', 'published', 'archived']).default('draft'),
+  status: z.enum(['draft', 'active', 'archived']).default('draft'),
   order_index: z.number().int().default(0),
 });
 
