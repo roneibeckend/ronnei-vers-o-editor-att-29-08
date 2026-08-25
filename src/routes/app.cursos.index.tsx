@@ -27,7 +27,7 @@ export const Route = createFileRoute("/app/cursos/")({
 
 function resolveEbookCover(e: any) {
   // Capa migrada para a VPS.
-  if ('ee1a776c-6c7d-4a88-a980-7e671ad8d4fb' && e?.id === 'ee1a776c-6c7d-4a88-a980-7e671ad8d4fb' && '/media/ebook-zero-10k.jpg') {
+  if (e?.id === 'ee1a776c-6c7d-4a88-a980-7e671ad8d4fb') {
     return '/media/ebook-zero-10k.jpg';
   }
 

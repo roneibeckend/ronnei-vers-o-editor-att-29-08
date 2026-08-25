@@ -1,5 +1,5 @@
 import { Link, useRouterState, useNavigate, Outlet } from "@tanstack/react-router";
-import { useState, type ReactNode, Suspense, useEffect } from "react";
+import { useState, type ReactNode, Suspense, useEffect, useRef } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { toast } from "sonner";
@@ -99,6 +99,14 @@ export function Shell({ children }: { children: ReactNode }) {
   const [localAvatar, setLocalAvatar] = useState<string | null>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { unreadCount } = useNotifications();
+  const previousPathRef = useRef<string | null>(null);
+
+  // Guarda a rota anterior para que o ícone de notificações funcione como toggle confiável no mobile
+  useEffect(() => {
+    if (pathname !== "/app/notificacoes") {
+      previousPathRef.current = pathname;
+    }
+  }, [pathname]);
 
   // Use local state if it exists, otherwise use profile from useAuth
   const profile = authProfile ? { ...authProfile, avatar_url: localAvatar || authProfile.avatar_url } : authProfile;
@@ -277,11 +285,8 @@ export function Shell({ children }: { children: ReactNode }) {
               aria-pressed={pathname === "/app/notificacoes"}
               onClick={() => {
                 if (pathname === "/app/notificacoes") {
-                  if (typeof window !== "undefined" && window.history.length > 1) {
-                    window.history.back();
-                  } else {
-                    navigate({ to: "/app" });
-                  }
+                  const target = previousPathRef.current || "/app";
+                  navigate({ to: target as any, replace: true });
                   return;
                 }
                 navigate({ to: "/app/notificacoes" });
