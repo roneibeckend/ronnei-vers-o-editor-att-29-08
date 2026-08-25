@@ -1,5 +1,5 @@
-import { Link, useRouterState, useNavigate, Outlet } from "@tanstack/react-router";
-import { useState, type ReactNode, Suspense, useEffect } from "react";
+import { Link, useRouterState, useNavigate, Outlet, useRouter } from "@tanstack/react-router";
+import { useState, type ReactNode, Suspense, useEffect, useRef } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { toast } from "sonner";
