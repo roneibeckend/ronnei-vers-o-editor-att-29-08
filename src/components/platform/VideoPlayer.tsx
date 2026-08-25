@@ -256,7 +256,7 @@ export function VideoPlayer({
 
 
     return (
-      <div className={cn('relative w-full mx-auto bg-black rounded-xl overflow-hidden shadow-2xl', frameClass, className)}>
+      <div className={cn('relative mx-auto bg-black rounded-xl overflow-hidden shadow-2xl', frameClass, className)}>
         {started ? (
           <iframe
             src={embedUrl}
@@ -267,21 +267,28 @@ export function VideoPlayer({
             title={title || 'Vídeo'}
           />
         ) : (
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setStarted(true)}
-            aria-label="Reproduzir vídeo"
-            className="absolute inset-0 h-full w-full rounded-none p-0 hover:bg-transparent"
-          >
+          <>
             {thumb && (
-              <img src={thumb} alt={title || 'Capa do vídeo'} className="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" />
+              <img
+                src={thumb}
+                alt={title || 'Capa do vídeo'}
+                className={cn('h-full w-full bg-black', fit === 'contain' ? 'object-contain' : 'object-cover')}
+                loading="lazy"
+                decoding="async"
+              />
             )}
-            <span className="absolute inset-0 bg-black/30" />
-            <span className="relative w-20 h-20 rounded-full bg-fire shadow-fire flex items-center justify-center transition-transform hover:scale-110 active:scale-95">
-              <Play className="w-8 h-8 text-white ml-1 fill-current" />
-            </span>
-          </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setStarted(true)}
+              aria-label="Reproduzir vídeo"
+              className="absolute inset-0 h-full w-full rounded-none bg-black/20 p-0 hover:bg-black/20"
+            >
+              <span className="w-20 h-20 rounded-full bg-fire shadow-fire flex items-center justify-center transition-transform hover:scale-110 active:scale-95">
+                <Play className="w-8 h-8 text-white ml-1 fill-current" />
+              </span>
+            </Button>
+          </>
         )}
       </div>
     );
