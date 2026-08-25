@@ -359,7 +359,7 @@ function CoursesPage() {
             {/* Renderizar E-books */}
             {ownedEbooks.map((e) => (
               <article key={e.id} className="glass card-tilt group overflow-hidden rounded-2xl border border-white/5 transition-all hover:border-fire/30 flex flex-col h-full relative z-[1]">
-                <div className="relative aspect-video w-full bg-black/60 shrink-0 overflow-hidden">
+                <div className="relative aspect-[4/5] w-full bg-black/60 shrink-0 overflow-hidden">
                   <img
                     src={resolveEbookCover(e) || IMG.hero}
                     alt=""
@@ -471,7 +471,7 @@ function CoursesPage() {
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {otherEbooks.map((e) => (
               <article key={e.id} className="glass overflow-hidden rounded-2xl border border-white/5 opacity-80 transition-opacity hover:opacity-100 flex flex-col h-full relative z-[1]">
-                <div className="relative aspect-video w-full bg-black/60 overflow-hidden">
+                <div className="relative aspect-[4/5] w-full bg-black/60 overflow-hidden">
                   <img
                     src={resolveEbookCover(e) || IMG.hero}
                     alt=""
