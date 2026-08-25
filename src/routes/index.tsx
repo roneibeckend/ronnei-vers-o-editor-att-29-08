@@ -568,10 +568,8 @@ function Hero() {
               <div className="glass gradient-border relative overflow-hidden rounded-2xl p-1.5 shadow-fire">
                 <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-background ring-1 ring-white/10 shadow-2xl">
                   <img
-                    src="https://i.ytimg.com/vi_webp/ZowrRHEwP7I/mqdefault.webp"
-                    srcSet="https://i.ytimg.com/vi_webp/ZowrRHEwP7I/mqdefault.webp 320w, https://i.ytimg.com/vi_webp/ZowrRHEwP7I/sddefault.webp 640w"
-                    sizes="(max-width: 640px) 100vw, 480px"
-                    alt="Ronnei — história do Espetos Grill"
+                    src={heroVideoCover.url}
+                    alt="Método do Espeto Imparável — Ronnei na Veia"
                     loading="eager"
                     fetchPriority="high"
                     decoding="async"
