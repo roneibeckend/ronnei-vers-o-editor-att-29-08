@@ -359,16 +359,20 @@ function CoursesPage() {
             {/* Renderizar E-books */}
             {ownedEbooks.map((e) => (
               <article key={e.id} className="glass card-tilt group overflow-hidden rounded-2xl border border-white/5 transition-all hover:border-fire/30 flex flex-col h-full relative z-[1]">
-                <div className="relative aspect-video w-full bg-muted/20 shrink-0 overflow-hidden">
+                <div className="relative aspect-video w-full bg-black/60 shrink-0 overflow-hidden">
+                  <img
+                    src={resolveEbookCover(e) || IMG.hero}
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-xl"
+                    loading="lazy"
+                  />
                   <img 
                     src={resolveEbookCover(e) || IMG.hero} 
                     alt={e.title} 
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" 
-
-
+                    className="relative h-full w-full object-contain transition-transform duration-500 group-hover:scale-105" 
                     loading="lazy" 
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent" />
                 </div>
                 
                 <div className="p-5 flex flex-col flex-1">
