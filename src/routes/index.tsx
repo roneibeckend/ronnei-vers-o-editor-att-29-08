@@ -61,8 +61,9 @@ import {
   optChefWorking as chefWorking,
   optChefPortrait as chefPortrait,
   optAuthor as author,
-  optLogoMark as logo,
 } from "@/assets/optimized";
+import brandLockup from "@/assets/ronnei-lockup.png.asset.json";
+
 import printWhats1 from "@/assets/opt/print-whats-1.webp";
 import printWhats2 from "@/assets/opt/print-whats-2.webp";
 import printWhats3 from "@/assets/opt/print-whats-3.webp";
@@ -484,20 +485,18 @@ function Nav() {
       }`}
     >
       <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-3 px-4 py-3 sm:px-6 3xl:max-w-[1800px]">
-        <a href="#top" className="flex min-w-0 items-center gap-2">
+        <a href="#top" className="flex min-w-0 items-center" aria-label="Ronnei na Veia">
           <img
-            src={logo}
-            alt="Ronnei na Veia — Do Zero aos 10k"
-            width={40}
-            height={40}
+            src={brandLockup.url}
+            alt="Ronnei na Veia"
+            width={330}
+            height={110}
             fetchPriority="high"
             decoding="async"
-            className="h-10 w-10 shrink-0 object-contain drop-shadow-[0_0_12px_oklch(0.72_0.20_50/0.55)]"
+            className="h-9 w-auto shrink-0 object-contain object-left sm:h-11"
           />
-          <span className="truncate font-display text-base tracking-wide sm:text-xl">
-            RONNEI <span className="text-gradient-fire">NA VEIA</span>
-          </span>
         </a>
+
         <nav className="hidden gap-6 text-sm text-muted-foreground lg:flex xl:gap-8">
           <a href="#beneficios" className="hover:text-foreground transition">Benefícios</a>
           <a href="#modulos" className="hover:text-foreground transition">Módulos</a>
@@ -1648,18 +1647,18 @@ function Footer() {
     <footer className="border-t border-border/60 bg-background/60 py-12">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 sm:px-6 md:grid-cols-3">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center">
             <img
-              src={logo}
+              src={brandLockup.url}
               alt="Ronnei na Veia"
-              width={40}
-              height={40}
+              width={330}
+              height={110}
               decoding="async"
               loading="lazy"
-              className="h-10 w-10 shrink-0 object-contain drop-shadow-[0_0_12px_oklch(0.72_0.20_50/0.55)]"
+              className="h-11 w-auto shrink-0 object-contain object-left"
             />
-            <span className="font-display text-xl uppercase tracking-tighter italic">RONNEI <span className="text-gradient-fire">NA VEIA</span></span>
           </div>
+
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
             O método completo do <strong className="text-foreground">Ronnei</strong> para sair do zero, montar sua barraca e faturar com espetinho — mesmo sem experiência, sem capital alto e sem depender de sorte.
           </p>

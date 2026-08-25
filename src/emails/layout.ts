@@ -40,8 +40,10 @@ export const BRAND = {
 
 export const EMAIL_ASSETS = {
   logo: `${ASSET_BASE}/email-logo.png`,
+  lockup: `${ASSET_BASE}/email-lockup.png`,
   banner: `${ASSET_BASE}/email-banner.jpg`,
 };
+
 
 export const LINKS = {
   dashboard: `${BRAND.site}/app`,
@@ -185,9 +187,9 @@ export function renderEmailLayout(options: EmailOptions): string {
 
     <!-- HEADER -->
     <tr><td align="center" style="padding:26px 20px 18px;background:${BRAND.black};">
-      <img src="${EMAIL_ASSETS.logo}" width="76" height="76" alt="${BRAND.name}" style="display:block;width:76px;height:76px;border-radius:50%;border:0;outline:none;text-decoration:none;" />
-      <div style="margin-top:10px;font-family:${FONT};font-size:17px;font-weight:800;letter-spacing:1px;color:${BRAND.white};text-transform:uppercase;">${BRAND.name}</div>
-      <div style="margin-top:4px;font-family:${FONT};font-size:11px;letter-spacing:2px;color:${BRAND.orange};text-transform:uppercase;">Cursos &middot; eBooks &middot; Receitas</div>
+      <img src="${EMAIL_ASSETS.lockup}" width="260" alt="${BRAND.name}" style="display:block;width:260px;max-width:80%;height:auto;border:0;outline:none;text-decoration:none;" />
+      <div style="margin-top:8px;font-family:${FONT};font-size:11px;letter-spacing:2px;color:${BRAND.orange};text-transform:uppercase;">Cursos &middot; eBooks &middot; Receitas</div>
+
     </td></tr>
     <!-- CARD PRINCIPAL (banner + título + conteúdo em uma única superfície branca) -->
     <tr><td style="padding:6px 14px 8px;background:${BRAND.black};">

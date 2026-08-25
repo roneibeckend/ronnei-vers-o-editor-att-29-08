@@ -105,31 +105,30 @@ function sanitizeTag(value: string) {
   return clean || 'na';
 }
 
-/** URL pública absoluta da logo circular usada nos e-mails. */
+/** URL pública absoluta da logo (lockup da identidade) usada nos e-mails. */
 export const EMAIL_LOGO_URL =
   (
     // Somente um domínio explicitamente informado sobrepõe o host estável de assets:
     // SITE_URL pode apontar para um domínio ainda sem DNS, o que quebra as imagens.
     process.env['EMAIL_ASSET_BASE_URL'] || 'https://skewer-success-engine.lovable.app'
-  ).replace(/\/$/, '') + '/email-logo.png';
+  ).replace(/\/$/, '') + '/email-lockup.png';
 
 /**
- * Adiciona o cabeçalho com a logo redonda da marca em todo e-mail enviado.
- * Usa tabela + border-radius (compatível com Gmail, Outlook e Apple Mail).
+ * Adiciona o cabeçalho com o lockup da marca em todo e-mail enviado.
  */
 function withBrandHeader(html: string, brandName: string) {
-  if (!html || html.includes('email-logo.png')) return html;
+  if (!html || html.includes('email-lockup.png') || html.includes('email-logo.png')) return html;
   const header = `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0f0f10;padding:28px 0;">
   <tr>
     <td align="center">
-      <img src="${EMAIL_LOGO_URL}" width="88" height="88" alt="${brandName}"
-        style="display:block;width:88px;height:88px;border-radius:50%;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;" />
-      <div style="margin-top:12px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#ffffff;letter-spacing:.5px;">${brandName}</div>
+      <img src="${EMAIL_LOGO_URL}" width="260" alt="${brandName}"
+        style="display:block;width:260px;max-width:80%;height:auto;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;" />
     </td>
   </tr>
 </table>`;
   const block = `<div style="background:#0f0f10;">${header}</div>`;
+
   // Nunca injetar conteúdo antes de <!DOCTYPE>/<html> — clientes como o Gmail
   // descartam a estrutura do documento e o e-mail chega quebrado.
   const bodyMatch = html.match(/<body[^>]*>/i);
