@@ -26,18 +26,24 @@ export function getIntegrationConfig(
     return cached.promise;
   }
 
-  const promise = supabase
-    .from("integrations")
-    .select("status, settings")
-    .eq("category", category)
-    .maybeSingle()
-    .then(({ data }) => (data as IntegrationConfig | null) ?? null)
-    .catch(() => null);
+  const promise: Promise<IntegrationConfig | null> = (async () => {
+    try {
+      const { data } = await supabase
+        .from("integrations")
+        .select("status, settings")
+        .eq("category", category)
+        .maybeSingle();
+      return (data as IntegrationConfig | null) ?? null;
+    } catch {
+      return null;
+    }
+  })();
 
-  // Falha não deve ficar em cache por 5 minutos.
-  promise.then((value) => {
+  // Falha (ou ausência de configuração) não deve ficar em cache por 5 minutos.
+  promise.then((value: IntegrationConfig | null) => {
     if (value === null) cache.delete(category);
   });
+
 
   cache.set(category, { at: Date.now(), promise });
   return promise;
