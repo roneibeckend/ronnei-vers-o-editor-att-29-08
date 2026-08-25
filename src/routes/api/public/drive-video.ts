@@ -33,18 +33,42 @@ export const Route = createFileRoute('/api/public/drive-video')({
         };
         if (range) headers['Range'] = range;
 
+        // Serve from the edge cache when possible: Drive limits how much
+        // public traffic a single file may serve, so every avoided origin
+        // fetch reduces the chance of hitting "quota exceeded".
+        const cacheKey = new Request(
+          `https://drive-video-cache/${id}?range=${encodeURIComponent(range ?? 'full')}`,
+          { method: 'GET' }
+        );
+        const cache = (globalThis as any).caches?.default;
+        if (cache) {
+          const hit = await cache.match(cacheKey);
+          if (hit) return hit;
+        }
+
+        let quotaExceeded = false;
+
         for (const target of candidateUrls(id)) {
           let upstream: Response;
           try {
-            upstream = await fetch(target, { headers, redirect: 'follow' });
+            upstream = await fetch(target, {
+              headers,
+              redirect: 'follow',
+              cf: { cacheEverything: true, cacheTtl: 86400 },
+            } as RequestInit);
           } catch {
             continue;
           }
 
           const contentType = upstream.headers.get('content-type') ?? '';
           if (!upstream.ok && upstream.status !== 206) continue;
-          // Drive answers with an HTML confirmation page when it refuses the download
-          if (contentType.includes('text/html')) continue;
+          // Drive answers with an HTML page when it refuses the download
+          // (confirmation screen or the daily bandwidth quota page).
+          if (contentType.includes('text/html')) {
+            const body = await upstream.text().catch(() => '');
+            if (/quota exceeded/i.test(body)) quotaExceeded = true;
+            continue;
+          }
 
           const outHeaders = new Headers();
           outHeaders.set('Content-Type', contentType || 'video/mp4');
@@ -55,13 +79,32 @@ export const Route = createFileRoute('/api/public/drive-video')({
             if (value) outHeaders.set(key, value);
           }
 
-          return new Response(upstream.body, {
+          const response = new Response(upstream.body, {
             status: upstream.status === 206 ? 206 : 200,
             headers: outHeaders,
+          });
+
+          if (cache) {
+            try {
+              cache.put(cacheKey, response.clone());
+            } catch {
+              /* cache is best-effort */
+            }
+          }
+
+          return response;
+        }
+
+        if (quotaExceeded) {
+          console.error(`[drive-video] Google Drive quota exceeded for id=${id}`);
+          return new Response('Drive quota exceeded', {
+            status: 503,
+            headers: { 'Cache-Control': 'no-store' },
           });
         }
 
         return new Response('Video unavailable', { status: 502 });
+
       },
     },
   },
