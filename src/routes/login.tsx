@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import brandLockup from "@/assets/ronnei-lockup.png.asset.json";
 import { Flame, Mail, Lock, ArrowRight, Loader2, User, Phone } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -327,13 +328,14 @@ function LoginPage() {
       <div className="flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-md">
           <div className="mb-8 flex items-center gap-3">
-            <div className="grid h-12 w-12 place-items-center rounded-xl bg-fire shadow-fire">
-              <Flame className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <div className="font-display text-2xl font-bold text-gradient-fire">Espetinho na Veia</div>
-              <div className="text-xs uppercase tracking-widest text-muted-foreground">Plataforma oficial</div>
-            </div>
+            <img
+              src={brandLockup.url}
+              alt="Ronnei na Veia"
+              width={1920}
+              height={640}
+              decoding="async"
+              className="h-14 w-auto max-w-[260px] object-contain object-left"
+            />
           </div>
 
           <h1 className="font-display text-3xl font-bold">
