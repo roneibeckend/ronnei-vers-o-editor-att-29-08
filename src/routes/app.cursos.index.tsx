@@ -359,21 +359,15 @@ function CoursesPage() {
             {/* Renderizar E-books */}
             {ownedEbooks.map((e) => (
               <article key={e.id} className="glass card-tilt group overflow-hidden rounded-2xl border border-white/5 transition-all hover:border-fire/30 flex flex-col h-full relative z-[1]">
-                <div className="relative aspect-[4/5] w-full bg-black/60 shrink-0 overflow-hidden">
-                  <img
-                    src={resolveEbookCover(e) || IMG.hero}
-                    alt=""
-                    aria-hidden="true"
-                    className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-xl"
-                    loading="lazy"
-                  />
+                <div className="relative aspect-video w-full bg-muted/20 shrink-0 overflow-hidden">
                   <img 
                     src={resolveEbookCover(e) || IMG.hero} 
                     alt={e.title} 
-                    className="relative h-full w-full object-contain transition-transform duration-500 group-hover:scale-105" 
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
                     loading="lazy" 
                   />
                 </div>
+
                 
                 <div className="p-5 flex flex-col flex-1">
                   <div className="flex items-center gap-2 mb-1">
@@ -471,20 +465,14 @@ function CoursesPage() {
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {otherEbooks.map((e) => (
               <article key={e.id} className="glass overflow-hidden rounded-2xl border border-white/5 opacity-80 transition-opacity hover:opacity-100 flex flex-col h-full relative z-[1]">
-                <div className="relative aspect-[4/5] w-full bg-black/60 overflow-hidden">
-                  <img
-                    src={resolveEbookCover(e) || IMG.hero}
-                    alt=""
-                    aria-hidden="true"
-                    className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-xl"
-                    loading="lazy"
-                  />
+                <div className="relative aspect-video w-full bg-muted/20 grayscale-[0.3] overflow-hidden">
                   <img 
                     src={resolveEbookCover(e) || IMG.hero} 
                     alt={e.title} 
-                    className="relative h-full w-full object-contain" 
+                    className="h-full w-full object-cover" 
                     loading="lazy" 
                   />
+
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="rounded-full bg-black/60 p-3 text-gold backdrop-blur-md">
                       <Lock className="h-6 w-6" />
