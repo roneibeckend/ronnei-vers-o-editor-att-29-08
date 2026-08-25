@@ -27,11 +27,6 @@ export const Route = createFileRoute("/app/cursos/")({
 
 
 function resolveEbookCover(e: any) {
-  // Capa migrada para a VPS.
-  if (e?.id === 'ee1a776c-6c7d-4a88-a980-7e671ad8d4fb') {
-    return '/media/ebook-zero-10k.jpg';
-  }
-
   // Nunca tenta carregar assets internos do antigo Lovable.
   for (const raw of [e?.cover_url, e?.cover]) {
     if (typeof raw !== "string" || !raw.trim()) continue;
@@ -39,6 +34,11 @@ function resolveEbookCover(e: any) {
 
     const resolved = optimizedImage(raw);
     if (resolved) return resolved;
+  }
+
+  // Fallback local para a capa migrada para a VPS, sem bloquear capa nova salva no admin.
+  if (e?.id === 'ee1a776c-6c7d-4a88-a980-7e671ad8d4fb') {
+    return '/media/ebook-zero-10k.jpg';
   }
 
   return IMG.hero;
