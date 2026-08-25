@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { AsaasPaymentModal } from "@/components/platform/AsaasPaymentModal";
 import { OnboardingGuide } from "@/components/platform/OnboardingGuide";
 import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
+import { checkSession } from "@/lib/session-guard";
+
 
 export const Route = createFileRoute("/app")({
   ssr: false,
