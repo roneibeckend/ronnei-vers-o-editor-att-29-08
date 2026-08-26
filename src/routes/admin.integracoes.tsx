@@ -231,7 +231,11 @@ function IntegrationsPage() {
   };
 
   const validateStatus = (item: Integration) => {
-    const hasCreds = Object.values(item.credentials).every(v => v && v.length > 5);
+    const saved = credentialStatus?.[item.category];
+    const required = CREDENTIAL_FIELDS[item.category] || [];
+    const hasCreds = required.length === 0
+      ? true
+      : required.every((f) => saved?.[f.key]);
     if (!hasCreds) return 'incomplete';
     if (!item.status) return 'disabled';
     return 'connected';
@@ -272,6 +276,7 @@ function IntegrationsPage() {
       toast.success("Configurações salvas com sucesso.");
       setOriginalItem(JSON.parse(JSON.stringify(selectedItem)));
       queryClient.invalidateQueries({ queryKey: ['integrations'] });
+      queryClient.invalidateQueries({ queryKey: ['integration_credential_status'] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao salvar");
     }
