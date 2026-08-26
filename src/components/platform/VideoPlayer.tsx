@@ -87,6 +87,7 @@ export function VideoPlayer({
   const [needsUnmute, setNeedsUnmute] = useState(false);
   const [useLight, setUseLight] = useState(false);
   const [portraitThumb, setPortraitThumb] = useState(false);
+  const embedIframeRef = useRef<HTMLIFrameElement>(null);
 
   const onEndedRef = useRef(onEnded);
   useEffect(() => {
@@ -254,11 +255,15 @@ export function VideoPlayer({
   }, [autoStart, startPlayback, playableSrc]);
 
 
-  // ---- External embeds: render the iframe only after the user taps play
+  // ---- External embeds.
+  // YouTube: o iframe fica montado (escondido atrás da capa) desde o início.
+  // No mobile o autoplay=1 é bloqueado porque o gesto do toque expira antes do
+  // iframe terminar de carregar — por isso enviamos playVideo via API do player
+  // dentro do próprio onClick, que é um contexto de gesto válido no iOS/Android.
   if (isEmbed) {
     const ytId = getYouTubeId(src);
     const embedUrl = isYouTube
-      ? `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&cc_load_policy=0&cc_lang_pref=pt&hl=pt-BR&fs=1&color=white&disablekb=0&enablejsapi=1`
+      ? `https://www.youtube-nocookie.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&cc_load_policy=0&cc_lang_pref=pt&hl=pt-BR&fs=1&color=white&disablekb=0&enablejsapi=1`
       : getDrivePreviewUrl(baseSrc);
 
     // Shorts têm thumbnail vertical própria (oar2); cai para a horizontal se não existir.
@@ -271,10 +276,22 @@ export function VideoPlayer({
 
 
 
+    const handleEmbedPlay = () => {
+      setStarted(true);
+      if (!isYouTube) return;
+      // Comando enviado dentro do gesto do usuário: funciona no iOS/Android
+      // mesmo com autoplay bloqueado, porque o iframe já está carregado.
+      embedIframeRef.current?.contentWindow?.postMessage(
+        JSON.stringify({ event: 'command', func: 'playVideo', args: [] }),
+        '*',
+      );
+    };
+
     return (
       <div className={cn('relative mx-auto bg-black rounded-xl overflow-hidden shadow-2xl', frameClass, className)}>
-        {started ? (
+        {(isYouTube || started) && (
           <iframe
+            ref={isYouTube ? embedIframeRef : undefined}
             src={embedUrl}
             className="absolute inset-0 w-full h-full border-0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
@@ -298,9 +315,10 @@ export function VideoPlayer({
               frame.addEventListener('unload', () => timers.forEach(window.clearTimeout), { once: true });
             }}
           />
+        )}
 
-        ) : (
-          <>
+        {!started && (
+          <div className="absolute inset-0 z-10">
             {thumb && (
               <img
                 src={thumb}
@@ -331,7 +349,7 @@ export function VideoPlayer({
             <Button
               type="button"
               variant="ghost"
-              onClick={() => setStarted(true)}
+              onClick={handleEmbedPlay}
               aria-label="Reproduzir vídeo"
               className="absolute inset-0 h-full w-full rounded-none bg-black/20 p-0 hover:bg-black/20"
             >
@@ -339,7 +357,7 @@ export function VideoPlayer({
                 <Play className="w-8 h-8 text-white ml-1 fill-current" />
               </span>
             </Button>
-          </>
+          </div>
         )}
       </div>
     );
