@@ -25,6 +25,8 @@ import {
   Activity,
   Download,
   ShieldAlert,
+  CreditCard,
+
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
