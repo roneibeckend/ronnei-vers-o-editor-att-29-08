@@ -256,8 +256,9 @@ export function VideoPlayer({
   if (isEmbed) {
     const ytId = getYouTubeId(src);
     const embedUrl = isYouTube
-      ? `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&cc_load_policy=0&fs=1&color=white&disablekb=0`
+      ? `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&cc_load_policy=0&cc_lang_pref=pt&hl=pt-BR&fs=1&color=white&disablekb=0&enablejsapi=1`
       : getDrivePreviewUrl(baseSrc);
+
     // Shorts têm thumbnail vertical própria (oar2); cai para a horizontal se não existir.
     const thumb = isYouTube
       ? poster ||
@@ -278,7 +279,24 @@ export function VideoPlayer({
             allowFullScreen
             loading="lazy"
             title={title || 'Vídeo'}
+            onLoad={(event) => {
+              if (!isYouTube) return;
+              const frame = event.currentTarget;
+              // O parâmetro cc_load_policy não impede as legendas automáticas;
+              // é preciso descarregar o módulo de legendas pela API do player.
+              const disableCaptions = () => {
+                for (const module of ['captions', 'cc']) {
+                  frame.contentWindow?.postMessage(
+                    JSON.stringify({ event: 'command', func: 'unloadModule', args: [module] }),
+                    '*',
+                  );
+                }
+              };
+              const timers = [300, 900, 2000, 4000].map((delay) => window.setTimeout(disableCaptions, delay));
+              frame.addEventListener('unload', () => timers.forEach(window.clearTimeout), { once: true });
+            }}
           />
+
         ) : (
           <>
             {thumb && (
