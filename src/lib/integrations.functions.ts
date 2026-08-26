@@ -283,6 +283,7 @@ export const testAsaasWebhook = createServerFn({ method: "POST" })
           'asaas-access-token': token
         },
         body: JSON.stringify({
+          id: 'evt_test_' + Date.now(),
           event: 'WEBHOOK_TEST',
           payment: {
             id: 'pay_test_' + Date.now(),
