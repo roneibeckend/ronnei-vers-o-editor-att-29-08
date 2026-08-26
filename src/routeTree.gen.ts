@@ -37,6 +37,7 @@ import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminSuporteRouteImport } from './routes/admin.suporte'
 import { Route as AdminStatusRouteImport } from './routes/admin.status'
 import { Route as AdminRelatoriosRouteImport } from './routes/admin.relatorios'
+import { Route as AdminReconciliacaoRouteImport } from './routes/admin.reconciliacao'
 import { Route as AdminReceitasRouteImport } from './routes/admin.receitas'
 import { Route as AdminRankingRouteImport } from './routes/admin.ranking'
 import { Route as AdminNotificacoesRouteImport } from './routes/admin.notificacoes'
@@ -62,6 +63,7 @@ import { Route as AppAfiliadosMateriaisRouteImport } from './routes/app.afiliado
 import { Route as AppAfiliadosLinksRouteImport } from './routes/app.afiliados.links'
 import { Route as AppAfiliadosFinanceiroRouteImport } from './routes/app.afiliados.financeiro'
 import { Route as AppAfiliadosConfigRouteImport } from './routes/app.afiliados.config'
+import { Route as ApiPublicOpsRecoveryRouteImport } from './routes/api/public/ops-recovery'
 import { Route as ApiPublicDriveVideoRouteImport } from './routes/api/public/drive-video'
 import { Route as ApiPublicDailyUpdatesReportRouteImport } from './routes/api/public/daily-updates-report'
 import { Route as ApiPublicDailyFinancialReportRouteImport } from './routes/api/public/daily-financial-report'
@@ -210,6 +212,11 @@ const AdminRelatoriosRoute = AdminRelatoriosRouteImport.update({
   path: '/relatorios',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminReconciliacaoRoute = AdminReconciliacaoRouteImport.update({
+  id: '/reconciliacao',
+  path: '/reconciliacao',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminReceitasRoute = AdminReceitasRouteImport.update({
   id: '/receitas',
   path: '/receitas',
@@ -335,6 +342,11 @@ const AppAfiliadosConfigRoute = AppAfiliadosConfigRouteImport.update({
   path: '/config',
   getParentRoute: () => AppAfiliadosRoute,
 } as any)
+const ApiPublicOpsRecoveryRoute = ApiPublicOpsRecoveryRouteImport.update({
+  id: '/api/public/ops-recovery',
+  path: '/api/public/ops-recovery',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicDriveVideoRoute = ApiPublicDriveVideoRouteImport.update({
   id: '/api/public/drive-video',
   path: '/api/public/drive-video',
@@ -399,6 +411,7 @@ export interface FileRoutesByFullPath {
   '/admin/notificacoes': typeof AdminNotificacoesRoute
   '/admin/ranking': typeof AdminRankingRouteWithChildren
   '/admin/receitas': typeof AdminReceitasRoute
+  '/admin/reconciliacao': typeof AdminReconciliacaoRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/status': typeof AdminStatusRoute
   '/admin/suporte': typeof AdminSuporteRoute
@@ -423,6 +436,7 @@ export interface FileRoutesByFullPath {
   '/api/public/daily-financial-report': typeof ApiPublicDailyFinancialReportRoute
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
+  '/api/public/ops-recovery': typeof ApiPublicOpsRecoveryRoute
   '/app/afiliados/config': typeof AppAfiliadosConfigRoute
   '/app/afiliados/financeiro': typeof AppAfiliadosFinanceiroRoute
   '/app/afiliados/links': typeof AppAfiliadosLinksRoute
@@ -459,6 +473,7 @@ export interface FileRoutesByTo {
   '/admin/notificacoes': typeof AdminNotificacoesRoute
   '/admin/ranking': typeof AdminRankingRouteWithChildren
   '/admin/receitas': typeof AdminReceitasRoute
+  '/admin/reconciliacao': typeof AdminReconciliacaoRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/status': typeof AdminStatusRoute
   '/admin/suporte': typeof AdminSuporteRoute
@@ -481,6 +496,7 @@ export interface FileRoutesByTo {
   '/api/public/daily-financial-report': typeof ApiPublicDailyFinancialReportRoute
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
+  '/api/public/ops-recovery': typeof ApiPublicOpsRecoveryRoute
   '/app/afiliados/config': typeof AppAfiliadosConfigRoute
   '/app/afiliados/financeiro': typeof AppAfiliadosFinanceiroRoute
   '/app/afiliados/links': typeof AppAfiliadosLinksRoute
@@ -520,6 +536,7 @@ export interface FileRoutesById {
   '/admin/notificacoes': typeof AdminNotificacoesRoute
   '/admin/ranking': typeof AdminRankingRouteWithChildren
   '/admin/receitas': typeof AdminReceitasRoute
+  '/admin/reconciliacao': typeof AdminReconciliacaoRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/status': typeof AdminStatusRoute
   '/admin/suporte': typeof AdminSuporteRoute
@@ -544,6 +561,7 @@ export interface FileRoutesById {
   '/api/public/daily-financial-report': typeof ApiPublicDailyFinancialReportRoute
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
+  '/api/public/ops-recovery': typeof ApiPublicOpsRecoveryRoute
   '/app/afiliados/config': typeof AppAfiliadosConfigRoute
   '/app/afiliados/financeiro': typeof AppAfiliadosFinanceiroRoute
   '/app/afiliados/links': typeof AppAfiliadosLinksRoute
@@ -584,6 +602,7 @@ export interface FileRouteTypes {
     | '/admin/notificacoes'
     | '/admin/ranking'
     | '/admin/receitas'
+    | '/admin/reconciliacao'
     | '/admin/relatorios'
     | '/admin/status'
     | '/admin/suporte'
@@ -608,6 +627,7 @@ export interface FileRouteTypes {
     | '/api/public/daily-financial-report'
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
+    | '/api/public/ops-recovery'
     | '/app/afiliados/config'
     | '/app/afiliados/financeiro'
     | '/app/afiliados/links'
@@ -644,6 +664,7 @@ export interface FileRouteTypes {
     | '/admin/notificacoes'
     | '/admin/ranking'
     | '/admin/receitas'
+    | '/admin/reconciliacao'
     | '/admin/relatorios'
     | '/admin/status'
     | '/admin/suporte'
@@ -666,6 +687,7 @@ export interface FileRouteTypes {
     | '/api/public/daily-financial-report'
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
+    | '/api/public/ops-recovery'
     | '/app/afiliados/config'
     | '/app/afiliados/financeiro'
     | '/app/afiliados/links'
@@ -704,6 +726,7 @@ export interface FileRouteTypes {
     | '/admin/notificacoes'
     | '/admin/ranking'
     | '/admin/receitas'
+    | '/admin/reconciliacao'
     | '/admin/relatorios'
     | '/admin/status'
     | '/admin/suporte'
@@ -728,6 +751,7 @@ export interface FileRouteTypes {
     | '/api/public/daily-financial-report'
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
+    | '/api/public/ops-recovery'
     | '/app/afiliados/config'
     | '/app/afiliados/financeiro'
     | '/app/afiliados/links'
@@ -757,6 +781,7 @@ export interface RootRouteChildren {
   ApiPublicDailyFinancialReportRoute: typeof ApiPublicDailyFinancialReportRoute
   ApiPublicDailyUpdatesReportRoute: typeof ApiPublicDailyUpdatesReportRoute
   ApiPublicDriveVideoRoute: typeof ApiPublicDriveVideoRoute
+  ApiPublicOpsRecoveryRoute: typeof ApiPublicOpsRecoveryRoute
   ApiPublicManifestWebmanifestRoute: typeof ApiPublicManifestWebmanifestRoute
   ApiPublicWebhooksAsaasRoute: typeof ApiPublicWebhooksAsaasRoute
 }
@@ -959,6 +984,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRelatoriosRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/reconciliacao': {
+      id: '/admin/reconciliacao'
+      path: '/reconciliacao'
+      fullPath: '/admin/reconciliacao'
+      preLoaderRoute: typeof AdminReconciliacaoRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/receitas': {
       id: '/admin/receitas'
       path: '/receitas'
@@ -1134,6 +1166,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAfiliadosConfigRouteImport
       parentRoute: typeof AppAfiliadosRoute
     }
+    '/api/public/ops-recovery': {
+      id: '/api/public/ops-recovery'
+      path: '/api/public/ops-recovery'
+      fullPath: '/api/public/ops-recovery'
+      preLoaderRoute: typeof ApiPublicOpsRecoveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/drive-video': {
       id: '/api/public/drive-video'
       path: '/api/public/drive-video'
@@ -1226,6 +1265,7 @@ interface AdminRouteChildren {
   AdminNotificacoesRoute: typeof AdminNotificacoesRoute
   AdminRankingRoute: typeof AdminRankingRouteWithChildren
   AdminReceitasRoute: typeof AdminReceitasRoute
+  AdminReconciliacaoRoute: typeof AdminReconciliacaoRoute
   AdminRelatoriosRoute: typeof AdminRelatoriosRoute
   AdminStatusRoute: typeof AdminStatusRoute
   AdminSuporteRoute: typeof AdminSuporteRoute
@@ -1249,6 +1289,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminNotificacoesRoute: AdminNotificacoesRoute,
   AdminRankingRoute: AdminRankingRouteWithChildren,
   AdminReceitasRoute: AdminReceitasRoute,
+  AdminReconciliacaoRoute: AdminReconciliacaoRoute,
   AdminRelatoriosRoute: AdminRelatoriosRoute,
   AdminStatusRoute: AdminStatusRoute,
   AdminSuporteRoute: AdminSuporteRoute,
@@ -1345,6 +1386,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicDailyFinancialReportRoute: ApiPublicDailyFinancialReportRoute,
   ApiPublicDailyUpdatesReportRoute: ApiPublicDailyUpdatesReportRoute,
   ApiPublicDriveVideoRoute: ApiPublicDriveVideoRoute,
+  ApiPublicOpsRecoveryRoute: ApiPublicOpsRecoveryRoute,
   ApiPublicManifestWebmanifestRoute: ApiPublicManifestWebmanifestRoute,
   ApiPublicWebhooksAsaasRoute: ApiPublicWebhooksAsaasRoute,
 }

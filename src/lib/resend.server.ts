@@ -245,7 +245,10 @@ export async function triggerEmailEvent(params: {
   to: string;
   data: Record<string, any>;
   idempotencyKey?: string;
+  /** Interno: quando true, a falha não é re-enfileirada (já vem da fila de reenvio). */
+  _retry?: boolean;
 }) {
+
   console.log(`[Email] Disparando evento: ${params.event} para ${params.to}`);
 
   // Bloqueio de e-mails incompletos: valida os campos obrigatórios do evento
@@ -336,9 +339,32 @@ export async function triggerEmailEvent(params: {
     });
   } catch (err: any) {
     console.error(`[Email] Falha ao disparar evento ${params.event}:`, err);
+    // Enfileira para reprocessamento automático (até 3 tentativas) pela rotina de recuperação.
+    if (!params._retry) {
+      try {
+        await supabaseAdmin.from('email_logs').insert({
+          recipient_email: params.to,
+          template_name: params.event,
+          status: 'failed',
+          attempts: 0,
+          error_message: err?.message || 'Falha desconhecida no envio.',
+          next_retry_at: new Date(Date.now() + 5 * 60_000).toISOString(),
+          retry_payload: {
+            event: params.event,
+            to: params.to,
+            data: params.data || {},
+            idempotency_key: params.idempotencyKey || null,
+          } as any,
+          idempotency_key: params.idempotencyKey || null,
+        });
+      } catch (queueError) {
+        console.error('[Email] Falha ao enfileirar reenvio:', queueError);
+      }
+    }
     throw err;
   }
 }
+
 
 
 /**

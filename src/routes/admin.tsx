@@ -24,6 +24,7 @@ import {
   Terminal,
   Activity,
   Download,
+  ShieldAlert,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -67,6 +68,7 @@ function AdminRootLayout() {
   const navItems = [
     { to: "/admin", label: "Visão Geral", icon: LayoutDashboard, exact: true },
     { to: "/admin/financeiro", label: "Financeiro", icon: DollarSign, exact: true },
+    { to: "/admin/reconciliacao", label: "Reconciliação", icon: ShieldAlert },
     { to: "/admin/cursos", label: "Catálogo", icon: Library },
     { to: "/admin/ebooks", label: "eBooks", icon: BookOpen },
     { to: "/admin/afiliados", label: "Afiliados", icon: TrendingUp },
