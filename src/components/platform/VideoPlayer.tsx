@@ -263,7 +263,7 @@ export function VideoPlayer({
   if (isEmbed) {
     const ytId = getYouTubeId(src);
     const embedUrl = isYouTube
-      ? `https://www.youtube.com/embed/${ytId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&cc_load_policy=0&hl=pt-BR&fs=1&color=white`
+      ? `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&controls=0&iv_load_policy=3&cc_load_policy=0&hl=pt-BR&fs=1&color=white&disablekb=1`
       : getDrivePreviewUrl(baseSrc);
 
     // Shorts têm thumbnail vertical própria (oar2); cai para a horizontal se não existir.
