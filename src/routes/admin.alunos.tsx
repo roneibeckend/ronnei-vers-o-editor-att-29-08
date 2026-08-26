@@ -191,7 +191,12 @@ function AdminAlunosPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-white/40">{p.email || "—"}</td>
+                  <td className="px-6 py-4 text-white/40">
+                    <div>{p.email || "—"}</div>
+                    <div className="text-[10px] text-white/25">
+                      {p.cpf ? `CPF ${formatCpf(p.cpf)}` : "CPF não informado"}
+                    </div>
+                  </td>
                   <td className="px-6 py-4 text-white/40">{p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : "—"}</td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
