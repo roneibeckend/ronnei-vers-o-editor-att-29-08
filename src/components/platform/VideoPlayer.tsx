@@ -279,7 +279,24 @@ export function VideoPlayer({
             allowFullScreen
             loading="lazy"
             title={title || 'Vídeo'}
+            onLoad={(event) => {
+              if (!isYouTube) return;
+              const frame = event.currentTarget;
+              // O parâmetro cc_load_policy não impede as legendas automáticas;
+              // é preciso descarregar o módulo de legendas pela API do player.
+              const disableCaptions = () => {
+                for (const module of ['captions', 'cc']) {
+                  frame.contentWindow?.postMessage(
+                    JSON.stringify({ event: 'command', func: 'unloadModule', args: [module] }),
+                    '*',
+                  );
+                }
+              };
+              const timers = [300, 900, 2000, 4000].map((delay) => window.setTimeout(disableCaptions, delay));
+              frame.addEventListener('unload', () => timers.forEach(window.clearTimeout), { once: true });
+            }}
           />
+
         ) : (
           <>
             {thumb && (
