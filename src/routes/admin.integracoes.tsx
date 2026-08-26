@@ -90,6 +90,29 @@ const WEBHOOKS = [
   { name: 'OpenAI Callback', url: '/api/public/webhooks/openai', category: 'openai' },
 ];
 
+/**
+ * Campos de credencial esperados por integração. O navegador nunca recebe os
+ * valores salvos (segurança), então precisamos saber quais campos renderizar.
+ */
+const CREDENTIAL_FIELDS: Record<string, { key: string; label: string; placeholder: string }[]> = {
+  asaas: [
+    { key: 'apiKey', label: 'API Key', placeholder: '$aact_...' },
+    { key: 'webhookToken', label: 'Webhook Token', placeholder: 'token forte (32+ caracteres)' },
+  ],
+  mercadopago: [
+    { key: 'accessToken', label: 'Access Token', placeholder: 'APP_USR-...' },
+    { key: 'publicKey', label: 'Public Key', placeholder: 'APP_USR-...' },
+    { key: 'webhookToken', label: 'Webhook Token', placeholder: 'token forte (opcional)' },
+  ],
+  stripe: [
+    { key: 'secretKey', label: 'Secret Key', placeholder: 'sk_...' },
+    { key: 'publishableKey', label: 'Publishable Key', placeholder: 'pk_...' },
+    { key: 'webhookSecret', label: 'Webhook Secret', placeholder: 'whsec_...' },
+  ],
+  openai: [{ key: 'apiKey', label: 'API Key', placeholder: 'sk-...' }],
+  resend: [{ key: 'apiKey', label: 'API Key', placeholder: 're_...' }],
+};
+
 const GUIDES: Record<string, string[]> = {
   openai: [
     "Acesse a sua conta no dashboard da OpenAI (platform.openai.com).",
