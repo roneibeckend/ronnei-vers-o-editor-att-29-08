@@ -50,6 +50,7 @@ import { Route as AdminEbooksRouteImport } from './routes/admin.ebooks'
 import { Route as AdminDownloadsRouteImport } from './routes/admin.downloads'
 import { Route as AdminCursosRouteImport } from './routes/admin.cursos'
 import { Route as AdminChatbotRouteImport } from './routes/admin.chatbot'
+import { Route as AdminAssinaturasRouteImport } from './routes/admin.assinaturas'
 import { Route as AdminAoVivoRouteImport } from './routes/admin.ao-vivo'
 import { Route as AdminAlunosRouteImport } from './routes/admin.alunos'
 import { Route as AdminAfiliadosRouteImport } from './routes/admin.afiliados'
@@ -277,6 +278,11 @@ const AdminChatbotRoute = AdminChatbotRouteImport.update({
   path: '/chatbot',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAssinaturasRoute = AdminAssinaturasRouteImport.update({
+  id: '/assinaturas',
+  path: '/assinaturas',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAoVivoRoute = AdminAoVivoRouteImport.update({
   id: '/ao-vivo',
   path: '/ao-vivo',
@@ -399,6 +405,7 @@ export interface FileRoutesByFullPath {
   '/admin/afiliados': typeof AdminAfiliadosRoute
   '/admin/alunos': typeof AdminAlunosRouteWithChildren
   '/admin/ao-vivo': typeof AdminAoVivoRoute
+  '/admin/assinaturas': typeof AdminAssinaturasRoute
   '/admin/chatbot': typeof AdminChatbotRoute
   '/admin/cursos': typeof AdminCursosRoute
   '/admin/downloads': typeof AdminDownloadsRoute
@@ -461,6 +468,7 @@ export interface FileRoutesByTo {
   '/admin/afiliados': typeof AdminAfiliadosRoute
   '/admin/alunos': typeof AdminAlunosRouteWithChildren
   '/admin/ao-vivo': typeof AdminAoVivoRoute
+  '/admin/assinaturas': typeof AdminAssinaturasRoute
   '/admin/chatbot': typeof AdminChatbotRoute
   '/admin/cursos': typeof AdminCursosRoute
   '/admin/downloads': typeof AdminDownloadsRoute
@@ -524,6 +532,7 @@ export interface FileRoutesById {
   '/admin/afiliados': typeof AdminAfiliadosRoute
   '/admin/alunos': typeof AdminAlunosRouteWithChildren
   '/admin/ao-vivo': typeof AdminAoVivoRoute
+  '/admin/assinaturas': typeof AdminAssinaturasRoute
   '/admin/chatbot': typeof AdminChatbotRoute
   '/admin/cursos': typeof AdminCursosRoute
   '/admin/downloads': typeof AdminDownloadsRoute
@@ -590,6 +599,7 @@ export interface FileRouteTypes {
     | '/admin/afiliados'
     | '/admin/alunos'
     | '/admin/ao-vivo'
+    | '/admin/assinaturas'
     | '/admin/chatbot'
     | '/admin/cursos'
     | '/admin/downloads'
@@ -652,6 +662,7 @@ export interface FileRouteTypes {
     | '/admin/afiliados'
     | '/admin/alunos'
     | '/admin/ao-vivo'
+    | '/admin/assinaturas'
     | '/admin/chatbot'
     | '/admin/cursos'
     | '/admin/downloads'
@@ -714,6 +725,7 @@ export interface FileRouteTypes {
     | '/admin/afiliados'
     | '/admin/alunos'
     | '/admin/ao-vivo'
+    | '/admin/assinaturas'
     | '/admin/chatbot'
     | '/admin/cursos'
     | '/admin/downloads'
@@ -1075,6 +1087,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminChatbotRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/assinaturas': {
+      id: '/admin/assinaturas'
+      path: '/assinaturas'
+      fullPath: '/admin/assinaturas'
+      preLoaderRoute: typeof AdminAssinaturasRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/ao-vivo': {
       id: '/admin/ao-vivo'
       path: '/ao-vivo'
@@ -1253,6 +1272,7 @@ interface AdminRouteChildren {
   AdminAfiliadosRoute: typeof AdminAfiliadosRoute
   AdminAlunosRoute: typeof AdminAlunosRouteWithChildren
   AdminAoVivoRoute: typeof AdminAoVivoRoute
+  AdminAssinaturasRoute: typeof AdminAssinaturasRoute
   AdminChatbotRoute: typeof AdminChatbotRoute
   AdminCursosRoute: typeof AdminCursosRoute
   AdminDownloadsRoute: typeof AdminDownloadsRoute
@@ -1277,6 +1297,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAfiliadosRoute: AdminAfiliadosRoute,
   AdminAlunosRoute: AdminAlunosRouteWithChildren,
   AdminAoVivoRoute: AdminAoVivoRoute,
+  AdminAssinaturasRoute: AdminAssinaturasRoute,
   AdminChatbotRoute: AdminChatbotRoute,
   AdminCursosRoute: AdminCursosRoute,
   AdminDownloadsRoute: AdminDownloadsRoute,
