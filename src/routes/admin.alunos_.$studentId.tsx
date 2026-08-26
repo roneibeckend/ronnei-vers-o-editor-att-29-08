@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/platform/Shell";
 import { useServerFn } from "@tanstack/react-start";
 import { manualConfirmEnrollment } from "@/lib/enrollment-admin.functions";
+import { formatCpf } from "@/lib/cpf";
 import { 
   generateCertificateManually,
   getContentCertificate
