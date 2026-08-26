@@ -70,7 +70,7 @@ import { Route as ApiPublicDriveVideoRouteImport } from './routes/api/public/dri
 import { Route as ApiPublicDailyUpdatesReportRouteImport } from './routes/api/public/daily-updates-report'
 import { Route as ApiPublicDailyFinancialReportRouteImport } from './routes/api/public/daily-financial-report'
 import { Route as AdminRankingCampanhasRouteImport } from './routes/admin.ranking.campanhas'
-import { Route as AdminAlunosStudentIdRouteImport } from './routes/admin.alunos.$studentId'
+import { Route as AdminAlunosStudentIdRouteImport } from './routes/admin.alunos_.$studentId'
 import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
 import { Route as ApiPublicManifestWebmanifestRouteImport } from './routes/api/public/manifest.webmanifest'
 
@@ -382,9 +382,9 @@ const AdminRankingCampanhasRoute = AdminRankingCampanhasRouteImport.update({
   getParentRoute: () => AdminRankingRoute,
 } as any)
 const AdminAlunosStudentIdRoute = AdminAlunosStudentIdRouteImport.update({
-  id: '/$studentId',
-  path: '/$studentId',
-  getParentRoute: () => AdminAlunosRoute,
+  id: '/alunos_/$studentId',
+  path: '/alunos/$studentId',
+  getParentRoute: () => AdminRoute,
 } as any)
 const ApiPublicWebhooksAsaasRoute = ApiPublicWebhooksAsaasRouteImport.update({
   id: '/api/public/webhooks/asaas',
@@ -409,7 +409,7 @@ export interface FileRoutesByFullPath {
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/verificar-certificado': typeof VerificarCertificadoRoute
   '/admin/afiliados': typeof AdminAfiliadosRoute
-  '/admin/alunos': typeof AdminAlunosRouteWithChildren
+  '/admin/alunos': typeof AdminAlunosRoute
   '/admin/ao-vivo': typeof AdminAoVivoRoute
   '/admin/assinaturas': typeof AdminAssinaturasRoute
   '/admin/chatbot': typeof AdminChatbotRoute
@@ -473,7 +473,7 @@ export interface FileRoutesByTo {
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/verificar-certificado': typeof VerificarCertificadoRoute
   '/admin/afiliados': typeof AdminAfiliadosRoute
-  '/admin/alunos': typeof AdminAlunosRouteWithChildren
+  '/admin/alunos': typeof AdminAlunosRoute
   '/admin/ao-vivo': typeof AdminAoVivoRoute
   '/admin/assinaturas': typeof AdminAssinaturasRoute
   '/admin/chatbot': typeof AdminChatbotRoute
@@ -538,7 +538,7 @@ export interface FileRoutesById {
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/verificar-certificado': typeof VerificarCertificadoRoute
   '/admin/afiliados': typeof AdminAfiliadosRoute
-  '/admin/alunos': typeof AdminAlunosRouteWithChildren
+  '/admin/alunos': typeof AdminAlunosRoute
   '/admin/ao-vivo': typeof AdminAoVivoRoute
   '/admin/assinaturas': typeof AdminAssinaturasRoute
   '/admin/chatbot': typeof AdminChatbotRoute
@@ -574,7 +574,7 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
-  '/admin/alunos/$studentId': typeof AdminAlunosStudentIdRoute
+  '/admin/alunos_/$studentId': typeof AdminAlunosStudentIdRoute
   '/admin/ranking/campanhas': typeof AdminRankingCampanhasRoute
   '/api/public/daily-financial-report': typeof ApiPublicDailyFinancialReportRoute
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
@@ -770,7 +770,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/admin/'
     | '/app/'
-    | '/admin/alunos/$studentId'
+    | '/admin/alunos_/$studentId'
     | '/admin/ranking/campanhas'
     | '/api/public/daily-financial-report'
     | '/api/public/daily-updates-report'
@@ -1239,12 +1239,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRankingCampanhasRouteImport
       parentRoute: typeof AdminRankingRoute
     }
-    '/admin/alunos/$studentId': {
-      id: '/admin/alunos/$studentId'
-      path: '/$studentId'
+    '/admin/alunos_/$studentId': {
+      id: '/admin/alunos_/$studentId'
+      path: '/alunos/$studentId'
       fullPath: '/admin/alunos/$studentId'
       preLoaderRoute: typeof AdminAlunosStudentIdRouteImport
-      parentRoute: typeof AdminAlunosRoute
+      parentRoute: typeof AdminRoute
     }
     '/api/public/webhooks/asaas': {
       id: '/api/public/webhooks/asaas'
@@ -1263,18 +1263,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AdminAlunosRouteChildren {
-  AdminAlunosStudentIdRoute: typeof AdminAlunosStudentIdRoute
-}
-
-const AdminAlunosRouteChildren: AdminAlunosRouteChildren = {
-  AdminAlunosStudentIdRoute: AdminAlunosStudentIdRoute,
-}
-
-const AdminAlunosRouteWithChildren = AdminAlunosRoute._addFileChildren(
-  AdminAlunosRouteChildren,
-)
-
 interface AdminRankingRouteChildren {
   AdminRankingCampanhasRoute: typeof AdminRankingCampanhasRoute
 }
@@ -1289,7 +1277,7 @@ const AdminRankingRouteWithChildren = AdminRankingRoute._addFileChildren(
 
 interface AdminRouteChildren {
   AdminAfiliadosRoute: typeof AdminAfiliadosRoute
-  AdminAlunosRoute: typeof AdminAlunosRouteWithChildren
+  AdminAlunosRoute: typeof AdminAlunosRoute
   AdminAoVivoRoute: typeof AdminAoVivoRoute
   AdminAssinaturasRoute: typeof AdminAssinaturasRoute
   AdminChatbotRoute: typeof AdminChatbotRoute
@@ -1311,11 +1299,12 @@ interface AdminRouteChildren {
   AdminSuporteRoute: typeof AdminSuporteRoute
   AdminUsuariosRoute: typeof AdminUsuariosRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminAlunosStudentIdRoute: typeof AdminAlunosStudentIdRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAfiliadosRoute: AdminAfiliadosRoute,
-  AdminAlunosRoute: AdminAlunosRouteWithChildren,
+  AdminAlunosRoute: AdminAlunosRoute,
   AdminAoVivoRoute: AdminAoVivoRoute,
   AdminAssinaturasRoute: AdminAssinaturasRoute,
   AdminChatbotRoute: AdminChatbotRoute,
@@ -1337,6 +1326,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminSuporteRoute: AdminSuporteRoute,
   AdminUsuariosRoute: AdminUsuariosRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminAlunosStudentIdRoute: AdminAlunosStudentIdRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
