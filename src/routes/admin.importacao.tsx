@@ -144,6 +144,36 @@ function KiwifyImportPage() {
   const validRows = useMemo(() => rows.filter((r) => r.valid), [rows]);
   const invalidRows = useMemo(() => rows.filter((r) => !r.valid), [rows]);
 
+  const stats = useMemo(() => {
+    const known = new Set(products.map((p) => normalizeTitle(p.title)));
+    const unknownProducts = new Map<string, number>();
+    let invalidEmails = 0;
+    let invalidCpfs = 0;
+    let duplicates = 0;
+    let withCpf = 0;
+
+    for (const r of rows) {
+      if (r.duplicate) duplicates++;
+      else if (r.issue === "E-mail inválido ou ausente") invalidEmails++;
+      else if (r.issue === "CPF inválido") invalidCpfs++;
+      if (r.cpf && isValidCpf(r.cpf)) withCpf++;
+      if (r.product) {
+        const n = normalizeTitle(r.product);
+        if (!known.has(n)) unknownProducts.set(r.product, (unknownProducts.get(r.product) ?? 0) + 1);
+      }
+    }
+    return {
+      total: rows.length,
+      valid: validRows.length,
+      duplicates,
+      invalidEmails,
+      invalidCpfs,
+      withCpf,
+      unknownProducts: [...unknownProducts.entries()].map(([title, count]) => ({ title, count })),
+    };
+  }, [rows, products, validRows.length]);
+
+
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
