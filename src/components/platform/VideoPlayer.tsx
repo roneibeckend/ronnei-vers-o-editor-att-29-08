@@ -305,7 +305,7 @@ export function VideoPlayer({
                 alt={title || 'Capa do vídeo'}
                 // Embeds externos (YouTube/Drive) podem ter capa vertical ou com
                 // tarjas; object-contain garante que a imagem nunca apareça cortada.
-                className={cn('h-full w-full bg-black', fit === 'cover' && !isEmbed ? 'object-cover' : 'object-contain')}
+                className="h-full w-full bg-black object-cover object-center"
                 loading="lazy"
                 decoding="async"
                 onLoad={(event) => {
