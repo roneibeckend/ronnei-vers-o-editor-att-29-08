@@ -741,9 +741,48 @@ function IntegrationsPage() {
                             </div>
                           </div>
                         ))}
-                      </div>
+                       </div>
 
-                      <Alert className="mt-8 bg-orange-500/5 border-orange-500/20">
+                       {selectedItem.category === 'asaas' && (
+                         <div className="mt-8 p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-3">
+                           <div className="flex flex-wrap items-center justify-between gap-3">
+                             <div>
+                               <p className="text-xs font-bold uppercase tracking-widest text-white/80">Testar Webhook</p>
+                               <p className="text-[11px] text-white/40">
+                                 Envia um evento de teste ao endpoint usando o Webhook Token salvo — simula exatamente a chamada do Asaas.
+                               </p>
+                             </div>
+                             <Button
+                               onClick={handleTestWebhook}
+                               disabled={isTestingWebhook}
+                               className="bg-[#ff6a00] text-black font-bold uppercase tracking-widest text-[10px] h-9 px-4 hover:brightness-110"
+                             >
+                               {isTestingWebhook ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
+                               Testar Webhook
+                             </Button>
+                           </div>
+                           {webhookTestResult && (
+                             <div className={`flex items-start gap-2 p-3 rounded-lg border text-[11px] ${
+                               webhookTestResult.success
+                                 ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400'
+                                 : 'bg-red-500/5 border-red-500/20 text-red-400'
+                             }`}>
+                               {webhookTestResult.success
+                                 ? <CheckCircle2 className="h-4 w-4 shrink-0" />
+                                 : <XCircle className="h-4 w-4 shrink-0" />}
+                               <div className="space-y-1">
+                                 <p className="font-bold">{webhookTestResult.message}</p>
+                                 <p className="text-white/40">
+                                   HTTP {webhookTestResult.httpCode}
+                                   {webhookTestResult.latency ? ` • ${webhookTestResult.latency}` : ''}
+                                 </p>
+                               </div>
+                             </div>
+                           )}
+                         </div>
+                       )}
+
+                       <Alert className="mt-8 bg-orange-500/5 border-orange-500/20">
                         <Info className="h-4 w-4 text-[#ff6a00]" />
                         <AlertTitle className="text-xs font-bold uppercase tracking-widest text-[#ff6a00]">Dica de Segurança</AlertTitle>
                         <AlertDescription className="text-[11px] text-white/60">
