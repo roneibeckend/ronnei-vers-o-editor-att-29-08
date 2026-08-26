@@ -258,8 +258,12 @@ export function VideoPlayer({
     const embedUrl = isYouTube
       ? `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&cc_load_policy=0&fs=1&color=white&disablekb=0`
       : getDrivePreviewUrl(baseSrc);
+    // Shorts têm thumbnail vertical própria (oar2); cai para a horizontal se não existir.
     const thumb = isYouTube
-      ? poster || (ytId ? `https://i.ytimg.com/vi/${ytId}/maxresdefault.jpg` : undefined)
+      ? poster ||
+          (ytId
+            ? `https://i.ytimg.com/vi/${ytId}/${isShorts ? 'oar2' : 'maxresdefault'}.jpg`
+            : undefined)
       : cleanPoster;
 
 
@@ -286,7 +290,9 @@ export function VideoPlayer({
                 decoding="async"
                 onError={(event) => {
                   const img = event.currentTarget;
-                  if (ytId && img.src.includes('maxresdefault')) {
+                  if (ytId && img.src.includes('oar2')) {
+                    img.src = `https://i.ytimg.com/vi/${ytId}/maxresdefault.jpg`;
+                  } else if (ytId && img.src.includes('maxresdefault')) {
                     img.src = `https://i.ytimg.com/vi/${ytId}/hq720.jpg`;
                   } else if (ytId && img.src.includes('hq720')) {
                     img.src = `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
