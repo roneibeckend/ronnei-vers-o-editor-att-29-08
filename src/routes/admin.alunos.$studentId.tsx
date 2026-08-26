@@ -36,6 +36,7 @@ import {
   DialogTrigger,
   DialogFooter
 } from "@/components/ui/dialog";
+import { StudentSupportActions } from "@/components/admin/StudentSupportActions";
 
 export const Route = createFileRoute("/admin/alunos/$studentId")({
   head: () => ({ meta: [{ title: "Perfil do Aluno · Admin" }] }),
