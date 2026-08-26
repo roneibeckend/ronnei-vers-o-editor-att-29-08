@@ -535,23 +535,44 @@ function IntegrationsPage() {
                     </CardHeader>
                     <CardContent className="p-6 space-y-6">
                       <div className="grid gap-6 md:grid-cols-2">
-                        {Object.keys(selectedItem.credentials).map((key) => (
-                          <div key={key} className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-white/40 flex items-center gap-2">
-                              <Key className="h-3 w-3 text-[#ff6a00]" /> {key.replace(/([A-Z])/g, ' $1').trim()}
-                            </Label>
-                            <Input 
-                              type="password"
-                              value={selectedItem.credentials[key]}
-                              onChange={(e) => setSelectedItem({
-                                ...selectedItem,
-                                credentials: { ...selectedItem.credentials, [key]: e.target.value }
-                              })}
-                              className="bg-black/40 border-white/10 focus:border-[#ff6a00] h-11 text-sm font-mono text-[16px] md:text-sm"
-                              placeholder="sk-..."
-                            />
-                          </div>
-                        ))}
+                        {(() => {
+                          const saved = credentialStatus?.[selectedItem.category] || {};
+                          const schema = CREDENTIAL_FIELDS[selectedItem.category] || [];
+                          const extras = Object.keys(saved)
+                            .filter((k) => !schema.some((f) => f.key === k))
+                            .map((k) => ({ key: k, label: k.replace(/([A-Z])/g, ' $1').trim(), placeholder: '' }));
+                          const fields = [...schema, ...extras];
+                          if (fields.length === 0) {
+                            return (
+                              <p className="text-xs text-white/40 md:col-span-2">
+                                Esta integração não exige credenciais.
+                              </p>
+                            );
+                          }
+                          return fields.map((field) => (
+                            <div key={field.key} className="space-y-2">
+                              <Label className="text-[10px] font-bold uppercase tracking-widest text-white/40 flex items-center gap-2">
+                                <Key className="h-3 w-3 text-[#ff6a00]" /> {field.label}
+                                {saved[field.key] ? (
+                                  <span className="text-[9px] text-emerald-400">• salvo</span>
+                                ) : (
+                                  <span className="text-[9px] text-amber-400">• pendente</span>
+                                )}
+                              </Label>
+                              <Input
+                                type="password"
+                                autoComplete="new-password"
+                                value={selectedItem.credentials[field.key] ?? ''}
+                                onChange={(e) => setSelectedItem({
+                                  ...selectedItem,
+                                  credentials: { ...selectedItem.credentials, [field.key]: e.target.value }
+                                })}
+                                className="bg-black/40 border-white/10 focus:border-[#ff6a00] h-11 text-sm font-mono text-[16px] md:text-sm"
+                                placeholder={saved[field.key] ? '•••••• (deixe vazio para manter)' : field.placeholder}
+                              />
+                            </div>
+                          ));
+                        })()}
                       </div>
 
                       <div className="pt-6 border-t border-white/5">
