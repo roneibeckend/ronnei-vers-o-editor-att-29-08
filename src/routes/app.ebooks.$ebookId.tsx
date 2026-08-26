@@ -2,6 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { Lock, ChevronLeft, ChevronRight, Loader2, ShoppingCart, BookOpen, CheckCircle2, X, Play, ArrowDown, Award, Download } from "lucide-react";
 import { VideoPlayer } from "@/components/platform/VideoPlayer";
+import { needsSignedUrl } from "@/lib/video-source";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/platform/Shell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -227,7 +228,7 @@ function EbookReaderPage() {
     const currentIndex = chapters.findIndex((c: any) => c.id === activeChapterId);
     const nextChapter = chapters[currentIndex + 1];
     
-    if (nextChapter?.video_url && !nextChapter.video_url.includes('youtube') && !nextChapter.video_url.includes('drive')) {
+    if (needsSignedUrl(nextChapter?.video_url)) {
       // Prefetch signed URL for next chapter
       const prefetchUrl = async () => {
         try {
@@ -290,7 +291,7 @@ function EbookReaderPage() {
 
   useEffect(() => {
     const loadSignedChapterUrl = async () => {
-      if (activeChapter?.video_url && !activeChapter.video_url.includes('youtube') && !activeChapter.video_url.includes('drive')) {
+      if (needsSignedUrl(activeChapter?.video_url)) {
         try {
           setIsLoadingSignedChapter(true);
           const result = await getSignedUrl({ data: { chapterId: activeChapter.id } });
@@ -820,7 +821,7 @@ function EbookReaderPage() {
                 <div className="w-full bg-black/40 border-b border-white/5">
                   <div className="max-w-4xl mx-auto py-4 sm:py-8 px-0 sm:px-4">
                     <div className="relative aspect-[9/16] max-h-[70vh] max-w-[400px] mx-auto rounded-none sm:rounded-2xl overflow-hidden shadow-2xl border-y sm:border border-white/10 bg-black/60 group">
-                      {!activeChapter.video_url.includes('youtube') && !activeChapter.video_url.includes('drive') && (isLoadingSignedChapter || !signedChapterUrl) ? (
+                      {needsSignedUrl(activeChapter.video_url) && (isLoadingSignedChapter || !signedChapterUrl) ? (
                         <div className="w-full h-full flex items-center justify-center"><Loader2 className="animate-spin text-fire" /></div>
                       ) : (
                         <VideoPlayer
