@@ -9,6 +9,9 @@ import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadFromResponse, openExternal } from "@/lib/download";
+import { useHasPurchase } from "@/hooks/use-access";
+import { LockedFeature } from "@/components/platform/LockedFeature";
+import { Lock } from "lucide-react";
 
 
 
@@ -18,6 +21,7 @@ export const Route = createFileRoute("/app/materiais")({
 });
 
 function MaterialsPage() {
+  const { hasPurchase, isLoading: isLoadingAccess } = useHasPurchase();
   const { data, isLoading, error } = useQuery({
 
     queryKey: ["platform-materials"],
@@ -44,6 +48,11 @@ function MaterialsPage() {
   const materials = dynamicMaterials.length > 0 ? dynamicMaterials : staticMaterials;
 
   const handleDownload = async (materialId: string, title: string, fileUrl?: string, externalUrl?: string) => {
+    if (!hasPurchase) {
+      toast.error("Este material é exclusivo para alunos. Adquira um curso ou e-book para liberar o download.");
+      return;
+    }
+
     if (externalUrl) {
       openExternal(externalUrl);
       return;
@@ -175,6 +184,15 @@ function MaterialsPage() {
         subtitle="Materiais profissionais e funcionais para gestão completa do seu negócio de churrasco." 
       />
       
+      {!isLoadingAccess && !hasPurchase && (
+        <div className="mb-8">
+          <LockedFeature
+            title="Downloads liberados apenas para alunos"
+            description="Planilhas, PDFs e recursos ficam disponíveis após a compra de um curso ou e-book."
+          />
+        </div>
+      )}
+
       <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {isLoading ? (
           <div className="col-span-full py-20 flex justify-center">
@@ -200,13 +218,24 @@ function MaterialsPage() {
               </p>
             </div>
 
-            <button 
-              onClick={() => handleDownload(m.id, m.title, m.file_url, m.external_url)}
-              className="btn-fire mt-auto w-full py-3 text-sm font-bold flex items-center justify-center gap-2 group/btn active:scale-[0.98] touch-action-manipulation"
-            >
-              <Download className="h-4 w-4 transition-transform group-hover/btn:-translate-y-0.5" /> 
-              Baixar material
-            </button>
+            {hasPurchase ? (
+              <button 
+                onClick={() => handleDownload(m.id, m.title, m.file_url, m.external_url)}
+                className="btn-fire mt-auto w-full py-3 text-sm font-bold flex items-center justify-center gap-2 group/btn active:scale-[0.98] touch-action-manipulation"
+              >
+                <Download className="h-4 w-4 transition-transform group-hover/btn:-translate-y-0.5" /> 
+                Baixar material
+              </button>
+            ) : (
+              <button
+                disabled
+                title="Exclusivo para alunos"
+                className="mt-auto w-full py-3 text-sm font-bold flex items-center justify-center gap-2 rounded-xl bg-white/5 border border-white/10 text-muted-foreground cursor-not-allowed"
+              >
+                <Lock className="h-4 w-4" />
+                Exclusivo para alunos
+              </button>
+            )}
           </div>
         ))}
       </div>
