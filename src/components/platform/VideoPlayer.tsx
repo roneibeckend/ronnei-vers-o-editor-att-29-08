@@ -303,8 +303,7 @@ export function VideoPlayer({
               <img
                 src={thumb}
                 alt={title || 'Capa do vídeo'}
-                // Embeds externos (YouTube/Drive) podem ter capa vertical ou com
-                // tarjas; object-contain garante que a imagem nunca apareça cortada.
+                // A capa preenche o quadro (recorte central) para ficar centralizada.
                 className="h-full w-full bg-black object-cover object-center"
                 loading="lazy"
                 decoding="async"
