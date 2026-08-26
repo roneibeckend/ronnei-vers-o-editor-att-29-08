@@ -86,6 +86,7 @@ export function VideoPlayer({
   const [hasError, setHasError] = useState(false);
   const [needsUnmute, setNeedsUnmute] = useState(false);
   const [useLight, setUseLight] = useState(false);
+  const [portraitThumb, setPortraitThumb] = useState(false);
 
   const onEndedRef = useRef(onEnded);
   useEffect(() => {
@@ -108,7 +109,7 @@ export function VideoPlayer({
   const driveId = isDrive ? getDriveId(src) : '';
   const cleanPoster = poster || (driveId ? `https://drive.google.com/thumbnail?id=${driveId}&sz=w1200` : undefined);
   const frameClass =
-    aspect === 'portrait' || isShorts
+    aspect === 'portrait' || isShorts || (isEmbed && portraitThumb && !started)
       ? 'aspect-[9/16] max-w-[420px] w-full'
       : 'aspect-video';
 
@@ -124,6 +125,7 @@ export function VideoPlayer({
     setHasError(false);
     setNeedsUnmute(false);
     recoveryAttempts.current = 0;
+    setPortraitThumb(false);
   }, [src]);
 
   // Progress persistence (native <video> only), throttled to avoid layout thrash
@@ -303,9 +305,16 @@ export function VideoPlayer({
               <img
                 src={thumb}
                 alt={title || 'Capa do vídeo'}
-                className={cn('h-full w-full bg-black', fit === 'contain' ? 'object-contain' : 'object-cover')}
+                // Embeds externos (YouTube/Drive) podem ter capa vertical ou com
+                // tarjas; object-contain garante que a imagem nunca apareça cortada.
+                className={cn('h-full w-full bg-black', fit === 'cover' && !isEmbed ? 'object-cover' : 'object-contain')}
                 loading="lazy"
                 decoding="async"
+                onLoad={(event) => {
+                  const img = event.currentTarget;
+                  // Capa vertical (ex.: vídeo de celular): o quadro vira 9:16.
+                  if (img.naturalHeight > img.naturalWidth) setPortraitThumb(true);
+                }}
                 onError={(event) => {
                   const img = event.currentTarget;
                   if (ytId && img.src.includes('oar2')) {
