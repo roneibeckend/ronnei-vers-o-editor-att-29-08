@@ -27,8 +27,8 @@ import {
   ShieldAlert,
   CreditCard,
   Upload,
-
-
+  ChevronDown,
+  HeartHandshake,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -44,6 +44,7 @@ function AdminRootLayout() {
   const { isAdmin, role, isLoading } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (isLoading) return;
@@ -69,64 +70,139 @@ function AdminRootLayout() {
 
   if (!isAdmin && !["manager", "agent", "student"].includes(role || "")) return null;
 
-  const navItems = [
-    { to: "/admin", label: "Visão Geral", icon: LayoutDashboard, exact: true },
-    { to: "/admin/financeiro", label: "Financeiro", icon: DollarSign, exact: true },
-    { to: "/admin/assinaturas", label: "Assinaturas", icon: CreditCard },
+  type NavItem = { to: string; label: string; icon: any; exact?: boolean };
+  type NavGroup = { id: string; label: string; icon: any; items: NavItem[] };
 
-    { to: "/admin/reconciliacao", label: "Reconciliação", icon: ShieldAlert },
-    { to: "/admin/cursos", label: "Catálogo", icon: Library },
-    { to: "/admin/ebooks", label: "eBooks", icon: BookOpen },
-    { to: "/admin/afiliados", label: "Afiliados", icon: TrendingUp },
-    { to: "/admin/receitas", label: "Receitas", icon: ChefHat },
-    
-    { to: "/admin/ao-vivo", label: "Ao Vivo", icon: Clapperboard },
-    
-    { to: "/admin/alunos", label: "Alunos", icon: Users },
-    { to: "/admin/importacao", label: "Importar Alunos", icon: Upload },
-    { to: "/admin/usuarios", label: "Equipe & Permissões", icon: ShieldCheck },
-    { to: "/admin/feedbacks", label: "Feedbacks", icon: Star },
-    { to: "/admin/suporte", label: "Suporte", icon: HelpCircle },
+  const homeItem: NavItem = { to: "/admin", label: "Visão Geral", icon: LayoutDashboard, exact: true };
 
-    { to: "/admin/integracoes", label: "Integrações", icon: Settings },
-    { to: "/admin/notificacoes", label: "Notificações", icon: Bell },
-    { to: "/admin/relatorios", label: "Relatórios", icon: FileText },
-    { to: "/admin/materiais", label: "Materiais", icon: Library },
-    { to: "/admin/ranking", label: "Ranking", icon: Star },
-    { to: "/admin/chatbot", label: "Inteligência Brasa", icon: BrainCircuit },
-    { to: "/admin/downloads", label: "Downloads de E-books", icon: Download },
-    { to: "/admin/status", label: "Status Operacional", icon: Activity },
-    { to: "/admin/logs", label: "Logs do Sistema", icon: Terminal },
+  const navGroups: NavGroup[] = [
+    {
+      id: "financeiro",
+      label: "Financeiro",
+      icon: DollarSign,
+      items: [
+        { to: "/admin/financeiro", label: "Visão Financeira", icon: DollarSign, exact: true },
+        { to: "/admin/assinaturas", label: "Assinaturas", icon: CreditCard },
+        { to: "/admin/reconciliacao", label: "Reconciliação", icon: ShieldAlert },
+        { to: "/admin/afiliados", label: "Afiliados", icon: TrendingUp },
+      ],
+    },
+    {
+      id: "conteudo",
+      label: "Conteúdo",
+      icon: Library,
+      items: [
+        { to: "/admin/cursos", label: "Catálogo", icon: Library },
+        { to: "/admin/ebooks", label: "eBooks", icon: BookOpen },
+        { to: "/admin/receitas", label: "Receitas", icon: ChefHat },
+        { to: "/admin/ao-vivo", label: "Ao Vivo", icon: Clapperboard },
+        { to: "/admin/materiais", label: "Materiais", icon: FileText },
+        { to: "/admin/downloads", label: "Downloads de E-books", icon: Download },
+      ],
+    },
+    {
+      id: "pessoas",
+      label: "Pessoas",
+      icon: Users,
+      items: [
+        { to: "/admin/alunos", label: "Alunos", icon: Users },
+        { to: "/admin/importacao", label: "Importar Alunos", icon: Upload },
+        { to: "/admin/usuarios", label: "Equipe & Permissões", icon: ShieldCheck },
+      ],
+    },
+    {
+      id: "relacionamento",
+      label: "Relacionamento",
+      icon: HeartHandshake,
+      items: [
+        { to: "/admin/suporte", label: "Suporte", icon: HelpCircle },
+        { to: "/admin/feedbacks", label: "Feedbacks", icon: Star },
+        { to: "/admin/ranking", label: "Ranking", icon: TrendingUp },
+        { to: "/admin/chatbot", label: "Inteligência Brasa", icon: BrainCircuit },
+        { to: "/admin/notificacoes", label: "Notificações", icon: Bell },
+      ],
+    },
+    {
+      id: "sistema",
+      label: "Sistema",
+      icon: Settings,
+      items: [
+        { to: "/admin/integracoes", label: "Integrações", icon: Settings },
+        { to: "/admin/relatorios", label: "Relatórios", icon: FileText },
+        { to: "/admin/status", label: "Status Operacional", icon: Activity },
+        { to: "/admin/logs", label: "Logs do Sistema", icon: Terminal },
+      ],
+    },
   ];
 
-  const visibleItems = navItems.filter((item) => {
-    if (role !== "student") return true;
-    return item.to === "/admin";
-  });
+  const visibleGroups = role === "student" ? [] : navGroups;
 
-  const renderNav = (onNavigate?: () => void) => (
-    <>
-      {visibleItems.map((item) => {
-        const Icon = item.icon;
-        const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
+  const renderNav = (onNavigate?: () => void) => {
+    const isActive = (item: NavItem) =>
+      item.exact ? pathname === item.to : pathname.startsWith(item.to);
 
-        return (
-          <Link
-            key={item.to}
-            to={item.to}
-            onClick={onNavigate}
-            preload="intent"
-            className={`flex min-h-11 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition touch-action-manipulation active:scale-[0.98] ${
-              active ? "bg-[#ff6a00]/10 text-[#ff6a00]" : "text-white/60 hover:bg-white/5 hover:text-white"
-            }`}
-          >
-            <Icon className="h-[18px] w-[18px] shrink-0" />
-            <span className="min-w-0 truncate">{item.label}</span>
-          </Link>
-        );
-      })}
-    </>
-  );
+    const linkClass = (active: boolean) =>
+      `flex min-h-11 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition touch-action-manipulation active:scale-[0.98] ${
+        active ? "bg-[#ff6a00]/10 text-[#ff6a00]" : "text-white/60 hover:bg-white/5 hover:text-white"
+      }`;
+
+    return (
+      <>
+        {(() => {
+          const Icon = homeItem.icon;
+          return (
+            <Link to={homeItem.to} onClick={onNavigate} preload="intent" className={linkClass(isActive(homeItem))}>
+              <Icon className="h-[18px] w-[18px] shrink-0" />
+              <span className="min-w-0 truncate">{homeItem.label}</span>
+            </Link>
+          );
+        })()}
+
+        {visibleGroups.map((group) => {
+          const GroupIcon = group.icon;
+          const hasActive = group.items.some(isActive);
+          const open = hasActive || openGroups[group.id];
+
+          return (
+            <div key={group.id}>
+              <button
+                type="button"
+                onClick={() => setOpenGroups((prev) => ({ ...prev, [group.id]: !open }))}
+                aria-expanded={open}
+                className={`flex min-h-11 w-full items-center gap-3 rounded-lg px-4 py-2.5 text-left text-sm font-semibold transition touch-action-manipulation active:scale-[0.98] ${
+                  hasActive ? "text-white" : "text-white/50 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <GroupIcon className="h-[18px] w-[18px] shrink-0" style={hasActive ? { color: ORANGE } : undefined} />
+                <span className="min-w-0 flex-1 truncate">{group.label}</span>
+                <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+              </button>
+
+              {open && (
+                <div className="ml-3 space-y-0.5 border-l border-white/10 py-1 pl-2">
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={onNavigate}
+                        preload="intent"
+                        className={linkClass(isActive(item))}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span className="min-w-0 truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </>
+    );
+  };
 
   return (
     <div className="admin-shell flex min-h-[100svh] w-full bg-[#0a0a0a] text-white lg:h-dvh lg:overflow-hidden">
