@@ -256,17 +256,14 @@ export function VideoPlayer({
 
 
   // ---- External embeds.
-  // YouTube: o iframe fica montado (escondido atrás da capa) desde o início.
-  // No mobile o autoplay=1 é bloqueado porque o gesto do toque expira antes do
-  // iframe terminar de carregar — por isso enviamos playVideo via API do player
-  // dentro do próprio onClick, que é um contexto de gesto válido no iOS/Android.
+  // YouTube no mobile: o iframe é montado no próprio toque com autoplay=1 e
+  // enablejsapi=1. Como o gesto pode expirar antes do player terminar de
+  // carregar, reforçamos o início mandando playVideo/unMute via postMessage
+  // assim que o iframe carrega — assim um único toque já começa o vídeo.
   if (isEmbed) {
     const ytId = getYouTubeId(src);
-    // O iframe só é montado depois do toque, já com autoplay=1: esse é o fluxo
-    // suportado no mobile. O domínio padrão (não o nocookie) e a ausência do
-    // enablejsapi evitam o erro "Ocorreu um erro. Tente novamente mais tarde".
     const embedUrl = isYouTube
-      ? `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&cc_load_policy=0&hl=pt-BR&fs=1&color=white`
+      ? `https://www.youtube.com/embed/${ytId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&cc_load_policy=0&hl=pt-BR&fs=1&color=white`
       : getDrivePreviewUrl(baseSrc);
 
     // Shorts têm thumbnail vertical própria (oar2); cai para a horizontal se não existir.
@@ -277,7 +274,30 @@ export function VideoPlayer({
             : undefined)
       : cleanPoster;
 
+    const sendYouTubeCommand = (func: string) => {
+      const frame = embedIframeRef.current;
+      if (!frame?.contentWindow) return;
+      try {
+        frame.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func, args: [] }),
+          'https://www.youtube.com',
+        );
+      } catch {
+        /* iframe pode não estar pronto ainda */
+      }
+    };
 
+    const forcePlay = () => {
+      if (!isYouTube) return;
+      // Algumas tentativas espaçadas: o player só aceita comandos depois de
+      // terminar de inicializar dentro do iframe.
+      [0, 250, 600, 1200].forEach((delay) =>
+        window.setTimeout(() => {
+          sendYouTubeCommand('unMute');
+          sendYouTubeCommand('playVideo');
+        }, delay),
+      );
+    };
 
     const handleEmbedPlay = () => {
       setStarted(true);
@@ -289,12 +309,14 @@ export function VideoPlayer({
           <iframe
             ref={isYouTube ? embedIframeRef : undefined}
             src={embedUrl}
+            onLoad={forcePlay}
             className="absolute inset-0 w-full h-full border-0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
             allowFullScreen
             title={title || 'Vídeo'}
           />
         )}
+
 
 
         {!started && (
