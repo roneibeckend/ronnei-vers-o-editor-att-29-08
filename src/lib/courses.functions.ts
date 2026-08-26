@@ -80,34 +80,4 @@ export const upsertLesson = createServerFn({ method: "POST" })
     return result;
   });
 
-export const updateOrders = createServerFn({ method: "POST" })
-  .validator((data: any) => z.object({
-    table: z.enum(['course_modules', 'course_lessons']),
-    items: z.array(z.object({
-      id: z.string().uuid(),
-      order_index: z.number().int()
-    }))
-  }).parse(data))
-  .handler(async ({ data }) => {
-    const { error } = await supabase
-      .from(data.table as any)
-      .upsert(data.items);
 
-    if (error) throw new Error(error.message);
-    return { success: true };
-  });
-
-export const deleteItem = createServerFn({ method: "POST" })
-  .validator((data: any) => z.object({
-    table: z.enum(['courses', 'course_modules', 'course_lessons']),
-    id: z.string()
-  }).parse(data))
-  .handler(async ({ data }) => {
-    const { error } = await supabase
-      .from(data.table as any)
-      .delete()
-      .eq('id', data.id);
-
-    if (error) throw new Error(error.message);
-    return { success: true };
-  });
