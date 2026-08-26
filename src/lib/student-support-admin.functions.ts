@@ -77,7 +77,7 @@ export const adminSendPasswordReset = createServerFn({ method: "POST" })
     const { supabaseAdmin, profile } = await loadStudent(data.studentId);
     if (!profile.email) throw new Error("Este aluno não possui e-mail cadastrado.");
 
-    const { LINKS, BRAND } = await import("@/emails/layout");
+    const { BRAND } = await import("@/emails/layout");
     const { triggerEmailEvent } = await import("@/lib/resend.server");
 
     try {
