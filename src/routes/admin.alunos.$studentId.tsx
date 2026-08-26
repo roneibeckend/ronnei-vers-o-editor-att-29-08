@@ -356,6 +356,20 @@ function AdminStudentProfilePage() {
             verifiedAt={profile.email_verified_at ?? null}
             onUpdated={fetchStudentData}
           />
+
+          <AccessControlPanel
+            studentId={studentId}
+            status={profile.status ?? null}
+            enrollments={enrollments.map((e: any) => ({
+              type: e.type,
+              title: e.title,
+              course_id: e.course_id,
+              ebook_id: e.ebook_id,
+            }))}
+            availableProducts={availableProducts}
+            onUpdated={fetchStudentData}
+          />
+
         </aside>
 
 
