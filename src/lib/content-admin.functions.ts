@@ -7,10 +7,10 @@ export const saveLiveClass = createServerFn({ method: "POST" })
   .validator((data: unknown) => z.object({
     id: z.string().optional(),
     title: z.string(),
-    description: z.string().optional(),
+    description: z.string().nullable().optional(),
     scheduled_at: z.string(),
-    link: z.string().optional(),
-    materials_url: z.string().optional(),
+    link: z.string().nullable().optional(),
+    materials_url: z.string().nullable().optional(),
     cover_url: z.string().nullable().optional(),
     status: z.enum(['scheduled', 'live', 'completed']).default('scheduled'),
   }).parse(data))
