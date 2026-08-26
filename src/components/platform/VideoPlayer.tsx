@@ -256,8 +256,9 @@ export function VideoPlayer({
   if (isEmbed) {
     const ytId = getYouTubeId(src);
     const embedUrl = isYouTube
-      ? `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&cc_load_policy=0&fs=1&color=white&disablekb=0`
+      ? `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&cc_load_policy=0&cc_lang_pref=pt&hl=pt-BR&fs=1&color=white&disablekb=0&enablejsapi=1`
       : getDrivePreviewUrl(baseSrc);
+
     // Shorts têm thumbnail vertical própria (oar2); cai para a horizontal se não existir.
     const thumb = isYouTube
       ? poster ||
