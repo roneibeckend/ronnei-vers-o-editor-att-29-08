@@ -17,6 +17,7 @@ export const Route = createFileRoute("/app/ao-vivo")({
 });
 
 function LiveClassesPage() {
+  const { hasPurchase, isLoading: isLoadingAccess } = useHasPurchase();
   const { data: liveClasses, isLoading } = useQuery({
     queryKey: ["live-classes-student"],
     queryFn: async () => {
@@ -30,7 +31,7 @@ function LiveClassesPage() {
     },
   });
 
-  if (isLoading) {
+  if (isLoading || isLoadingAccess) {
     return (
       <div className="flex h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -48,6 +49,13 @@ function LiveClassesPage() {
         subtitle="Participe das nossas transmissões ao vivo e tire suas dúvidas em tempo real."
       />
 
+      {!hasPurchase && (
+        <LockedFeature
+          title="Aulas ao vivo exclusivas para alunos"
+          description="O acesso às transmissões é liberado após a compra de um curso ou e-book."
+        />
+      )}
+
       <section className="space-y-6">
         <h2 className="font-display text-xl font-bold flex items-center gap-2">
           <PlayCircle className="h-5 w-5 text-primary" />
@@ -57,7 +65,7 @@ function LiveClassesPage() {
         {upcomingClasses.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {upcomingClasses.map((live) => (
-              <LiveClassCard key={live.id} live={live} />
+              <LiveClassCard key={live.id} live={live} locked={!hasPurchase} />
             ))}
           </div>
         ) : (
@@ -77,7 +85,7 @@ function LiveClassesPage() {
           </h2>
           <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {pastClasses.map((live) => (
-              <LiveClassCard key={live.id} live={live} isPast />
+              <LiveClassCard key={live.id} live={live} isPast locked={!hasPurchase} />
             ))}
           </div>
         </section>
@@ -86,7 +94,7 @@ function LiveClassesPage() {
   );
 }
 
-function LiveClassCard({ live, isPast = false }: { live: any; isPast?: boolean }) {
+function LiveClassCard({ live, isPast = false, locked = false }: { live: any; isPast?: boolean; locked?: boolean }) {
   const date = new Date(live.scheduled_at);
   const isLive = live.status === 'live';
 
@@ -139,7 +147,16 @@ function LiveClassCard({ live, isPast = false }: { live: any; isPast?: boolean }
         </div>
 
         <div className="pt-2 mt-auto">
-          {isPast ? (
+          {locked ? (
+            <button
+              disabled
+              title="Exclusivo para alunos"
+              className="w-full py-2.5 rounded-xl bg-white/5 text-muted-foreground text-xs font-bold uppercase tracking-widest cursor-not-allowed border border-white/5 flex items-center justify-center gap-2"
+            >
+              <Lock className="h-3.5 w-3.5" />
+              Exclusivo para alunos
+            </button>
+          ) : isPast ? (
             <button 
               disabled 
               className="w-full py-2.5 rounded-xl bg-white/5 text-muted-foreground text-xs font-bold uppercase tracking-widest cursor-not-allowed border border-white/5"
