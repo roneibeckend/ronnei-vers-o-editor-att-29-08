@@ -37,6 +37,7 @@ import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminSuporteRouteImport } from './routes/admin.suporte'
 import { Route as AdminStatusRouteImport } from './routes/admin.status'
 import { Route as AdminRelatoriosRouteImport } from './routes/admin.relatorios'
+import { Route as AdminReconciliacaoRouteImport } from './routes/admin.reconciliacao'
 import { Route as AdminReceitasRouteImport } from './routes/admin.receitas'
 import { Route as AdminRankingRouteImport } from './routes/admin.ranking'
 import { Route as AdminNotificacoesRouteImport } from './routes/admin.notificacoes'
@@ -209,6 +210,11 @@ const AdminStatusRoute = AdminStatusRouteImport.update({
 const AdminRelatoriosRoute = AdminRelatoriosRouteImport.update({
   id: '/relatorios',
   path: '/relatorios',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminReconciliacaoRoute = AdminReconciliacaoRouteImport.update({
+  id: '/reconciliacao',
+  path: '/reconciliacao',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminReceitasRoute = AdminReceitasRouteImport.update({
@@ -405,6 +411,7 @@ export interface FileRoutesByFullPath {
   '/admin/notificacoes': typeof AdminNotificacoesRoute
   '/admin/ranking': typeof AdminRankingRouteWithChildren
   '/admin/receitas': typeof AdminReceitasRoute
+  '/admin/reconciliacao': typeof AdminReconciliacaoRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/status': typeof AdminStatusRoute
   '/admin/suporte': typeof AdminSuporteRoute
@@ -466,6 +473,7 @@ export interface FileRoutesByTo {
   '/admin/notificacoes': typeof AdminNotificacoesRoute
   '/admin/ranking': typeof AdminRankingRouteWithChildren
   '/admin/receitas': typeof AdminReceitasRoute
+  '/admin/reconciliacao': typeof AdminReconciliacaoRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/status': typeof AdminStatusRoute
   '/admin/suporte': typeof AdminSuporteRoute
@@ -528,6 +536,7 @@ export interface FileRoutesById {
   '/admin/notificacoes': typeof AdminNotificacoesRoute
   '/admin/ranking': typeof AdminRankingRouteWithChildren
   '/admin/receitas': typeof AdminReceitasRoute
+  '/admin/reconciliacao': typeof AdminReconciliacaoRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/status': typeof AdminStatusRoute
   '/admin/suporte': typeof AdminSuporteRoute
@@ -593,6 +602,7 @@ export interface FileRouteTypes {
     | '/admin/notificacoes'
     | '/admin/ranking'
     | '/admin/receitas'
+    | '/admin/reconciliacao'
     | '/admin/relatorios'
     | '/admin/status'
     | '/admin/suporte'
@@ -654,6 +664,7 @@ export interface FileRouteTypes {
     | '/admin/notificacoes'
     | '/admin/ranking'
     | '/admin/receitas'
+    | '/admin/reconciliacao'
     | '/admin/relatorios'
     | '/admin/status'
     | '/admin/suporte'
@@ -715,6 +726,7 @@ export interface FileRouteTypes {
     | '/admin/notificacoes'
     | '/admin/ranking'
     | '/admin/receitas'
+    | '/admin/reconciliacao'
     | '/admin/relatorios'
     | '/admin/status'
     | '/admin/suporte'
@@ -970,6 +982,13 @@ declare module '@tanstack/react-router' {
       path: '/relatorios'
       fullPath: '/admin/relatorios'
       preLoaderRoute: typeof AdminRelatoriosRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/reconciliacao': {
+      id: '/admin/reconciliacao'
+      path: '/reconciliacao'
+      fullPath: '/admin/reconciliacao'
+      preLoaderRoute: typeof AdminReconciliacaoRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/receitas': {
@@ -1246,6 +1265,7 @@ interface AdminRouteChildren {
   AdminNotificacoesRoute: typeof AdminNotificacoesRoute
   AdminRankingRoute: typeof AdminRankingRouteWithChildren
   AdminReceitasRoute: typeof AdminReceitasRoute
+  AdminReconciliacaoRoute: typeof AdminReconciliacaoRoute
   AdminRelatoriosRoute: typeof AdminRelatoriosRoute
   AdminStatusRoute: typeof AdminStatusRoute
   AdminSuporteRoute: typeof AdminSuporteRoute
@@ -1269,6 +1289,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminNotificacoesRoute: AdminNotificacoesRoute,
   AdminRankingRoute: AdminRankingRouteWithChildren,
   AdminReceitasRoute: AdminReceitasRoute,
+  AdminReconciliacaoRoute: AdminReconciliacaoRoute,
   AdminRelatoriosRoute: AdminRelatoriosRoute,
   AdminStatusRoute: AdminStatusRoute,
   AdminSuporteRoute: AdminSuporteRoute,
