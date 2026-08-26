@@ -1072,20 +1072,19 @@ function EbookContentEditor({ ebookId }: { ebookId: string }) {
                         onChange={url => setEditingChapter({...editingChapter, video_url: url})}
                         bucket="ebook-assets"
                         label="Vídeo do Capítulo"
-                        description="Opcional: Vídeo centralizado no capítulo."
+                        description="Recomendado: suba o vídeo no YouTube como 'Não listado' e cole o link aqui (streaming adaptativo, sem travar no celular)."
                       />
                     </div>
                     {editingChapter.video_url && (
-                      <div className="aspect-video w-full max-w-[200px] rounded-xl overflow-hidden bg-black border border-white/5 shrink-0 self-end">
-                        <iframe 
-                          src={editingChapter.video_url.includes('youtube.com') 
-                            ? editingChapter.video_url.replace('watch?v=', 'embed/') 
-                            : editingChapter.video_url} 
-                          className="w-full h-full"
-                          allowFullScreen
+                      <div className="w-full max-w-[220px] shrink-0 self-end">
+                        <VideoPlayer
+                          key={editingChapter.video_url}
+                          src={editingChapter.video_url}
+                          title={editingChapter.title || "Prévia do vídeo"}
                         />
                       </div>
                     )}
+
                   </div>
                 </div>
               </div>
