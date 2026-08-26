@@ -46,18 +46,7 @@ const LessonSchema = z.object({
 });
 
 // Funções de Servidor
-export const upsertCourse = createServerFn({ method: "POST" })
-  .validator((data: any) => CourseSchema.parse(data))
-  .handler(async ({ data }) => {
-    const { data: result, error } = await supabase
-      .from('courses')
-      .upsert(data as any)
-      .select()
-      .maybeSingle();
 
-    if (error) throw new Error(error.message);
-    return result;
-  });
 
 export const upsertModule = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
