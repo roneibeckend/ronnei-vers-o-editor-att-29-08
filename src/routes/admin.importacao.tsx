@@ -16,9 +16,18 @@ export const Route = createFileRoute("/admin/importacao")({
   }),
 });
 
-type ParsedRow = { name: string; email: string; cpf: string; phone: string; valid: boolean; issue?: string };
+type ParsedRow = {
+  name: string;
+  email: string;
+  cpf: string;
+  phone: string;
+  product: string;
+  valid: boolean;
+  duplicate?: boolean;
+  issue?: string;
+};
 
-const HEADER_ALIASES: Record<string, keyof Omit<ParsedRow, "valid" | "issue">> = {
+const HEADER_ALIASES: Record<string, "name" | "email" | "cpf" | "phone" | "product"> = {
   nome: "name",
   name: "name",
   "nome completo": "name",
@@ -35,7 +44,13 @@ const HEADER_ALIASES: Record<string, keyof Omit<ParsedRow, "valid" | "issue">> =
   whatsapp: "phone",
   phone: "phone",
   mobile: "phone",
+  produto: "product",
+  product: "product",
+  oferta: "product",
+  "nome do produto": "product",
+  "produto/oferta": "product",
 };
+
 
 function splitLine(line: string, delimiter: string): string[] {
   const out: string[] = [];
@@ -66,25 +81,43 @@ function parseCsv(text: string): ParsedRow[] {
   const map = header.map((h) => HEADER_ALIASES[h] ?? null);
   const rows: ParsedRow[] = [];
 
+  const seen = new Set<string>();
+
   for (const line of lines.slice(1)) {
     const cells = splitLine(line, delimiter);
-    const row: ParsedRow = { name: "", email: "", cpf: "", phone: "", valid: true };
+    const row: ParsedRow = { name: "", email: "", cpf: "", phone: "", product: "", valid: true };
     map.forEach((field, index) => {
       if (!field) return;
       row[field] = (cells[index] ?? "").replace(/^"|"$/g, "");
     });
+    row.email = row.email.trim().toLowerCase();
 
     if (!row.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) {
       row.valid = false;
       row.issue = "E-mail inválido ou ausente";
+    } else if (seen.has(row.email)) {
+      row.valid = false;
+      row.duplicate = true;
+      row.issue = "Registro duplicado na planilha";
     } else if (row.cpf && !isValidCpf(row.cpf)) {
       row.valid = false;
       row.issue = "CPF inválido";
     }
+    if (row.email) seen.add(row.email);
     rows.push(row);
   }
   return rows;
 }
+
+function normalizeTitle(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 
 function KiwifyImportPage() {
   const [rows, setRows] = useState<ParsedRow[]>([]);
@@ -110,6 +143,36 @@ function KiwifyImportPage() {
 
   const validRows = useMemo(() => rows.filter((r) => r.valid), [rows]);
   const invalidRows = useMemo(() => rows.filter((r) => !r.valid), [rows]);
+
+  const stats = useMemo(() => {
+    const known = new Set(products.map((p) => normalizeTitle(p.title)));
+    const unknownProducts = new Map<string, number>();
+    let invalidEmails = 0;
+    let invalidCpfs = 0;
+    let duplicates = 0;
+    let withCpf = 0;
+
+    for (const r of rows) {
+      if (r.duplicate) duplicates++;
+      else if (r.issue === "E-mail inválido ou ausente") invalidEmails++;
+      else if (r.issue === "CPF inválido") invalidCpfs++;
+      if (r.cpf && isValidCpf(r.cpf)) withCpf++;
+      if (r.product) {
+        const n = normalizeTitle(r.product);
+        if (!known.has(n)) unknownProducts.set(r.product, (unknownProducts.get(r.product) ?? 0) + 1);
+      }
+    }
+    return {
+      total: rows.length,
+      valid: validRows.length,
+      duplicates,
+      invalidEmails,
+      invalidCpfs,
+      withCpf,
+      unknownProducts: [...unknownProducts.entries()].map(([title, count]) => ({ title, count })),
+    };
+  }, [rows, products, validRows.length]);
+
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -207,21 +270,46 @@ function KiwifyImportPage() {
         {rows.length > 0 && (
           <div className="space-y-3">
             <div className="flex flex-wrap gap-3 text-xs">
-              <span className="rounded-lg bg-white/5 px-3 py-1.5"><Users className="mr-1 inline h-3 w-3" />{rows.length} linhas</span>
-              <span className="rounded-lg bg-emerald-500/10 px-3 py-1.5 text-emerald-400">{validRows.length} válidas</span>
+              <span className="rounded-lg bg-white/5 px-3 py-1.5"><Users className="mr-1 inline h-3 w-3" />{stats.total} linhas</span>
+              <span className="rounded-lg bg-emerald-500/10 px-3 py-1.5 text-emerald-400">{stats.valid} válidas</span>
+              {stats.duplicates > 0 && (
+                <span className="rounded-lg bg-amber-500/10 px-3 py-1.5 text-amber-400">{stats.duplicates} duplicados</span>
+              )}
+              {stats.invalidEmails > 0 && (
+                <span className="rounded-lg bg-red-500/10 px-3 py-1.5 text-red-400">{stats.invalidEmails} e-mails inválidos</span>
+              )}
+              {stats.invalidCpfs > 0 && (
+                <span className="rounded-lg bg-red-500/10 px-3 py-1.5 text-red-400">{stats.invalidCpfs} CPFs inválidos</span>
+              )}
+              <span className="rounded-lg bg-white/5 px-3 py-1.5 text-white/60">{stats.withCpf} com CPF válido</span>
               {invalidRows.length > 0 && (
-                <span className="rounded-lg bg-red-500/10 px-3 py-1.5 text-red-400">{invalidRows.length} com erro</span>
+                <span className="rounded-lg bg-red-500/10 px-3 py-1.5 text-red-400">{invalidRows.length} não serão importados</span>
               )}
             </div>
 
+            {stats.unknownProducts.length > 0 && (
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-amber-300">
+                <div className="mb-2 font-bold uppercase tracking-widest">Produtos não reconhecidos</div>
+                <ul className="space-y-1">
+                  {stats.unknownProducts.map((p) => (
+                    <li key={p.title}>• {p.title} — {p.count} registro(s)</li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-amber-300/70">
+                  Nenhum curso/e-book do sistema corresponde a esses nomes. Escolha manualmente o produto acima para matricular.
+                </p>
+              </div>
+            )}
+
             <div className="max-h-72 overflow-auto rounded-xl border border-white/5">
-              <table className="w-full min-w-[560px] text-left text-xs">
+              <table className="w-full min-w-[680px] text-left text-xs">
                 <thead className="bg-white/5 text-[10px] uppercase tracking-widest text-white/40">
                   <tr>
                     <th className="px-4 py-3">Nome</th>
                     <th className="px-4 py-3">E-mail</th>
                     <th className="px-4 py-3">CPF</th>
                     <th className="px-4 py-3">Telefone</th>
+                    <th className="px-4 py-3">Produto</th>
                     <th className="px-4 py-3">Status</th>
                   </tr>
                 </thead>
@@ -232,6 +320,8 @@ function KiwifyImportPage() {
                       <td className="px-4 py-2.5">{r.email || "—"}</td>
                       <td className="px-4 py-2.5">{r.cpf ? formatCpf(r.cpf) : "—"}</td>
                       <td className="px-4 py-2.5">{r.phone || "—"}</td>
+                      <td className="px-4 py-2.5">{r.product || "—"}</td>
+
                       <td className="px-4 py-2.5">
                         {r.valid ? (
                           <span className="text-emerald-400">OK</span>
