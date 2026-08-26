@@ -245,7 +245,10 @@ export async function triggerEmailEvent(params: {
   to: string;
   data: Record<string, any>;
   idempotencyKey?: string;
+  /** Interno: quando true, a falha não é re-enfileirada (já vem da fila de reenvio). */
+  _retry?: boolean;
 }) {
+
   console.log(`[Email] Disparando evento: ${params.event} para ${params.to}`);
 
   // Bloqueio de e-mails incompletos: valida os campos obrigatórios do evento
