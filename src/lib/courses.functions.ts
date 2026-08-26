@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 async function assertAdmin(context: any) {
@@ -12,18 +11,6 @@ async function assertAdmin(context: any) {
 }
 
 // Tipos para validação Zod
-const CourseSchema = z.object({
-  id: z.string().optional(),
-  title: z.string().min(3),
-  slug: z.string(),
-  description: z.string().optional().nullable(),
-  cover_url: z.string().optional().nullable(),
-  intro_video_url: z.string().optional().nullable(),
-  level: z.string().default('beginner'),
-  status: z.enum(['draft', 'active', 'archived']).default('draft'),
-  order_index: z.number().int().default(0),
-});
-
 const ModuleSchema = z.object({
   id: z.string().uuid().optional(),
   course_id: z.string(),
