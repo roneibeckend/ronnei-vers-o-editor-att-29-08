@@ -38,6 +38,8 @@ import {
 } from "@/components/ui/dialog";
 import { StudentSupportActions } from "@/components/admin/StudentSupportActions";
 import { AccessControlPanel } from "@/components/admin/AccessControlPanel";
+import { StudentFinancePanel } from "@/components/admin/StudentFinancePanel";
+
 
 
 export const Route = createFileRoute("/admin/alunos/$studentId")({
