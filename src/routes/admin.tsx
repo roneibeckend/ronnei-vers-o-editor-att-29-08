@@ -68,6 +68,8 @@ function AdminRootLayout() {
   const navItems = [
     { to: "/admin", label: "Visão Geral", icon: LayoutDashboard, exact: true },
     { to: "/admin/financeiro", label: "Financeiro", icon: DollarSign, exact: true },
+    { to: "/admin/assinaturas", label: "Assinaturas", icon: CreditCard },
+
     { to: "/admin/reconciliacao", label: "Reconciliação", icon: ShieldAlert },
     { to: "/admin/cursos", label: "Catálogo", icon: Library },
     { to: "/admin/ebooks", label: "eBooks", icon: BookOpen },
