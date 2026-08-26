@@ -1083,8 +1083,10 @@ function EbookContentEditor({ ebookId }: { ebookId: string }) {
                         <VideoPlayer
                           key={editingChapter.video_url}
                           src={editingChapter.video_url}
+                          videoId={`preview-${editingChapter.id ?? "novo"}`}
                           title={editingChapter.title || "Prévia do vídeo"}
                         />
+
                       </div>
                     )}
 
