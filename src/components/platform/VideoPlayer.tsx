@@ -88,6 +88,8 @@ export function VideoPlayer({
   const [useLight, setUseLight] = useState(false);
   const [portraitThumb, setPortraitThumb] = useState(false);
   const embedIframeRef = useRef<HTMLIFrameElement>(null);
+  const ytHostRef = useRef<HTMLDivElement>(null);
+  const ytPlayerRef = useRef<any>(null);
 
   const onEndedRef = useRef(onEnded);
   useEffect(() => {
