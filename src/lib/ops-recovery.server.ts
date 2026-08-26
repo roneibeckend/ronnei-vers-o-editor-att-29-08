@@ -343,7 +343,7 @@ export async function retryFailedEmails(): Promise<OpsRecoveryResult["emails"]> 
     }
 
     try {
-      await triggerEmailEvent(payload);
+      await triggerEmailEvent({ ...payload, _retry: true });
       await supabaseAdmin
         .from("email_logs")
         .update({ status: "sent", attempts, resolved_at: new Date().toISOString(), sent_at: new Date().toISOString(), next_retry_at: null })
@@ -396,7 +396,7 @@ export async function retryEmailNow(id: string) {
   const payload = parseRetryPayload(row.retry_payload);
   if (!payload) throw new Error("Este e-mail não possui dados suficientes para reenvio.");
 
-  await triggerEmailEvent(payload);
+  await triggerEmailEvent({ ...payload, _retry: true });
   await supabaseAdmin
     .from("email_logs")
     .update({
