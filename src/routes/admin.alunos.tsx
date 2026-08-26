@@ -329,6 +329,19 @@ function AdminAlunosPage() {
                     <input value={editingItem?.phone || ""} onChange={e => setEditingItem({...editingItem, phone: e.target.value})} className="w-full bg-white/5 border border-white/10 p-3 pl-10 rounded-lg text-sm outline-none focus:border-[#ff6a00]" />
                   </div>
                 </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">CPF (opcional)</label>
+                  <div className="relative">
+                    <UserCheck className="absolute left-3 top-3.5 h-4 w-4 text-white/20" />
+                    <input
+                      inputMode="numeric"
+                      placeholder="000.000.000-00"
+                      value={formatCpf(editingItem?.cpf)}
+                      onChange={e => setEditingItem({ ...editingItem, cpf: cpfDigits(e.target.value).slice(0, 11) })}
+                      className="w-full bg-white/5 border border-white/10 p-3 pl-10 rounded-lg text-sm outline-none focus:border-[#ff6a00]"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="pt-4 flex gap-3">
