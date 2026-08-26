@@ -22,15 +22,19 @@ interface VideoPlayerProps {
   onEnded?: () => void;
 }
 
-const isYouTubeUrl = (url: string) => url.includes('youtube.com') || url.includes('youtu.be');
+const isYouTubeUrl = (url: string) =>
+  url.includes('youtube.com') || url.includes('youtu.be') || url.includes('youtube-nocookie.com');
 const isDriveUrl = (url: string) => url.includes('drive.google.com');
 
 function getYouTubeId(url: string) {
-  if (url.includes('youtube.com/embed/')) return url.split('/embed/')[1]?.split(/[?&/]/)[0] ?? '';
-  if (url.includes('youtube.com/watch?v=')) return url.split('v=')[1]?.split('&')[0] ?? '';
+  if (url.includes('/embed/')) return url.split('/embed/')[1]?.split(/[?&/]/)[0] ?? '';
+  if (url.includes('/shorts/')) return url.split('/shorts/')[1]?.split(/[?&/]/)[0] ?? '';
+  if (url.includes('/live/')) return url.split('/live/')[1]?.split(/[?&/]/)[0] ?? '';
+  if (url.includes('v=')) return url.split('v=')[1]?.split('&')[0] ?? '';
   if (url.includes('youtu.be/')) return url.split('youtu.be/')[1]?.split(/[?&/]/)[0] ?? '';
   return '';
 }
+
 
 function getDriveId(url: string) {
   const match = url.match(/\/file\/d\/([^/?#]+)/) || url.match(/[?&]id=([^&#]+)/);
@@ -248,11 +252,12 @@ export function VideoPlayer({
   if (isEmbed) {
     const ytId = getYouTubeId(src);
     const embedUrl = isYouTube
-      ? `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1`
+      ? `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&fs=1&color=white&disablekb=0`
       : getDrivePreviewUrl(baseSrc);
     const thumb = isYouTube
-      ? poster || (ytId ? `https://i.ytimg.com/vi/${ytId}/hq720.jpg` : undefined)
+      ? poster || (ytId ? `https://i.ytimg.com/vi/${ytId}/maxresdefault.jpg` : undefined)
       : cleanPoster;
+
 
 
     return (
@@ -275,8 +280,17 @@ export function VideoPlayer({
                 className={cn('h-full w-full bg-black', fit === 'contain' ? 'object-contain' : 'object-cover')}
                 loading="lazy"
                 decoding="async"
+                onError={(event) => {
+                  const img = event.currentTarget;
+                  if (ytId && img.src.includes('maxresdefault')) {
+                    img.src = `https://i.ytimg.com/vi/${ytId}/hq720.jpg`;
+                  } else if (ytId && img.src.includes('hq720')) {
+                    img.src = `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
+                  }
+                }}
               />
             )}
+
             <Button
               type="button"
               variant="ghost"
