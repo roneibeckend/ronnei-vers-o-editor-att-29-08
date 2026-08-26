@@ -1,16 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { triggerEmailEvent } from "./resend.server";
-
-async function assertAdmin(context: any) {
-  const { data: isAdmin, error } = await context.supabase.rpc("has_role", {
-    _user_id: context.userId,
-    _role: "admin",
-  });
-  if (error || !isAdmin) throw new Error("Acesso negado: permissão de administrador necessária.");
-}
 
 export const saveLiveClass = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -25,31 +15,71 @@ export const saveLiveClass = createServerFn({ method: "POST" })
     status: z.enum(['scheduled', 'live', 'completed']).default('scheduled'),
   }).parse(data))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const { data: isAdmin, error: roleError } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+
+    if (roleError || !isAdmin) {
+      throw new Error("Acesso negado: permissão de administrador necessária.");
+    }
     
     const isNew = !data.id;
-    const { data: result, error } = await supabaseAdmin
-      .from('live_classes')
-      .upsert(data as any)
-      .select()
-      .single();
-      
-    if (error) throw new Error(error.message);
+    const payload = {
+      title: data.title,
+      description: data.description || null,
+      scheduled_at: data.scheduled_at,
+      link: data.link || null,
+      materials_url: data.materials_url || null,
+      cover_url: data.cover_url || null,
+      status: data.status,
+    };
 
-    // Se for uma nova aula e estiver agendada, notifica os alunos
+    let liveClassId = data.id;
+
+    if (isNew) {
+      const { data: result, error } = await context.supabase
+        .from('live_classes')
+        .insert(payload as any)
+        .select('id')
+        .single();
+
+      if (error) throw new Error(error.message);
+      liveClassId = result.id;
+    } else {
+      if (!liveClassId) throw new Error("Evento inválido para atualização.");
+
+      const { data: result, error } = await context.supabase
+        .from('live_classes')
+        .update(payload as any)
+        .eq('id', liveClassId)
+        .select('id')
+        .single();
+
+      if (error) throw new Error(error.message);
+      liveClassId = result.id;
+    }
+
+    // Se for uma nova aula e estiver agendada, notifica os alunos.
+    // O salvamento não pode depender da service-role key na VPS; e-mails ficam em best-effort.
     if (isNew && data.status === 'scheduled') {
       console.log(`[LiveClass] Nova aula criada: ${data.title}. Iniciando notificações...`);
-      
-      // Busca todos os alunos ativos (profiles de usuários reais)
-      const { data: students, error: studentError } = await supabaseAdmin
-        .from('profiles')
-        .select('id, email, name')
-        .not('email', 'is', null);
 
-      if (!studentError && students && students.length > 0) {
+      if (!process.env['SUPABASE_SERVICE_ROLE_KEY']) {
+        console.warn('[LiveClass] SUPABASE_SERVICE_ROLE_KEY ausente; evento salvo e notificações por e-mail ignoradas nesta execução.');
+      } else {
         // Envia notificações em background
         (async () => {
           try {
+            const { triggerEmailEvent } = await import("./resend.server");
+            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+            const { data: students, error: studentError } = await supabaseAdmin
+              .from('profiles')
+              .select('id, email, name')
+              .not('email', 'is', null);
+
+            if (studentError || !students || students.length === 0) return;
+
             const results = await Promise.allSettled(students.map(student => 
               triggerEmailEvent({
                 event: 'nova_aula_ao_vivo',
@@ -61,7 +91,7 @@ export const saveLiveClass = createServerFn({ method: "POST" })
                   description: data.description || 'Sem descrição.',
                   link: data.link || '#'
                 },
-                idempotencyKey: `live_${result.id}_${student.id}`
+                idempotencyKey: `live_${liveClassId}_${student.id}`
               })
             ));
             const sentCount = results.filter(r => r.status === 'fulfilled').length;
@@ -93,8 +123,16 @@ export const saveContent = createServerFn({ method: "POST" })
     is_locked: z.boolean().default(false),
   }).parse(data))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
-    const { error } = await supabaseAdmin
+    const { data: isAdmin, error: roleError } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+
+    if (roleError || !isAdmin) {
+      throw new Error("Acesso negado: permissão de administrador necessária.");
+    }
+
+    const { error } = await context.supabase
       .from('courses')
       .upsert(data as any);
 
