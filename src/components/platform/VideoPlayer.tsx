@@ -100,6 +100,7 @@ export function VideoPlayer({
   const lastSaveRef = useRef(0);
 
   const isYouTube = isYouTubeUrl(src);
+  const ytId = isYouTube ? getYouTubeId(src) : '';
   const isShorts = src.includes('/shorts/');
   const isDrive = isDriveUrl(src);
   // Google Drive public downloads regularly return quota/HTML pages and the
