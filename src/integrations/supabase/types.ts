@@ -1239,37 +1239,49 @@ export type Database = {
       }
       email_logs: {
         Row: {
+          attempts: number
           created_at: string | null
           error_message: string | null
           id: string
           idempotency_key: string | null
+          next_retry_at: string | null
           payload: Json | null
           provider_message_id: string | null
           recipient_email: string
+          resolved_at: string | null
+          retry_payload: Json | null
           sent_at: string | null
           status: string
           template_name: string
         }
         Insert: {
+          attempts?: number
           created_at?: string | null
           error_message?: string | null
           id?: string
           idempotency_key?: string | null
+          next_retry_at?: string | null
           payload?: Json | null
           provider_message_id?: string | null
           recipient_email: string
+          resolved_at?: string | null
+          retry_payload?: Json | null
           sent_at?: string | null
           status?: string
           template_name: string
         }
         Update: {
+          attempts?: number
           created_at?: string | null
           error_message?: string | null
           id?: string
           idempotency_key?: string | null
+          next_retry_at?: string | null
           payload?: Json | null
           provider_message_id?: string | null
           recipient_email?: string
+          resolved_at?: string | null
+          retry_payload?: Json | null
           sent_at?: string | null
           status?: string
           template_name?: string
@@ -1760,6 +1772,84 @@ export type Database = {
         }
         Relationships: []
       }
+      ops_alerts: {
+        Row: {
+          created_at: string
+          dedup_key: string
+          details: Json
+          id: string
+          message: string
+          notified_at: string | null
+          resolved_at: string | null
+          severity: string
+          status: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dedup_key: string
+          details?: Json
+          id?: string
+          message: string
+          notified_at?: string | null
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dedup_key?: string
+          details?: Json
+          id?: string
+          message?: string
+          notified_at?: string | null
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ops_job_runs: {
+        Row: {
+          job: string
+          last_error: string | null
+          last_run_at: string | null
+          last_status: string | null
+          locked_until: string | null
+          pause_reason: string | null
+          paused: boolean
+          updated_at: string
+        }
+        Insert: {
+          job: string
+          last_error?: string | null
+          last_run_at?: string | null
+          last_status?: string | null
+          locked_until?: string | null
+          pause_reason?: string | null
+          paused?: boolean
+          updated_at?: string
+        }
+        Update: {
+          job?: string
+          last_error?: string | null
+          last_run_at?: string | null
+          last_status?: string | null
+          locked_until?: string | null
+          pause_reason?: string | null
+          paused?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       partner_balances: {
         Row: {
           balance: number
@@ -1784,6 +1874,63 @@ export type Database = {
           total_withdrawn?: number
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      payment_reconciliations: {
+        Row: {
+          amount: number
+          created_at: string
+          customer_email: string | null
+          customer_name: string | null
+          details: Json
+          external_id: string
+          id: string
+          issue: string
+          last_attempt_at: string | null
+          payment_status: string | null
+          product_id: string | null
+          product_type: string | null
+          resolved_at: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          details?: Json
+          external_id: string
+          id?: string
+          issue: string
+          last_attempt_at?: string | null
+          payment_status?: string | null
+          product_id?: string | null
+          product_type?: string | null
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          details?: Json
+          external_id?: string
+          id?: string
+          issue?: string
+          last_attempt_at?: string | null
+          payment_status?: string | null
+          product_id?: string | null
+          product_type?: string | null
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -2690,6 +2837,10 @@ export type Database = {
           status: string
         }[]
       }
+      acquire_ops_job: {
+        Args: { p_job: string; p_lease?: string }
+        Returns: boolean
+      }
       admin_request_payout_document: {
         Args: { p_notes?: string; p_payout_id: string }
         Returns: undefined
@@ -2825,6 +2976,7 @@ export type Database = {
         Returns: undefined
       }
       trigger_daily_report: { Args: never; Returns: undefined }
+      trigger_ops_recovery: { Args: never; Returns: undefined }
       update_expired_live_classes: { Args: never; Returns: undefined }
       validate_coupon: {
         Args: {
