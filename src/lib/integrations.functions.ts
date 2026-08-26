@@ -240,6 +240,94 @@ export const testIntegrationConnection = createServerFn({ method: "POST" })
     };
   });
 
+/**
+ * Dispara um evento de teste contra o nosso próprio endpoint de webhook Asaas,
+ * usando o webhookToken salvo nas credenciais — reproduz exatamente a chamada
+ * que o Asaas faria, validando URL + token + processamento de ponta a ponta.
+ */
+export const testAsaasWebhook = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({
+    origin: z.string().url()
+  }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { data: isAdmin } = await context.supabase.rpc('has_role', {
+      _user_id: context.userId,
+      _role: 'admin'
+    });
+    if (!isAdmin) throw new Error("Proibido");
+
+    const { data: row } = await supabaseAdmin
+      .from('integrations')
+      .select('credentials')
+      .eq('category', 'asaas')
+      .maybeSingle();
+    const token = (row?.credentials as Record<string, string> | null)?.webhookToken;
+
+    if (!token || token.trim().length < 8) {
+      return {
+        success: false,
+        message: "Webhook Token não configurado. Salve um token forte no campo 'webhookToken' antes de testar.",
+        httpCode: 400
+      };
+    }
+
+    const url = `${data.origin}/api/public/webhooks/asaas`;
+    const start = Date.now();
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'asaas-access-token': token
+        },
+        body: JSON.stringify({
+          id: 'evt_test_' + Date.now(),
+          event: 'WEBHOOK_TEST',
+          payment: {
+            id: 'pay_test_' + Date.now(),
+            status: 'CONFIRMED',
+            value: 0,
+            externalReference: 'webhook_test'
+          }
+        })
+      });
+
+      const latency = `${Date.now() - start}ms`;
+      const body = await response.text().catch(() => '');
+
+      if (response.ok) {
+        return {
+          success: true,
+          message: "Webhook respondeu com sucesso! URL e token estão corretos.",
+          httpCode: response.status,
+          latency,
+          responseBody: body.slice(0, 500)
+        };
+      }
+
+      return {
+        success: false,
+        message: `Webhook rejeitou a chamada (${response.status}). ${
+          response.status === 403
+            ? 'O token salvo aqui não bate com o configurado no endpoint.'
+            : 'Verifique os logs do servidor.'
+        }`,
+        httpCode: response.status,
+        latency,
+        responseBody: body.slice(0, 500)
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.message || "Falha ao chamar o endpoint de webhook.",
+        httpCode: 500,
+        latency: `${Date.now() - start}ms`
+      };
+    }
+  });
+
 export const getIntegrationHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => z.object({
