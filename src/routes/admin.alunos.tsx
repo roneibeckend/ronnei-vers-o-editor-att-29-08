@@ -67,7 +67,21 @@ function AdminAlunosPage() {
         .range((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE - 1);
         
       if (error) throw error;
-      setProfiles(data || []);
+
+      const rows = data || [];
+      let roles: { user_id: string; role: string }[] = [];
+      if (rows.length) {
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('user_id, role')
+          .in('user_id', rows.map(r => r.id));
+        roles = roleData || [];
+      }
+
+      setProfiles(rows.map(r => ({
+        ...r,
+        role: roles.find(x => x.user_id === r.id)?.role || 'student',
+      })));
       setTotalCount(count || 0);
     } catch (error: any) {
       toast.error("Erro ao carregar alunos: " + error.message);
