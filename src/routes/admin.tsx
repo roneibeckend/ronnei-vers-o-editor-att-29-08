@@ -27,8 +27,8 @@ import {
   ShieldAlert,
   CreditCard,
   Upload,
-
-
+  ChevronDown,
+  HeartHandshake,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -44,6 +44,7 @@ function AdminRootLayout() {
   const { isAdmin, role, isLoading } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (isLoading) return;
