@@ -270,21 +270,46 @@ function KiwifyImportPage() {
         {rows.length > 0 && (
           <div className="space-y-3">
             <div className="flex flex-wrap gap-3 text-xs">
-              <span className="rounded-lg bg-white/5 px-3 py-1.5"><Users className="mr-1 inline h-3 w-3" />{rows.length} linhas</span>
-              <span className="rounded-lg bg-emerald-500/10 px-3 py-1.5 text-emerald-400">{validRows.length} válidas</span>
+              <span className="rounded-lg bg-white/5 px-3 py-1.5"><Users className="mr-1 inline h-3 w-3" />{stats.total} linhas</span>
+              <span className="rounded-lg bg-emerald-500/10 px-3 py-1.5 text-emerald-400">{stats.valid} válidas</span>
+              {stats.duplicates > 0 && (
+                <span className="rounded-lg bg-amber-500/10 px-3 py-1.5 text-amber-400">{stats.duplicates} duplicados</span>
+              )}
+              {stats.invalidEmails > 0 && (
+                <span className="rounded-lg bg-red-500/10 px-3 py-1.5 text-red-400">{stats.invalidEmails} e-mails inválidos</span>
+              )}
+              {stats.invalidCpfs > 0 && (
+                <span className="rounded-lg bg-red-500/10 px-3 py-1.5 text-red-400">{stats.invalidCpfs} CPFs inválidos</span>
+              )}
+              <span className="rounded-lg bg-white/5 px-3 py-1.5 text-white/60">{stats.withCpf} com CPF válido</span>
               {invalidRows.length > 0 && (
-                <span className="rounded-lg bg-red-500/10 px-3 py-1.5 text-red-400">{invalidRows.length} com erro</span>
+                <span className="rounded-lg bg-red-500/10 px-3 py-1.5 text-red-400">{invalidRows.length} não serão importados</span>
               )}
             </div>
 
+            {stats.unknownProducts.length > 0 && (
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-amber-300">
+                <div className="mb-2 font-bold uppercase tracking-widest">Produtos não reconhecidos</div>
+                <ul className="space-y-1">
+                  {stats.unknownProducts.map((p) => (
+                    <li key={p.title}>• {p.title} — {p.count} registro(s)</li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-amber-300/70">
+                  Nenhum curso/e-book do sistema corresponde a esses nomes. Escolha manualmente o produto acima para matricular.
+                </p>
+              </div>
+            )}
+
             <div className="max-h-72 overflow-auto rounded-xl border border-white/5">
-              <table className="w-full min-w-[560px] text-left text-xs">
+              <table className="w-full min-w-[680px] text-left text-xs">
                 <thead className="bg-white/5 text-[10px] uppercase tracking-widest text-white/40">
                   <tr>
                     <th className="px-4 py-3">Nome</th>
                     <th className="px-4 py-3">E-mail</th>
                     <th className="px-4 py-3">CPF</th>
                     <th className="px-4 py-3">Telefone</th>
+                    <th className="px-4 py-3">Produto</th>
                     <th className="px-4 py-3">Status</th>
                   </tr>
                 </thead>
@@ -295,6 +320,8 @@ function KiwifyImportPage() {
                       <td className="px-4 py-2.5">{r.email || "—"}</td>
                       <td className="px-4 py-2.5">{r.cpf ? formatCpf(r.cpf) : "—"}</td>
                       <td className="px-4 py-2.5">{r.phone || "—"}</td>
+                      <td className="px-4 py-2.5">{r.product || "—"}</td>
+
                       <td className="px-4 py-2.5">
                         {r.valid ? (
                           <span className="text-emerald-400">OK</span>
