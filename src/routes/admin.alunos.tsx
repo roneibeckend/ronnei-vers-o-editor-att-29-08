@@ -67,7 +67,21 @@ function AdminAlunosPage() {
         .range((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE - 1);
         
       if (error) throw error;
-      setProfiles(data || []);
+
+      const rows = data || [];
+      let roles: { user_id: string; role: string }[] = [];
+      if (rows.length) {
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('user_id, role')
+          .in('user_id', rows.map(r => r.id));
+        roles = roleData || [];
+      }
+
+      setProfiles(rows.map(r => ({
+        ...r,
+        role: roles.find(x => x.user_id === r.id)?.role || 'student',
+      })));
       setTotalCount(count || 0);
     } catch (error: any) {
       toast.error("Erro ao carregar alunos: " + error.message);
@@ -157,11 +171,21 @@ function AdminAlunosPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        p.status === 'student' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
-                    }`}>
-                        {p.status === 'student' ? 'Aluno' : 'Lead'}
-                    </span>
+                    {p.role && p.role !== 'student' ? (
+                      <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+                          p.role === 'admin' ? 'bg-red-500/10 text-red-400'
+                          : p.role === 'manager' ? 'bg-[#ff6a00]/10 text-[#ff6a00]'
+                          : 'bg-blue-500/10 text-blue-400'
+                      }`}>
+                          {p.role === 'admin' ? 'Admin' : p.role === 'manager' ? 'Gerente' : 'Atendente'}
+                      </span>
+                    ) : (
+                      <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+                          p.status === 'student' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
+                      }`}>
+                          {p.status === 'student' ? 'Aluno' : 'Lead'}
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-white/40">{p.email || "—"}</td>
                   <td className="px-6 py-4 text-white/40">{p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : "—"}</td>

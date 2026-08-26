@@ -42,7 +42,7 @@ import { StudentFinancePanel } from "@/components/admin/StudentFinancePanel";
 
 
 
-export const Route = createFileRoute("/admin/alunos/$studentId")({
+export const Route = createFileRoute("/admin/alunos_/$studentId")({
   head: () => ({ meta: [{ title: "Perfil do Aluno · Admin" }] }),
   component: AdminStudentProfilePage,
 });
