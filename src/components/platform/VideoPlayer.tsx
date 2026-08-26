@@ -296,8 +296,8 @@ export function VideoPlayer({
               frame.addEventListener('unload', () => timers.forEach(window.clearTimeout), { once: true });
             }}
           />
-
         ) : (
+
           <>
             {thumb && (
               <img
