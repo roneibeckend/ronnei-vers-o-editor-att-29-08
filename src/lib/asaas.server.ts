@@ -198,7 +198,13 @@ export async function grantAccess(
       .from("course_enrollments")
       .upsert({ user_id: userId, course_id: productId }, { onConflict: "user_id,course_id" });
     if (error) {
-      console.error("[Asaas] Falha ao matricular em curso:", error);
+      console.error("[Asaas] Falha ao matricular em curso:", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        userId,
+        productId,
+      });
       return false;
     }
     
@@ -230,7 +236,13 @@ export async function grantAccess(
       .from("ebook_enrollments")
       .upsert({ user_id: userId, ebook_id: productId }, { onConflict: "user_id,ebook_id" });
     if (error) {
-      console.error("[Asaas] Falha ao matricular em ebook:", error);
+      console.error("[Asaas] Falha ao matricular em ebook:", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        userId,
+        productId,
+      });
       return false;
     }
     

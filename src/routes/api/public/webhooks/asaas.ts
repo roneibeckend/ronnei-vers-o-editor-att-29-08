@@ -179,6 +179,74 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
 
           claimToken = claim[0].claim_token as string;
 
+          const amount = Number(verifiedPayment.value || 0);
+          const netAmount = Number(verifiedPayment.netValue ?? (amount * 0.97 - 0.50));
+          const fee = amount - netAmount;
+
+          // A venda deve entrar no financeiro mesmo se um produto antigo tiver sido
+          // removido depois que o link de pagamento foi criado.
+          const { error: paymentError } = await supabaseAdmin.from('payments').upsert({
+            external_id: paymentId,
+            user_id: userId,
+            amount,
+            net_amount: netAmount,
+            fee,
+            status: verifiedPayment.status,
+            billing_type: verifiedPayment.billingType,
+            external_reference: verifiedPayment.externalReference,
+            customer_id: verifiedPayment.customer,
+            confirmed_at: verifiedPayment.confirmedDate || new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'external_id' });
+
+          if (paymentError) {
+            throw new Error(`Falha ao registrar pagamento confirmado: ${paymentError.message}`);
+          }
+
+          const productTable = productType === 'course'
+            ? 'courses'
+            : productType === 'ebook'
+              ? 'ebooks'
+              : null;
+
+          if (!productTable) {
+            throw new Error(`Tipo de produto inválido na referência do Asaas: ${productType}`);
+          }
+
+          const { data: existingProduct, error: productError } = await supabaseAdmin
+            .from(productTable)
+            .select('id')
+            .eq('id', productId)
+            .maybeSingle();
+
+          if (productError) {
+            throw new Error(`Falha ao validar produto da cobrança: ${productError.message}`);
+          }
+
+          // Links antigos do Asaas podem continuar reenviando eventos depois que o
+          // produto foi excluído. A venda permanece registrada, mas não tentamos
+          // inserir uma matrícula que violaria a chave estrangeira.
+          if (!existingProduct) {
+            const message = `Pagamento confirmado para produto removido: ${productType}/${productId}. Venda registrada sem matrícula.`;
+            await supabaseAdmin
+              .from('asaas_webhook_events')
+              .update({
+                status: 'completed',
+                processed_at: new Date().toISOString(),
+                last_error: message,
+              })
+              .eq('event_id', eventId as string)
+              .eq('claim_token', claimToken as string)
+              .eq('status', 'processing');
+            await logSystemEvent({
+              level: 'warning',
+              source: 'webhook_asaas',
+              message,
+              details: { eventId, paymentId, productType, productId, userId },
+            });
+            return Response.json({ received: true, processed: true, accessGranted: false });
+          }
+
           // 8. Grant Access
           const granted = await grantAccess(productType, productId, userId);
           if (!granted) {
@@ -189,24 +257,6 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
 
           // 9. Process Secondary Effects
           try {
-            const amount = verifiedPayment.value || 0;
-            const netAmount = verifiedPayment.netValue || (amount * 0.97 - 0.50);
-            const fee = amount - netAmount;
-
-            await supabaseAdmin.from('payments').upsert({
-              external_id: paymentId,
-              user_id: userId,
-              amount: amount,
-              net_amount: netAmount,
-              fee: fee,
-              status: verifiedPayment.status,
-              billing_type: verifiedPayment.billingType,
-              external_reference: verifiedPayment.externalReference,
-              customer_id: verifiedPayment.customer,
-              confirmed_at: verifiedPayment.confirmedDate || new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }, { onConflict: 'external_id' });
-
             const customerEmail = verifiedPayment.customerEmail;
             if (customerEmail && userId) {
               const { data: profile } = await supabaseAdmin.from('profiles').select('name').eq('id', userId).maybeSingle();
