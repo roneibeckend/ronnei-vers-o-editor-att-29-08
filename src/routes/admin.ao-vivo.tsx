@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useState, useEffect } from "react";
 import { 
   Plus, 
@@ -44,6 +45,7 @@ function LiveClassesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<Partial<LiveClass> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const saveLiveClassFn = useServerFn(saveLiveClass);
 
   useEffect(() => {
     fetchClasses();
@@ -75,7 +77,7 @@ function LiveClassesPage() {
 
     try {
       setIsSaving(true);
-      await saveLiveClass({ data: editingClass as any });
+      await saveLiveClassFn({ data: editingClass as any });
       toast.success(editingClass.id ? "Aula atualizada!" : "Aula agendada!");
       setIsModalOpen(false);
       setEditingClass(null);
