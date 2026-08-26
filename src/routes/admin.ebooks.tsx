@@ -547,8 +547,9 @@ function AdminEbooksPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">URL do Vídeo de Abertura (YouTube/Vimeo/Drive)</label>
-                        <p className="text-[10px] text-white/20 mb-1">Para Google Drive, use a opção "Qualquer pessoa com o link pode ver".</p>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">URL do Vídeo de Abertura (YouTube recomendado)</label>
+                        <p className="text-[10px] text-white/20 mb-1">Suba no YouTube como "Não listado" e cole o link: streaming adaptativo, sem cota de banda e sem travar no celular. Google Drive costuma travar por limite de tráfego.</p>
+
                         <input 
                           value={editingItem?.opening_video_url || ""} 
                           onChange={e => setEditingItem({...editingItem, opening_video_url: e.target.value})} 
