@@ -59,7 +59,10 @@ function AdminAlunosPage() {
       let query = supabase.from('profiles').select('*', { count: 'exact' });
       
       if (search) {
-        query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`);
+        const filters = [`name.ilike.%${search}%`, `email.ilike.%${search}%`];
+        const digits = cpfDigits(search);
+        if (digits) filters.push(`cpf.ilike.%${digits}%`);
+        query = query.or(filters.join(","));
       }
       
       const { data, error, count } = await query
