@@ -298,6 +298,7 @@ export function VideoPlayer({
           />
         ) : (
 
+
           <>
             {thumb && (
               <img
