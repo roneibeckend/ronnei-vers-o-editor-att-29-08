@@ -272,45 +272,32 @@ export function VideoPlayer({
     return (
       <div className={cn('relative mx-auto bg-black rounded-xl overflow-hidden shadow-2xl', frameClass, className)}>
         {started ? (
-          <>
-            <iframe
-              src={embedUrl}
-              className="absolute inset-0 w-full h-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-              allowFullScreen
-              loading="lazy"
-              title={title || 'Vídeo'}
-              onLoad={(event) => {
-                if (!isYouTube) return;
-                const frame = event.currentTarget;
-                // O parâmetro cc_load_policy não impede as legendas automáticas;
-                // é preciso descarregar o módulo de legendas pela API do player.
-                const disableCaptions = () => {
-                  for (const module of ['captions', 'cc']) {
-                    frame.contentWindow?.postMessage(
-                      JSON.stringify({ event: 'command', func: 'unloadModule', args: [module] }),
-                      '*',
-                    );
-                  }
-                };
-                const timers = [300, 900, 2000, 4000].map((delay) => window.setTimeout(disableCaptions, delay));
-                frame.addEventListener('unload', () => timers.forEach(window.clearTimeout), { once: true });
-              }}
-            />
-            {isYouTube && (
-              // O embed do YouTube não permite desligar o título/nome do canal por
-              // parâmetro; cobrimos a faixa superior para manter o player limpo.
-              <div
-                className="absolute inset-x-0 top-0 z-10 h-12 bg-black sm:h-14"
-                aria-hidden="true"
-                onClick={(event) => event.preventDefault()}
-              />
-            )}
-          </>
+          <iframe
+            src={embedUrl}
+            className="absolute inset-0 w-full h-full border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+            allowFullScreen
+            loading="lazy"
+            title={title || 'Vídeo'}
+            onLoad={(event) => {
+              if (!isYouTube) return;
+              const frame = event.currentTarget;
+              // O parâmetro cc_load_policy não impede as legendas automáticas;
+              // é preciso descarregar o módulo de legendas pela API do player.
+              const disableCaptions = () => {
+                for (const module of ['captions', 'cc']) {
+                  frame.contentWindow?.postMessage(
+                    JSON.stringify({ event: 'command', func: 'unloadModule', args: [module] }),
+                    '*',
+                  );
+                }
+              };
+              const timers = [300, 900, 2000, 4000].map((delay) => window.setTimeout(disableCaptions, delay));
+              frame.addEventListener('unload', () => timers.forEach(window.clearTimeout), { once: true });
+            }}
+          />
+
         ) : (
-
-
-
           <>
             {thumb && (
               <img
