@@ -280,8 +280,17 @@ export function VideoPlayer({
                 className={cn('h-full w-full bg-black', fit === 'contain' ? 'object-contain' : 'object-cover')}
                 loading="lazy"
                 decoding="async"
+                onError={(event) => {
+                  const img = event.currentTarget;
+                  if (ytId && img.src.includes('maxresdefault')) {
+                    img.src = `https://i.ytimg.com/vi/${ytId}/hq720.jpg`;
+                  } else if (ytId && img.src.includes('hq720')) {
+                    img.src = `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
+                  }
+                }}
               />
             )}
+
             <Button
               type="button"
               variant="ghost"
