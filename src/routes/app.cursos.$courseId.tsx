@@ -4,6 +4,7 @@ import { Check, Lock, Play, ChevronLeft, ChevronRight, FileText, StickyNote, Loa
 import { PageHeader } from "@/components/platform/Shell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { needsSignedUrl } from "@/lib/video-source";
 import { useEnrollments } from "@/hooks/use-enrollments";
 import { createAsaasPaymentLink } from "@/lib/asaas.functions";
 import { CouponInput, type AppliedCoupon } from "@/components/platform/CouponInput";
@@ -237,11 +238,7 @@ function CoursePage() {
     }
   }, [lessonProgress, hasSubmittedFeedback, course.id, hasAccess, flat.length, isLoadingEnrollments, generateCertFn]);
 
-  const introNeedsSigning = Boolean(
-    course?.intro_video_url &&
-    !course.intro_video_url.includes('youtube') &&
-    !course.intro_video_url.includes('drive')
-  );
+  const introNeedsSigning = needsSignedUrl(course?.intro_video_url);
 
   useEffect(() => {
     let cancelled = false;
@@ -364,7 +361,7 @@ function CoursePage() {
     const currentIndex = flat.findIndex((l: any) => l.id === activeId);
     const nextLesson = flat[currentIndex + 1];
     
-    if (nextLesson?.video_url && !nextLesson.video_url.includes('youtube') && !nextLesson.video_url.includes('drive')) {
+    if (needsSignedUrl(nextLesson?.video_url)) {
       const prefetchNext = async () => {
         try {
           const result = await getSignedUrl({ data: { lessonId: nextLesson.id } });
@@ -383,7 +380,7 @@ function CoursePage() {
 
   useEffect(() => {
     const activeLesson = flat.find((l: any) => l.id === activeId);
-    if (activeLesson?.video_url && !activeLesson.video_url.includes('youtube') && !activeLesson.video_url.includes('drive')) {
+    if (needsSignedUrl(activeLesson?.video_url)) {
       const loadSignedUrl = async () => {
         try {
           setIsLoadingSignedUrl(true);
