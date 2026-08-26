@@ -22,15 +22,19 @@ interface VideoPlayerProps {
   onEnded?: () => void;
 }
 
-const isYouTubeUrl = (url: string) => url.includes('youtube.com') || url.includes('youtu.be');
+const isYouTubeUrl = (url: string) =>
+  url.includes('youtube.com') || url.includes('youtu.be') || url.includes('youtube-nocookie.com');
 const isDriveUrl = (url: string) => url.includes('drive.google.com');
 
 function getYouTubeId(url: string) {
-  if (url.includes('youtube.com/embed/')) return url.split('/embed/')[1]?.split(/[?&/]/)[0] ?? '';
-  if (url.includes('youtube.com/watch?v=')) return url.split('v=')[1]?.split('&')[0] ?? '';
+  if (url.includes('/embed/')) return url.split('/embed/')[1]?.split(/[?&/]/)[0] ?? '';
+  if (url.includes('/shorts/')) return url.split('/shorts/')[1]?.split(/[?&/]/)[0] ?? '';
+  if (url.includes('/live/')) return url.split('/live/')[1]?.split(/[?&/]/)[0] ?? '';
+  if (url.includes('v=')) return url.split('v=')[1]?.split('&')[0] ?? '';
   if (url.includes('youtu.be/')) return url.split('youtu.be/')[1]?.split(/[?&/]/)[0] ?? '';
   return '';
 }
+
 
 function getDriveId(url: string) {
   const match = url.match(/\/file\/d\/([^/?#]+)/) || url.match(/[?&]id=([^&#]+)/);
