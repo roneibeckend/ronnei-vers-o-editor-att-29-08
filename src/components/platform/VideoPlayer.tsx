@@ -275,10 +275,22 @@ export function VideoPlayer({
 
 
 
+    const handleEmbedPlay = () => {
+      setStarted(true);
+      if (!isYouTube) return;
+      // Comando enviado dentro do gesto do usuário: funciona no iOS/Android
+      // mesmo com autoplay bloqueado, porque o iframe já está carregado.
+      embedIframeRef.current?.contentWindow?.postMessage(
+        JSON.stringify({ event: 'command', func: 'playVideo', args: [] }),
+        '*',
+      );
+    };
+
     return (
       <div className={cn('relative mx-auto bg-black rounded-xl overflow-hidden shadow-2xl', frameClass, className)}>
-        {started ? (
+        {(isYouTube || started) && (
           <iframe
+            ref={isYouTube ? embedIframeRef : undefined}
             src={embedUrl}
             className="absolute inset-0 w-full h-full border-0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
@@ -302,8 +314,9 @@ export function VideoPlayer({
               frame.addEventListener('unload', () => timers.forEach(window.clearTimeout), { once: true });
             }}
           />
+        )}
 
-        ) : (
+        {!started && (
           <>
             {thumb && (
               <img
