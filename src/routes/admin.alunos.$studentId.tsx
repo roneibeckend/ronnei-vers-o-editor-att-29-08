@@ -37,6 +37,8 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import { StudentSupportActions } from "@/components/admin/StudentSupportActions";
+import { AccessControlPanel } from "@/components/admin/AccessControlPanel";
+
 
 export const Route = createFileRoute("/admin/alunos/$studentId")({
   head: () => ({ meta: [{ title: "Perfil do Aluno · Admin" }] }),
