@@ -44,6 +44,11 @@ export const recordClientLog = createServerFn({ method: "POST" })
       /* noop */
     }
 
+    if (!allowLog(ip ?? "unknown")) {
+      return { success: false, throttled: true };
+    }
+
+
     await logSystemEvent({
       level: data.level,
       source: data.source,
