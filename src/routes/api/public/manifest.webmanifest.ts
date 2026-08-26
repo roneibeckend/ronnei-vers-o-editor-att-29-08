@@ -5,13 +5,14 @@ export const Route = createFileRoute('/api/public/manifest/webmanifest')({
     handlers: {
       GET: async () => {
         const manifest = {
-          name: "Espetinho na Veia — Comunidade Ronnei",
-          short_name: "Espetinho na Veia",
-          description: "Acesse seus cursos, e-books e materiais da comunidade Espetinho na Veia diretamente da tela inicial do seu celular.",
+          name: "Ronnei na Veia",
+          short_name: "Ronnei",
+          description: "Cursos, e-books e conteúdos exclusivos da plataforma Ronnei na Veia.",
           start_url: "/app",
           display: "standalone",
           background_color: "#0a0a0a",
-          theme_color: "#e11d48",
+          theme_color: "#1a0d08",
+
           icons: [
             {
               src: "/favicon.png",
