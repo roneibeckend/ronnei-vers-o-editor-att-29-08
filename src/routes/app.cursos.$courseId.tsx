@@ -4,6 +4,7 @@ import { Check, Lock, Play, ChevronLeft, ChevronRight, FileText, StickyNote, Loa
 import { PageHeader } from "@/components/platform/Shell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { needsSignedUrl } from "@/lib/video-source";
 import { useEnrollments } from "@/hooks/use-enrollments";
 import { createAsaasPaymentLink } from "@/lib/asaas.functions";
 import { CouponInput, type AppliedCoupon } from "@/components/platform/CouponInput";
