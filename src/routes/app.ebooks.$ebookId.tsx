@@ -160,11 +160,7 @@ function EbookReaderPage() {
   const { openPayment } = usePaymentModal();
   const [signedIntroUrl, setSignedIntroUrl] = useState<string | null>(null);
   const generateCertFn = useServerFn(generateCertificate);
-  const introNeedsSigning = Boolean(
-    ebook?.opening_video_url &&
-    !ebook.opening_video_url.includes('youtube') &&
-    !ebook.opening_video_url.includes('drive')
-  );
+  const introNeedsSigning = needsSignedUrl(ebook?.opening_video_url);
 
   useEffect(() => {
     let cancelled = false;
