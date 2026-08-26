@@ -104,15 +104,28 @@ export const importKiwifyStudents = createServerFn({ method: "POST" })
           .maybeSingle();
 
         if (data.dryRun) {
+          let willEnroll = shouldEnroll;
+          if (shouldEnroll && existing?.id) {
+            const { data: alreadyEnrolled } = await db
+              .from(enrollTable)
+              .select("id")
+              .eq("user_id", existing.id)
+              .eq(enrollColumn, data.productId)
+              .maybeSingle();
+            if (alreadyEnrolled) willEnroll = false;
+          }
           results.push({
             email,
             status: existing ? "updated" : "created",
-            message: existing ? "Perfil existente será atualizado." : "Novo aluno será criado.",
+            message: existing
+              ? `Perfil existente será atualizado${willEnroll ? " + matrícula" : shouldEnroll ? " (já matriculado)" : ""}.`
+              : "Novo aluno será criado.",
             cpfIgnored,
-            enrolled: shouldEnroll,
+            enrolled: willEnroll,
           });
           continue;
         }
+
 
         let userId: string | null = existing?.id ?? null;
         let created = false;
