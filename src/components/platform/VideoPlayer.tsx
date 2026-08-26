@@ -248,11 +248,12 @@ export function VideoPlayer({
   if (isEmbed) {
     const ytId = getYouTubeId(src);
     const embedUrl = isYouTube
-      ? `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1`
+      ? `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&fs=1&color=white&disablekb=0`
       : getDrivePreviewUrl(baseSrc);
     const thumb = isYouTube
-      ? poster || (ytId ? `https://i.ytimg.com/vi/${ytId}/hq720.jpg` : undefined)
+      ? poster || (ytId ? `https://i.ytimg.com/vi/${ytId}/maxresdefault.jpg` : undefined)
       : cleanPoster;
+
 
 
     return (
