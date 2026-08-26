@@ -16,9 +16,18 @@ export const Route = createFileRoute("/admin/importacao")({
   }),
 });
 
-type ParsedRow = { name: string; email: string; cpf: string; phone: string; valid: boolean; issue?: string };
+type ParsedRow = {
+  name: string;
+  email: string;
+  cpf: string;
+  phone: string;
+  product: string;
+  valid: boolean;
+  duplicate?: boolean;
+  issue?: string;
+};
 
-const HEADER_ALIASES: Record<string, keyof Omit<ParsedRow, "valid" | "issue">> = {
+const HEADER_ALIASES: Record<string, "name" | "email" | "cpf" | "phone" | "product"> = {
   nome: "name",
   name: "name",
   "nome completo": "name",
@@ -35,7 +44,13 @@ const HEADER_ALIASES: Record<string, keyof Omit<ParsedRow, "valid" | "issue">> =
   whatsapp: "phone",
   phone: "phone",
   mobile: "phone",
+  produto: "product",
+  product: "product",
+  oferta: "product",
+  "nome do produto": "product",
+  "produto/oferta": "product",
 };
+
 
 function splitLine(line: string, delimiter: string): string[] {
   const out: string[] = [];
