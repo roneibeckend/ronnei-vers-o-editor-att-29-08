@@ -81,25 +81,43 @@ function parseCsv(text: string): ParsedRow[] {
   const map = header.map((h) => HEADER_ALIASES[h] ?? null);
   const rows: ParsedRow[] = [];
 
+  const seen = new Set<string>();
+
   for (const line of lines.slice(1)) {
     const cells = splitLine(line, delimiter);
-    const row: ParsedRow = { name: "", email: "", cpf: "", phone: "", valid: true };
+    const row: ParsedRow = { name: "", email: "", cpf: "", phone: "", product: "", valid: true };
     map.forEach((field, index) => {
       if (!field) return;
       row[field] = (cells[index] ?? "").replace(/^"|"$/g, "");
     });
+    row.email = row.email.trim().toLowerCase();
 
     if (!row.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) {
       row.valid = false;
       row.issue = "E-mail inválido ou ausente";
+    } else if (seen.has(row.email)) {
+      row.valid = false;
+      row.duplicate = true;
+      row.issue = "Registro duplicado na planilha";
     } else if (row.cpf && !isValidCpf(row.cpf)) {
       row.valid = false;
       row.issue = "CPF inválido";
     }
+    if (row.email) seen.add(row.email);
     rows.push(row);
   }
   return rows;
 }
+
+function normalizeTitle(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 
 function KiwifyImportPage() {
   const [rows, setRows] = useState<ParsedRow[]>([]);
