@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sanitizeRichHtml } from "@/lib/sanitize-html";
 import * as pdf from "pdf-parse";
 import * as mammoth from "mammoth";
@@ -121,14 +121,23 @@ async function processPdfContent(buffer: Buffer): Promise<ProcessedSection[]> {
 }
 
 export const importEbookFromFile = createServerFn({ method: "POST" })
-  .validator((data: unknown) => z.object({
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({
     ebook_id: z.string().uuid(),
     file_base64: z.string(),
     file_name: z.string().optional(),
     mime_type: z.string().optional(),
   }).parse(data))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const startTime = Date.now();
+    const { data: isAdmin, error: roleError } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (roleError || !isAdmin) {
+      throw new Error("Acesso negado: permissão de administrador necessária.");
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     try {
       console.log(`[importEbookFromFile] Iniciando processamento de ${data.file_name || 'arquivo'} (${data.file_base64.length} bytes base64)`);
       
@@ -158,7 +167,7 @@ export const importEbookFromFile = createServerFn({ method: "POST" })
         throw new Error("Nenhum conteúdo estruturado encontrado no arquivo.");
       }
 
-      const { data: module, error: moduleError } = await supabase
+      const { data: module, error: moduleError } = await supabaseAdmin
         .from('ebook_modules')
         .insert({
           ebook_id: data.ebook_id,
@@ -184,7 +193,7 @@ export const importEbookFromFile = createServerFn({ method: "POST" })
         const chunk = chaptersToInsert.slice(i, i + chunkSize);
         console.log(`[importEbookFromFile] Inserindo lote de capítulos ${i + 1} até ${Math.min(i + chunkSize, chaptersToInsert.length)}`);
         
-        const { error: chapterError } = await supabase
+        const { error: chapterError } = await supabaseAdmin
           .from('ebook_chapters')
           .insert(chunk);
           

@@ -10,10 +10,24 @@ const clientLogSchema = z.object({
   route: z.string().max(300).optional(),
 });
 
+// Limitador simples por IP (best-effort) para evitar inundação de logs por visitantes.
+const logHits = new Map<string, { count: number; resetAt: number }>();
+function allowLog(ip: string) {
+  const now = Date.now();
+  const entry = logHits.get(ip);
+  if (!entry || now > entry.resetAt) {
+    logHits.set(ip, { count: 1, resetAt: now + 60_000 });
+    return true;
+  }
+  entry.count += 1;
+  return entry.count <= 20;
+}
+
 /** Registra eventos/erros do navegador na tabela de logs. */
 export const recordClientLog = createServerFn({ method: "POST" })
   .validator((data: unknown) => clientLogSchema.parse(data))
   .handler(async ({ data }) => {
+
     const { getRequest } = await import("@tanstack/react-start/server");
     const { logSystemEvent } = await import("./system-log.server");
 
@@ -29,6 +43,11 @@ export const recordClientLog = createServerFn({ method: "POST" })
     } catch {
       /* noop */
     }
+
+    if (!allowLog(ip ?? "unknown")) {
+      return { success: false, throttled: true };
+    }
+
 
     await logSystemEvent({
       level: data.level,
