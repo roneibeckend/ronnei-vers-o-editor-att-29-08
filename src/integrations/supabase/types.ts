@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          details: Json
+          id: string
+          product_id: string | null
+          product_name: string | null
+          product_type: string | null
+          reason: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          product_id?: string | null
+          product_name?: string | null
+          product_type?: string | null
+          reason?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          product_id?: string | null
+          product_name?: string | null
+          product_type?: string | null
+          reason?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       admin_permissions: {
         Row: {
           can_access: boolean | null

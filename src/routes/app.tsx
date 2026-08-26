@@ -34,6 +34,23 @@ export const Route = createFileRoute("/app")({
       throw redirect({ to: '/login', search: { redirectTo: '/app' } });
     }
 
+    // Conta bloqueada pelo admin: encerra a sessão local e volta para o login.
+    const { data: statusRow } = await supabase
+      .from('profiles')
+      .select('status')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    if (statusRow?.status === 'blocked') {
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch {
+        /* ignora */
+      }
+      throw redirect({ to: '/login', search: { redirectTo: '/app' } });
+    }
+
+
 
 
     // Parallel prefetch common app data
