@@ -109,9 +109,10 @@ const GUIDES: Record<string, string[]> = {
   asaas: [
     "Acesse sua conta Asaas e vá em 'Minha Conta' -> 'Integrações'.",
     "Gere uma nova 'API Key' para o ambiente desejado (Produção ou Sandbox).",
-    "Copie a chave e cole no campo correspondente abaixo.",
-    "Para Webhooks: vá em 'Webhooks' no Asaas e cole a URL encontrada na aba 'Webhooks' deste painel.",
-    "Marque os eventos de pagamento desejados no Asaas e salve."
+    "Copie a chave e cole no campo 'apiKey' abaixo.",
+    "Crie um token qualquer forte (ex: 32 caracteres aleatórios) e cole no campo 'webhookToken' abaixo — sem ele o Asaas recebe erro 403.",
+    "No Asaas, em 'Webhooks', use a URL COMPLETA da aba 'Webhooks' deste painel (termina em /api/public/webhooks/asaas) e cole o MESMO token no campo 'Token de autenticação'.",
+    "Marque os eventos de pagamento desejados no Asaas e salve.",
   ],
   stripe: [
     "Acesse o Dashboard da Stripe e vá em 'Developers' -> 'API Keys'.",
