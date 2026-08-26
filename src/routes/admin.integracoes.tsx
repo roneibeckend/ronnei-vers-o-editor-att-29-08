@@ -44,7 +44,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { testIntegrationConnection, saveIntegration, getIntegrationHistory, getResendIntegration } from "@/lib/integrations.functions";
+import { testIntegrationConnection, saveIntegration, getIntegrationHistory, getResendIntegration, getCredentialStatus } from "@/lib/integrations.functions";
 import { getEmailLogs, getEmailSettings, updateEmailSettings, sendEmail, validateSender } from "@/lib/resend.functions";
 import { getEmailTemplates, saveEmailTemplate, deleteEmailTemplate } from "@/lib/email-templates.functions";
 import { EmailSystemTemplatesPanel } from "@/components/admin/EmailSystemTemplatesPanel";
@@ -89,6 +89,29 @@ const WEBHOOKS = [
   { name: 'Stripe Webhook', url: '/api/public/webhooks/stripe', category: 'stripe' },
   { name: 'OpenAI Callback', url: '/api/public/webhooks/openai', category: 'openai' },
 ];
+
+/**
+ * Campos de credencial esperados por integração. O navegador nunca recebe os
+ * valores salvos (segurança), então precisamos saber quais campos renderizar.
+ */
+const CREDENTIAL_FIELDS: Record<string, { key: string; label: string; placeholder: string }[]> = {
+  asaas: [
+    { key: 'apiKey', label: 'API Key', placeholder: '$aact_...' },
+    { key: 'webhookToken', label: 'Webhook Token', placeholder: 'token forte (32+ caracteres)' },
+  ],
+  mercadopago: [
+    { key: 'accessToken', label: 'Access Token', placeholder: 'APP_USR-...' },
+    { key: 'publicKey', label: 'Public Key', placeholder: 'APP_USR-...' },
+    { key: 'webhookToken', label: 'Webhook Token', placeholder: 'token forte (opcional)' },
+  ],
+  stripe: [
+    { key: 'secretKey', label: 'Secret Key', placeholder: 'sk_...' },
+    { key: 'publishableKey', label: 'Publishable Key', placeholder: 'pk_...' },
+    { key: 'webhookSecret', label: 'Webhook Secret', placeholder: 'whsec_...' },
+  ],
+  openai: [{ key: 'apiKey', label: 'API Key', placeholder: 'sk-...' }],
+  resend: [{ key: 'apiKey', label: 'API Key', placeholder: 're_...' }],
+};
 
 const GUIDES: Record<string, string[]> = {
   openai: [
@@ -159,6 +182,13 @@ function IntegrationsPage() {
   const testConnectionFn = useServerFn(testIntegrationConnection);
   const saveIntegrationFn = useServerFn(saveIntegration);
   const getHistoryFn = useServerFn(getIntegrationHistory);
+  const getCredentialStatusFn = useServerFn(getCredentialStatus);
+
+  // Quais chaves já estão salvas (sem expor os valores).
+  const { data: credentialStatus } = useQuery({
+    queryKey: ['integration_credential_status'],
+    queryFn: () => getCredentialStatusFn({} as any),
+  });
 
   const { data: integrations, isLoading } = useQuery({
     queryKey: ['integrations'],
@@ -201,7 +231,11 @@ function IntegrationsPage() {
   };
 
   const validateStatus = (item: Integration) => {
-    const hasCreds = Object.values(item.credentials).every(v => v && v.length > 5);
+    const saved = credentialStatus?.[item.category];
+    const required = CREDENTIAL_FIELDS[item.category] || [];
+    const hasCreds = required.length === 0
+      ? true
+      : required.every((f) => saved?.[f.key]);
     if (!hasCreds) return 'incomplete';
     if (!item.status) return 'disabled';
     return 'connected';
@@ -242,6 +276,7 @@ function IntegrationsPage() {
       toast.success("Configurações salvas com sucesso.");
       setOriginalItem(JSON.parse(JSON.stringify(selectedItem)));
       queryClient.invalidateQueries({ queryKey: ['integrations'] });
+      queryClient.invalidateQueries({ queryKey: ['integration_credential_status'] });
     } catch (err: any) {
       toast.error(err.message || "Erro ao salvar");
     }
@@ -505,23 +540,44 @@ function IntegrationsPage() {
                     </CardHeader>
                     <CardContent className="p-6 space-y-6">
                       <div className="grid gap-6 md:grid-cols-2">
-                        {Object.keys(selectedItem.credentials).map((key) => (
-                          <div key={key} className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-white/40 flex items-center gap-2">
-                              <Key className="h-3 w-3 text-[#ff6a00]" /> {key.replace(/([A-Z])/g, ' $1').trim()}
-                            </Label>
-                            <Input 
-                              type="password"
-                              value={selectedItem.credentials[key]}
-                              onChange={(e) => setSelectedItem({
-                                ...selectedItem,
-                                credentials: { ...selectedItem.credentials, [key]: e.target.value }
-                              })}
-                              className="bg-black/40 border-white/10 focus:border-[#ff6a00] h-11 text-sm font-mono text-[16px] md:text-sm"
-                              placeholder="sk-..."
-                            />
-                          </div>
-                        ))}
+                        {(() => {
+                          const saved = credentialStatus?.[selectedItem.category] || {};
+                          const schema = CREDENTIAL_FIELDS[selectedItem.category] || [];
+                          const extras = Object.keys(saved)
+                            .filter((k) => !schema.some((f) => f.key === k))
+                            .map((k) => ({ key: k, label: k.replace(/([A-Z])/g, ' $1').trim(), placeholder: '' }));
+                          const fields = [...schema, ...extras];
+                          if (fields.length === 0) {
+                            return (
+                              <p className="text-xs text-white/40 md:col-span-2">
+                                Esta integração não exige credenciais.
+                              </p>
+                            );
+                          }
+                          return fields.map((field) => (
+                            <div key={field.key} className="space-y-2">
+                              <Label className="text-[10px] font-bold uppercase tracking-widest text-white/40 flex items-center gap-2">
+                                <Key className="h-3 w-3 text-[#ff6a00]" /> {field.label}
+                                {saved[field.key] ? (
+                                  <span className="text-[9px] text-emerald-400">• salvo</span>
+                                ) : (
+                                  <span className="text-[9px] text-amber-400">• pendente</span>
+                                )}
+                              </Label>
+                              <Input
+                                type="password"
+                                autoComplete="new-password"
+                                value={selectedItem.credentials[field.key] ?? ''}
+                                onChange={(e) => setSelectedItem({
+                                  ...selectedItem,
+                                  credentials: { ...selectedItem.credentials, [field.key]: e.target.value }
+                                })}
+                                className="bg-black/40 border-white/10 focus:border-[#ff6a00] h-11 text-sm font-mono text-[16px] md:text-sm"
+                                placeholder={saved[field.key] ? '•••••• (deixe vazio para manter)' : field.placeholder}
+                              />
+                            </div>
+                          ));
+                        })()}
                       </div>
 
                       <div className="pt-6 border-t border-white/5">

@@ -52,12 +52,28 @@ export const saveIntegration = createServerFn({ method: "POST" })
     });
     if (!isAdmin) throw new Error("Proibido");
 
+    // O navegador nunca recebe as credenciais salvas, então campos deixados em
+    // branco significam "manter o valor atual" — nunca apagar o que já existe.
+    let mergedCredentials: Record<string, any> = {};
+    if (data.id && data.id !== '') {
+      const { data: current } = await supabaseAdmin
+        .from('integrations')
+        .select('credentials')
+        .eq('id', data.id)
+        .maybeSingle();
+      mergedCredentials = { ...((current?.credentials || {}) as Record<string, any>) };
+    }
+    for (const [key, value] of Object.entries(data.credentials || {})) {
+      if (typeof value === 'string' && value.trim() === '') continue;
+      mergedCredentials[key] = value;
+    }
+
     const payload = {
       name: data.name,
       type: data.type === 'feature' ? 'ia' : data.type as 'ia' | 'payment',
       category: data.category,
       status: data.status,
-      credentials: data.credentials,
+      credentials: mergedCredentials,
       settings: data.settings,
       updated_at: new Date().toISOString()
     };
@@ -76,6 +92,36 @@ export const saveIntegration = createServerFn({ method: "POST" })
     }
 
     return { success: true };
+  });
+
+/**
+ * Retorna apenas QUAIS chaves de credencial já estão preenchidas por categoria
+ * (nunca os valores), para o painel poder renderizar os campos corretos.
+ */
+export const getCredentialStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: isAdmin } = await context.supabase.rpc('has_role', {
+      _user_id: context.userId,
+      _role: 'admin'
+    });
+    if (!isAdmin) throw new Error("Proibido");
+
+    const { data, error } = await supabaseAdmin
+      .from('integrations')
+      .select('category, credentials');
+    if (error) throw error;
+
+    const result: Record<string, Record<string, boolean>> = {};
+    for (const row of data || []) {
+      const creds = (row.credentials || {}) as Record<string, unknown>;
+      const filled: Record<string, boolean> = {};
+      for (const [key, value] of Object.entries(creds)) {
+        filled[key] = typeof value === 'string' ? value.trim().length > 3 : Boolean(value);
+      }
+      result[row.category] = filled;
+    }
+    return result;
   });
 
 export const testIntegrationConnection = createServerFn({ method: "POST" })
