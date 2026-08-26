@@ -96,6 +96,7 @@ export function VideoPlayer({
   const lastSaveRef = useRef(0);
 
   const isYouTube = isYouTubeUrl(src);
+  const isShorts = src.includes('/shorts/');
   const isDrive = isDriveUrl(src);
   // Google Drive public downloads regularly return quota/HTML pages and the
   // original files are very large. Use Drive's preview player so Google serves
@@ -106,7 +107,10 @@ export function VideoPlayer({
   const playableSrc = baseSrc;
   const driveId = isDrive ? getDriveId(src) : '';
   const cleanPoster = poster || (driveId ? `https://drive.google.com/thumbnail?id=${driveId}&sz=w1200` : undefined);
-  const frameClass = aspect === 'portrait' ? 'aspect-[9/16]' : 'aspect-video';
+  const frameClass =
+    aspect === 'portrait' || isShorts
+      ? 'aspect-[9/16] max-w-[420px] w-full'
+      : 'aspect-video';
 
   // Decide the encode after hydration so SSR markup stays stable.
   useEffect(() => {
@@ -252,7 +256,7 @@ export function VideoPlayer({
   if (isEmbed) {
     const ytId = getYouTubeId(src);
     const embedUrl = isYouTube
-      ? `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&fs=1&color=white&disablekb=0`
+      ? `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&cc_load_policy=0&fs=1&color=white&disablekb=0`
       : getDrivePreviewUrl(baseSrc);
     const thumb = isYouTube
       ? poster || (ytId ? `https://i.ytimg.com/vi/${ytId}/maxresdefault.jpg` : undefined)
