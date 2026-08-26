@@ -348,7 +348,15 @@ function AdminStudentProfilePage() {
               </div>
             </div>
           </section>
+
+          <StudentSupportActions
+            studentId={studentId}
+            email={profile.email ?? null}
+            verifiedAt={profile.email_verified_at ?? null}
+            onUpdated={fetchStudentData}
+          />
         </aside>
+
 
         {/* Main Content: Courses and Activity */}
         <div className="space-y-8">
