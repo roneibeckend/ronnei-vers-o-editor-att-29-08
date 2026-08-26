@@ -87,6 +87,7 @@ export function VideoPlayer({
   const [needsUnmute, setNeedsUnmute] = useState(false);
   const [useLight, setUseLight] = useState(false);
   const [portraitThumb, setPortraitThumb] = useState(false);
+  const embedIframeRef = useRef<HTMLIFrameElement>(null);
 
   const onEndedRef = useRef(onEnded);
   useEffect(() => {
@@ -317,7 +318,7 @@ export function VideoPlayer({
         )}
 
         {!started && (
-          <>
+          <div className="absolute inset-0 z-10">
             {thumb && (
               <img
                 src={thumb}
@@ -348,7 +349,7 @@ export function VideoPlayer({
             <Button
               type="button"
               variant="ghost"
-              onClick={() => setStarted(true)}
+              onClick={handleEmbedPlay}
               aria-label="Reproduzir vídeo"
               className="absolute inset-0 h-full w-full rounded-none bg-black/20 p-0 hover:bg-black/20"
             >
@@ -356,7 +357,7 @@ export function VideoPlayer({
                 <Play className="w-8 h-8 text-white ml-1 fill-current" />
               </span>
             </Button>
-          </>
+          </div>
         )}
       </div>
     );
