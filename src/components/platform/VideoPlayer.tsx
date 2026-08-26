@@ -254,11 +254,15 @@ export function VideoPlayer({
   }, [autoStart, startPlayback, playableSrc]);
 
 
-  // ---- External embeds: render the iframe only after the user taps play
+  // ---- External embeds.
+  // YouTube: o iframe fica montado (escondido atrás da capa) desde o início.
+  // No mobile o autoplay=1 é bloqueado porque o gesto do toque expira antes do
+  // iframe terminar de carregar — por isso enviamos playVideo via API do player
+  // dentro do próprio onClick, que é um contexto de gesto válido no iOS/Android.
   if (isEmbed) {
     const ytId = getYouTubeId(src);
     const embedUrl = isYouTube
-      ? `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&cc_load_policy=0&cc_lang_pref=pt&hl=pt-BR&fs=1&color=white&disablekb=0&enablejsapi=1`
+      ? `https://www.youtube-nocookie.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&cc_load_policy=0&cc_lang_pref=pt&hl=pt-BR&fs=1&color=white&disablekb=0&enablejsapi=1`
       : getDrivePreviewUrl(baseSrc);
 
     // Shorts têm thumbnail vertical própria (oar2); cai para a horizontal se não existir.
