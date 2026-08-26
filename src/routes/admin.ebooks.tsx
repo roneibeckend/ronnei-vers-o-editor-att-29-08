@@ -40,6 +40,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ImageUpload } from "@/components/admin/ImageUpload";
 import { VideoUpload } from "@/components/admin/VideoUpload";
+import { VideoPlayer } from "@/components/platform/VideoPlayer";
+
 import { VisualChapterEditor } from "@/components/admin/VisualChapterEditor";
 import { WorkloadHoursField } from "@/components/admin/WorkloadHoursField";
 import { cn } from "@/lib/utils";
