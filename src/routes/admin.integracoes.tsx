@@ -44,7 +44,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { testIntegrationConnection, saveIntegration, getIntegrationHistory, getResendIntegration } from "@/lib/integrations.functions";
+import { testIntegrationConnection, saveIntegration, getIntegrationHistory, getResendIntegration, getCredentialStatus } from "@/lib/integrations.functions";
 import { getEmailLogs, getEmailSettings, updateEmailSettings, sendEmail, validateSender } from "@/lib/resend.functions";
 import { getEmailTemplates, saveEmailTemplate, deleteEmailTemplate } from "@/lib/email-templates.functions";
 import { EmailSystemTemplatesPanel } from "@/components/admin/EmailSystemTemplatesPanel";
@@ -182,6 +182,13 @@ function IntegrationsPage() {
   const testConnectionFn = useServerFn(testIntegrationConnection);
   const saveIntegrationFn = useServerFn(saveIntegration);
   const getHistoryFn = useServerFn(getIntegrationHistory);
+  const getCredentialStatusFn = useServerFn(getCredentialStatus);
+
+  // Quais chaves já estão salvas (sem expor os valores).
+  const { data: credentialStatus } = useQuery({
+    queryKey: ['integration_credential_status'],
+    queryFn: () => getCredentialStatusFn({} as any),
+  });
 
   const { data: integrations, isLoading } = useQuery({
     queryKey: ['integrations'],
