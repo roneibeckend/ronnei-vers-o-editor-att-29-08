@@ -4,12 +4,15 @@ import { useNotifications } from "@/hooks/use-notifications";
 import { PageHeader } from "@/components/platform/Shell";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useHasPurchase } from "@/hooks/use-access";
+import { LockedFeature } from "@/components/platform/LockedFeature";
 
 export const Route = createFileRoute("/app/notificacoes")({
   component: NotificationsPage,
 });
 
 function NotificationsPage() {
+  const { hasPurchase, isLoading: isLoadingAccess } = useHasPurchase();
   const { notifications, userNotifications, markAsRead, markAllAsRead, isLoading, unreadCount } = useNotifications();
 
   const getIcon = (type: string) => {
@@ -37,7 +40,7 @@ function NotificationsPage() {
           title="Notificações" 
           subtitle="Fique por dentro das últimas novidades da plataforma."
         />
-        {unreadCount > 0 && (
+        {hasPurchase && unreadCount > 0 && (
           <button
             onClick={() => {
               if (confirm("Deseja marcar todas as notificações como lidas?")) {
@@ -52,7 +55,12 @@ function NotificationsPage() {
         )}
       </div>
 
-      {isLoading ? (
+      {!isLoadingAccess && !hasPurchase ? (
+        <LockedFeature
+          title="Notificações exclusivas para alunos"
+          description="Após adquirir um curso ou e-book você recebe aqui todos os avisos da plataforma."
+        />
+      ) : isLoading ? (
         <div className="flex justify-center py-12">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </div>
