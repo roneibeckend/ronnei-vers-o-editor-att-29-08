@@ -4,6 +4,8 @@ import { useNotifications } from "@/hooks/use-notifications";
 import { PageHeader } from "@/components/platform/Shell";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useHasPurchase } from "@/hooks/use-access";
+import { LockedFeature } from "@/components/platform/LockedFeature";
 
 export const Route = createFileRoute("/app/notificacoes")({
   component: NotificationsPage,

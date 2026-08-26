@@ -5,6 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Calendar, Clock, Video, ExternalLink, Loader2, PlayCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Lock } from "lucide-react";
+import { useHasPurchase } from "@/hooks/use-access";
+import { LockedFeature } from "@/components/platform/LockedFeature";
 
 export const Route = createFileRoute("/app/ao-vivo")({
   head: () => ({
