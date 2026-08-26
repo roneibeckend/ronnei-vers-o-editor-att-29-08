@@ -725,10 +725,7 @@ function Pain() {
     <section className="relative py-14 sm:py-20 bg-card/10">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="flex flex-col items-center text-center">
-          <SectionTag>O problema</SectionTag>
-          <h2 className="mt-6 max-w-3xl h-fluid-h2 font-black">
-            Você já se viu <span className="text-gradient-fire">preso em algum destes erros?</span>
-          </h2>
+          {/* título oculto: O problema / Você já se viu preso em algum destes erros? */}
           <p className="mt-4 max-w-2xl text-muted-foreground">
             A maioria de quem tenta vender espetinho cai nas mesmas armadilhas — e desiste antes de ver o real potencial do negócio.
           </p>
@@ -803,10 +800,10 @@ function AuthorSolution() {
 
           {/* Copy */}
           <div>
-            <SectionTag>Oportunidade</SectionTag>
-            <h2 className="mt-5 h-fluid-h2 font-black">
-              De açougueiro sem R$ 1.000 no bolso a dono do <span className="text-gradient-fire">Espetos Grill</span>.
-            </h2>
+          {/* título oculto: Oportunidade / De açougueiro sem R$ 1.000... */}
+          <h2 className="mt-5 h-fluid-h2 font-black">
+            De açougueiro sem R$ 1.000 no bolso a dono do <span className="text-gradient-fire">Espetos Grill</span>.
+          </h2>
             <p className="mt-4 text-base text-muted-foreground sm:text-lg">
               Meu nome é <strong className="text-foreground">Ronnei</strong>. Comecei aos 17 anos trabalhando de açougueiro no supermercado
               e, no horário de almoço, fabricava espetinhos pra vender à noite. Foram 12 anos de rotina pesada —
@@ -909,10 +906,7 @@ function ProfitCalculator() {
     <section id="calculadora" className="relative py-10 sm:py-14">
       <div className="mx-auto max-w-[1200px] px-4 sm:px-6 3xl:max-w-[1500px]">
         <div className="flex flex-col items-center text-center">
-          <SectionTag>O que você aprende</SectionTag>
-          <h2 className="mt-4 max-w-2xl h-fluid-h3 font-black">
-            Faça a <span className="text-gradient-fire">conta na sua tela</span> agora
-          </h2>
+          {/* título oculto: O que você aprende / Faça a conta na sua tela agora */}
           <p className="mt-3 max-w-xl text-sm text-muted-foreground">
             Ajuste quantidade e preço. Cálculo em tempo real com custo médio de {fmt(cost)}/espeto.
           </p>
@@ -1039,10 +1033,7 @@ function SocialProof() {
     <section id="depoimentos" className="relative py-14 sm:py-20">
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 3xl:max-w-[1800px]">
         <div className="flex flex-col items-center text-center">
-          <SectionTag>Resultados Reais</SectionTag>
-          <h2 className="mt-6 max-w-3xl h-fluid-h2 font-black">
-            Alunos que <span className="text-gradient-fire">colocaram a mão na brasa</span> e viram resultado
-          </h2>
+          {/* título oculto: Resultados Reais / Alunos que colocaram a mão na brasa */}
           <p className="mt-4 max-w-2xl text-muted-foreground">
             Prints reais de quem aplicou o método. Nomes preservados por privacidade.
           </p>
@@ -1096,10 +1087,7 @@ function Modules() {
     <section id="modulos" className="relative py-14 sm:py-20">
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 3xl:max-w-[1800px]">
         <div className="flex flex-col items-center text-center">
-          <SectionTag>Por dentro do eBook</SectionTag>
-          <h2 className="mt-6 max-w-3xl h-fluid-h2 font-black">
-            7 Módulos e 27 Capítulos <span className="text-gradient-fire">práticos e diretos</span>
-          </h2>
+          {/* título oculto: Por dentro do eBook / 7 Módulos e 27 Capítulos */}
           <p className="mt-4 max-w-2xl text-muted-foreground">
             Cada módulo foi pensado para você aplicar hoje mesmo — sem enrolação, sem teoria desnecessária.
           </p>
@@ -1165,10 +1153,7 @@ function Bonuses() {
       </div>
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 3xl:max-w-[1600px]">
         <div className="flex flex-col items-center text-center">
-          <SectionTag>Bônus Exclusivos</SectionTag>
-          <h2 className="mt-4 max-w-3xl h-fluid-h3 font-black">
-            4 bônus <span className="text-gradient-fire">exclusivos e gratuitos</span>
-          </h2>
+          {/* título oculto: Bônus Exclusivos / 4 bônus exclusivos e gratuitos */}
           <p className="mt-2 max-w-xl text-sm text-muted-foreground">
             Vantagens extras para acelerar seus resultados desde o primeiro dia.
           </p>
@@ -1238,10 +1223,7 @@ function Results() {
     <section className="relative py-14 sm:py-20">
       <div className="mx-auto max-w-6xl 3xl:max-w-[1800px] px-4 sm:px-6">
         <div className="flex flex-col items-center text-center">
-          <SectionTag>Transformação</SectionTag>
-          <h2 className="mt-6 max-w-3xl h-fluid-h2 font-black">
-            Do improviso para o <span className="text-gradient-fire">negócio de verdade</span>
-          </h2>
+          {/* título oculto: Transformação / Do improviso para o negócio de verdade */}
         </div>
         <div className="mt-14 grid gap-6 md:grid-cols-2">
           <div className="rounded-3xl border border-border bg-card p-8">
@@ -1335,10 +1317,7 @@ function Testimonials() {
     <section className="relative py-14 sm:py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="flex flex-col items-center text-center">
-          <SectionTag>Prova Social</SectionTag>
-          <h2 className="mt-6 max-w-3xl h-fluid-h2 font-black">
-            O QUE OS ALUNOS <span className="text-gradient-fire">ESTÃO FALANDO?</span>
-          </h2>
+          {/* título oculto: Prova Social / O QUE OS ALUNOS ESTÃO FALANDO? */}
           <p className="mt-3 max-w-2xl text-xs uppercase tracking-widest text-muted-foreground">
             Feedbacks reais de quem concluiu nossos treinamentos e está colhendo resultados.
           </p>
@@ -1531,10 +1510,7 @@ function FAQ() {
     <section id="faq" className="relative py-14 sm:py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="flex flex-col items-center text-center">
-          <SectionTag>FAQ</SectionTag>
-          <h2 className="mt-6 h-fluid-h2 font-black">
-            Tire suas dúvidas com a <span className="text-gradient-fire">assistente</span>
-          </h2>
+          {/* título oculto: FAQ / Tire suas dúvidas com a assistente */}
           <p className="mt-3 max-w-xl text-muted-foreground">
             Clique em uma pergunta e receba a resposta na hora, como em um chat.
           </p>
@@ -1618,11 +1594,7 @@ function FinalCTA() {
           />
 
           <div className="absolute inset-0 -z-10 bg-gradient-to-br from-background/90 via-background/80 to-[color:var(--ember)]/50" />
-          <SectionTag>Última chamada</SectionTag>
-          <h2 className="mx-auto mt-6 max-w-3xl h-fluid-h2 font-black">
-            A brasa está pronta. <br />
-            <span className="text-gradient-fire">Falta só você acender o fogo.</span>
-          </h2>
+          {/* título oculto: Última chamada / A brasa está pronta */}
           <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground">
             Cada dia sem o método é dinheiro deixado na tábua. Comece hoje, com garantia de 7 dias.
           </p>
@@ -1805,10 +1777,7 @@ function NotForYou() {
       <div className="mx-auto max-w-[1200px] px-4 sm:px-6 3xl:max-w-[1500px]">
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 backdrop-blur sm:p-8">
           <div className="flex flex-col items-center text-center">
-            <SectionTag>Para quem NÃO é</SectionTag>
-            <h2 className="mt-4 max-w-xl text-xl font-black sm:text-2xl">
-              Seja <span className="text-gradient-fire">honesto</span> com você mesmo
-            </h2>
+            {/* título oculto: Para quem NÃO é / Seja honesto com você mesmo */}
           </div>
           <div className="mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             {items.map((t) => (
