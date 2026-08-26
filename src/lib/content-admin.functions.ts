@@ -35,13 +35,30 @@ export const saveLiveClass = createServerFn({ method: "POST" })
       status: data.status,
     };
 
-    const query = isNew
-      ? context.supabase.from('live_classes').insert(payload as any).select('id').single()
-      : context.supabase.from('live_classes').update(payload as any).eq('id', data.id).select('id').single();
+    let liveClassId = data.id;
 
-    const { data: result, error } = await query;
-      
-    if (error) throw new Error(error.message);
+    if (isNew) {
+      const { data: result, error } = await context.supabase
+        .from('live_classes')
+        .insert(payload as any)
+        .select('id')
+        .single();
+
+      if (error) throw new Error(error.message);
+      liveClassId = result.id;
+    } else {
+      if (!liveClassId) throw new Error("Evento inválido para atualização.");
+
+      const { data: result, error } = await context.supabase
+        .from('live_classes')
+        .update(payload as any)
+        .eq('id', liveClassId)
+        .select('id')
+        .single();
+
+      if (error) throw new Error(error.message);
+      liveClassId = result.id;
+    }
 
     // Se for uma nova aula e estiver agendada, notifica os alunos.
     // O salvamento não pode depender da service-role key na VPS; e-mails ficam em best-effort.
@@ -74,7 +91,7 @@ export const saveLiveClass = createServerFn({ method: "POST" })
                   description: data.description || 'Sem descrição.',
                   link: data.link || '#'
                 },
-                idempotencyKey: `live_${result.id}_${student.id}`
+                idempotencyKey: `live_${liveClassId}_${student.id}`
               })
             ));
             const sentCount = results.filter(r => r.status === 'fulfilled').length;
