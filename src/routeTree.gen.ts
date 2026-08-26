@@ -44,6 +44,7 @@ import { Route as AdminNotificacoesRouteImport } from './routes/admin.notificaco
 import { Route as AdminMateriaisRouteImport } from './routes/admin.materiais'
 import { Route as AdminLogsRouteImport } from './routes/admin.logs'
 import { Route as AdminIntegracoesRouteImport } from './routes/admin.integracoes'
+import { Route as AdminImportacaoRouteImport } from './routes/admin.importacao'
 import { Route as AdminFinanceiroRouteImport } from './routes/admin.financeiro'
 import { Route as AdminFeedbacksRouteImport } from './routes/admin.feedbacks'
 import { Route as AdminEbooksRouteImport } from './routes/admin.ebooks'
@@ -248,6 +249,11 @@ const AdminIntegracoesRoute = AdminIntegracoesRouteImport.update({
   path: '/integracoes',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminImportacaoRoute = AdminImportacaoRouteImport.update({
+  id: '/importacao',
+  path: '/importacao',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminFinanceiroRoute = AdminFinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
@@ -412,6 +418,7 @@ export interface FileRoutesByFullPath {
   '/admin/ebooks': typeof AdminEbooksRoute
   '/admin/feedbacks': typeof AdminFeedbacksRoute
   '/admin/financeiro': typeof AdminFinanceiroRoute
+  '/admin/importacao': typeof AdminImportacaoRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
   '/admin/logs': typeof AdminLogsRoute
   '/admin/materiais': typeof AdminMateriaisRoute
@@ -475,6 +482,7 @@ export interface FileRoutesByTo {
   '/admin/ebooks': typeof AdminEbooksRoute
   '/admin/feedbacks': typeof AdminFeedbacksRoute
   '/admin/financeiro': typeof AdminFinanceiroRoute
+  '/admin/importacao': typeof AdminImportacaoRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
   '/admin/logs': typeof AdminLogsRoute
   '/admin/materiais': typeof AdminMateriaisRoute
@@ -539,6 +547,7 @@ export interface FileRoutesById {
   '/admin/ebooks': typeof AdminEbooksRoute
   '/admin/feedbacks': typeof AdminFeedbacksRoute
   '/admin/financeiro': typeof AdminFinanceiroRoute
+  '/admin/importacao': typeof AdminImportacaoRoute
   '/admin/integracoes': typeof AdminIntegracoesRoute
   '/admin/logs': typeof AdminLogsRoute
   '/admin/materiais': typeof AdminMateriaisRoute
@@ -606,6 +615,7 @@ export interface FileRouteTypes {
     | '/admin/ebooks'
     | '/admin/feedbacks'
     | '/admin/financeiro'
+    | '/admin/importacao'
     | '/admin/integracoes'
     | '/admin/logs'
     | '/admin/materiais'
@@ -669,6 +679,7 @@ export interface FileRouteTypes {
     | '/admin/ebooks'
     | '/admin/feedbacks'
     | '/admin/financeiro'
+    | '/admin/importacao'
     | '/admin/integracoes'
     | '/admin/logs'
     | '/admin/materiais'
@@ -732,6 +743,7 @@ export interface FileRouteTypes {
     | '/admin/ebooks'
     | '/admin/feedbacks'
     | '/admin/financeiro'
+    | '/admin/importacao'
     | '/admin/integracoes'
     | '/admin/logs'
     | '/admin/materiais'
@@ -1045,6 +1057,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIntegracoesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/importacao': {
+      id: '/admin/importacao'
+      path: '/importacao'
+      fullPath: '/admin/importacao'
+      preLoaderRoute: typeof AdminImportacaoRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/financeiro': {
       id: '/admin/financeiro'
       path: '/financeiro'
@@ -1279,6 +1298,7 @@ interface AdminRouteChildren {
   AdminEbooksRoute: typeof AdminEbooksRoute
   AdminFeedbacksRoute: typeof AdminFeedbacksRoute
   AdminFinanceiroRoute: typeof AdminFinanceiroRoute
+  AdminImportacaoRoute: typeof AdminImportacaoRoute
   AdminIntegracoesRoute: typeof AdminIntegracoesRoute
   AdminLogsRoute: typeof AdminLogsRoute
   AdminMateriaisRoute: typeof AdminMateriaisRoute
@@ -1304,6 +1324,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminEbooksRoute: AdminEbooksRoute,
   AdminFeedbacksRoute: AdminFeedbacksRoute,
   AdminFinanceiroRoute: AdminFinanceiroRoute,
+  AdminImportacaoRoute: AdminImportacaoRoute,
   AdminIntegracoesRoute: AdminIntegracoesRoute,
   AdminLogsRoute: AdminLogsRoute,
   AdminMateriaisRoute: AdminMateriaisRoute,
