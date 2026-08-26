@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { deleteStudent } from "@/lib/students-admin.functions";
+import { cpfDigits, formatCpf, isValidCpf } from "@/lib/cpf";
 
 export const Route = createFileRoute("/admin/alunos")({
   head: () => ({ meta: [{ title: "Gestão de Alunos · Admin" }] }),
