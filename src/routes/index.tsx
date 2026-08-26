@@ -856,10 +856,7 @@ function Benefits() {
     <section id="beneficios" className="relative py-10 sm:py-14">
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
         <div className="flex flex-col items-center text-center">
-          <SectionTag>Metodologia</SectionTag>
-          <h2 className="mt-4 max-w-2xl text-2xl sm:text-3xl font-black">
-            O que vai <span className="text-gradient-fire">mudar no seu bolso</span>
-          </h2>
+          {/* título oculto: Metodologia / O que vai mudar no seu bolso */}
         </div>
         <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {items.map(({ icon: Icon, title, desc, featured }) => (
@@ -1848,10 +1845,7 @@ function ForYou() {
     <section className="relative py-10 sm:py-14">
       <div className="mx-auto max-w-[1200px] px-4 sm:px-6 3xl:max-w-[1500px]">
         <div className="flex flex-col items-center text-center">
-          <SectionTag>Para quem é</SectionTag>
-          <h2 className="mt-4 max-w-2xl text-2xl sm:text-3xl font-black">
-            Você se <span className="text-gradient-fire">identifica</span>?
-          </h2>
+          {/* título oculto: Para quem é / Você se identifica? */}
         </div>
         <div className="mt-8 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           {items.map((t) => (
