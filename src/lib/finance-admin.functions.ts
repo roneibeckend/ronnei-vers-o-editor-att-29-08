@@ -196,11 +196,11 @@ export const getStudentFinance = createServerFn({ method: "POST" })
     }
 
     const totalPaid = payments
-      .filter((p) => p.statusKind === "paid")
-      .reduce((sum, p) => sum + p.amount, 0);
+      .filter((p: any) => p.statusKind === "paid")
+      .reduce((sum: number, p: any) => sum + p.amount, 0);
     const totalRefunded = payments
-      .filter((p) => p.statusKind === "refunded")
-      .reduce((sum, p) => sum + p.amount, 0);
+      .filter((p: any) => p.statusKind === "refunded")
+      .reduce((sum: number, p: any) => sum + p.amount, 0);
 
     return { payments, invoices, subscriptions, refunds, totalPaid, totalRefunded, asaasError };
   });
