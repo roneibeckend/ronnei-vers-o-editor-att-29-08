@@ -254,6 +254,115 @@ export function VideoPlayer({
     return () => cancelAnimationFrame(id);
   }, [autoStart, startPlayback, playableSrc]);
 
+  // ---- YouTube via IFrame API: um único toque inicia a reprodução.
+  useEffect(() => {
+    if (!isYouTube || !started || !ytId) return;
+    let cancelled = false;
+
+    const killCaptions = (player: any) => {
+      try {
+        player.unloadModule('captions');
+        player.unloadModule('cc');
+      } catch {
+        /* módulo pode não estar carregado */
+      }
+    };
+
+    const create = () => {
+      const YT = (window as any).YT;
+      if (cancelled || !YT?.Player || !ytHostRef.current) return;
+      ytPlayerRef.current = new YT.Player(ytHostRef.current, {
+        videoId: ytId,
+        playerVars: {
+          autoplay: 1,
+          mute: 1,
+          controls: 0,
+          rel: 0,
+          modestbranding: 1,
+          playsinline: 1,
+          iv_load_policy: 3,
+          cc_load_policy: 0,
+          disablekb: 1,
+          fs: 0,
+          hl: 'pt-BR',
+        },
+        events: {
+          onReady: (event: any) => {
+            const player = event.target;
+            killCaptions(player);
+            try {
+              player.playVideo();
+              player.unMute();
+              player.setVolume(100);
+              player.playVideo();
+            } catch {
+              /* ignora */
+            }
+            window.setTimeout(() => {
+              if (cancelled) return;
+              try {
+                if (player.getPlayerState?.() !== 1) {
+                  player.mute();
+                  player.playVideo();
+                  setNeedsUnmute(true);
+                } else if (player.isMuted?.()) {
+                  setNeedsUnmute(true);
+                }
+              } catch {
+                /* ignora */
+              }
+            }, 800);
+          },
+          onStateChange: (event: any) => {
+            killCaptions(event.target);
+            if (event.data === 1) {
+              setIsLoading(false);
+              try {
+                if (!event.target.isMuted?.()) setNeedsUnmute(false);
+              } catch {
+                /* ignora */
+              }
+            }
+            if (event.data === 0) onEndedRef.current?.();
+          },
+          onError: () => {
+            setIsLoading(false);
+            setHasError(true);
+          },
+        },
+      });
+    };
+
+    const w = window as any;
+    if (w.YT?.Player) {
+      create();
+    } else {
+      const previous = w.onYouTubeIframeAPIReady;
+      w.onYouTubeIframeAPIReady = () => {
+        previous?.();
+        create();
+      };
+      if (!document.querySelector('script[data-yt-api="1"]')) {
+        const script = document.createElement('script');
+        script.src = 'https://www.youtube.com/iframe_api';
+        script.async = true;
+        script.dataset.ytApi = '1';
+        document.head.appendChild(script);
+      }
+    }
+
+    return () => {
+      cancelled = true;
+      try {
+        ytPlayerRef.current?.destroy();
+      } catch {
+        /* já destruído */
+      }
+      ytPlayerRef.current = null;
+    };
+  }, [isYouTube, started, ytId]);
+
+
 
   // ---- External embeds.
   // YouTube: usamos a IFrame API. Ao tocar no nosso play criamos o player e
