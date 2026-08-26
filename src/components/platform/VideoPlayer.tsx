@@ -262,8 +262,11 @@ export function VideoPlayer({
   // dentro do próprio onClick, que é um contexto de gesto válido no iOS/Android.
   if (isEmbed) {
     const ytId = getYouTubeId(src);
+    // O iframe só é montado depois do toque, já com autoplay=1: esse é o fluxo
+    // suportado no mobile. O domínio padrão (não o nocookie) e a ausência do
+    // enablejsapi evitam o erro "Ocorreu um erro. Tente novamente mais tarde".
     const embedUrl = isYouTube
-      ? `https://www.youtube-nocookie.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&cc_load_policy=0&cc_lang_pref=pt&hl=pt-BR&fs=1&color=white&disablekb=0&enablejsapi=1`
+      ? `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3&cc_load_policy=0&hl=pt-BR&fs=1&color=white`
       : getDrivePreviewUrl(baseSrc);
 
     // Shorts têm thumbnail vertical própria (oar2); cai para a horizontal se não existir.
@@ -278,44 +281,21 @@ export function VideoPlayer({
 
     const handleEmbedPlay = () => {
       setStarted(true);
-      if (!isYouTube) return;
-      // Comando enviado dentro do gesto do usuário: funciona no iOS/Android
-      // mesmo com autoplay bloqueado, porque o iframe já está carregado.
-      embedIframeRef.current?.contentWindow?.postMessage(
-        JSON.stringify({ event: 'command', func: 'playVideo', args: [] }),
-        '*',
-      );
     };
 
     return (
       <div className={cn('relative mx-auto bg-black rounded-xl overflow-hidden shadow-2xl', frameClass, className)}>
-        {(isYouTube || started) && (
+        {started && (
           <iframe
             ref={isYouTube ? embedIframeRef : undefined}
             src={embedUrl}
             className="absolute inset-0 w-full h-full border-0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
             allowFullScreen
-            loading="lazy"
             title={title || 'Vídeo'}
-            onLoad={(event) => {
-              if (!isYouTube) return;
-              const frame = event.currentTarget;
-              // O parâmetro cc_load_policy não impede as legendas automáticas;
-              // é preciso descarregar o módulo de legendas pela API do player.
-              const disableCaptions = () => {
-                for (const module of ['captions', 'cc']) {
-                  frame.contentWindow?.postMessage(
-                    JSON.stringify({ event: 'command', func: 'unloadModule', args: [module] }),
-                    '*',
-                  );
-                }
-              };
-              const timers = [300, 900, 2000, 4000].map((delay) => window.setTimeout(disableCaptions, delay));
-              frame.addEventListener('unload', () => timers.forEach(window.clearTimeout), { once: true });
-            }}
           />
         )}
+
 
         {!started && (
           <div className="absolute inset-0 z-10">
@@ -323,9 +303,8 @@ export function VideoPlayer({
               <img
                 src={thumb}
                 alt={title || 'Capa do vídeo'}
-                // Embeds externos (YouTube/Drive) podem ter capa vertical ou com
-                // tarjas; object-contain garante que a imagem nunca apareça cortada.
-                className={cn('h-full w-full bg-black', fit === 'cover' && !isEmbed ? 'object-cover' : 'object-contain')}
+                // A capa preenche o quadro (recorte central) para ficar centralizada.
+                className="h-full w-full bg-black object-cover object-center"
                 loading="lazy"
                 decoding="async"
                 onLoad={(event) => {
