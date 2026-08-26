@@ -447,6 +447,20 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
               .eq('status', 'processing');
           }
 
+          // Alerta crítico imediato (deduplicado por 6h) para os administradores.
+          try {
+            const { raiseOpsAlert } = await import('@/lib/ops-alerts.server');
+            await raiseOpsAlert({
+              type: 'webhook_failed',
+              dedupKey: `webhook_failed:${eventId || 'sem-id'}`,
+              title: 'Webhook do Asaas falhou',
+              message: `O evento ${eventId || 'sem id'} não foi processado: ${error.message}`,
+              details: { eventId },
+            });
+          } catch (alertError) {
+            console.error('[Webhook Asaas] Falha ao emitir alerta:', alertError);
+          }
+
           return new Response(JSON.stringify({ error: error.message }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
