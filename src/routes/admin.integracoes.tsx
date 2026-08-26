@@ -44,7 +44,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { testIntegrationConnection, saveIntegration, getIntegrationHistory, getResendIntegration, getCredentialStatus } from "@/lib/integrations.functions";
+import { testIntegrationConnection, saveIntegration, getIntegrationHistory, getResendIntegration, getCredentialStatus, testAsaasWebhook } from "@/lib/integrations.functions";
 import { getEmailLogs, getEmailSettings, updateEmailSettings, sendEmail, validateSender } from "@/lib/resend.functions";
 import { getEmailTemplates, saveEmailTemplate, deleteEmailTemplate } from "@/lib/email-templates.functions";
 import { EmailSystemTemplatesPanel } from "@/components/admin/EmailSystemTemplatesPanel";
@@ -183,6 +183,24 @@ function IntegrationsPage() {
   const saveIntegrationFn = useServerFn(saveIntegration);
   const getHistoryFn = useServerFn(getIntegrationHistory);
   const getCredentialStatusFn = useServerFn(getCredentialStatus);
+  const testWebhookFn = useServerFn(testAsaasWebhook);
+  const [isTestingWebhook, setIsTestingWebhook] = useState(false);
+  const [webhookTestResult, setWebhookTestResult] = useState<any>(null);
+
+  const handleTestWebhook = async () => {
+    try {
+      setIsTestingWebhook(true);
+      setWebhookTestResult(null);
+      const result = await testWebhookFn({ data: { origin: window.location.origin } });
+      setWebhookTestResult(result);
+      if (result.success) toast.success(result.message);
+      else toast.error(result.message);
+    } catch (err: any) {
+      toast.error(err?.message || 'Falha ao testar o webhook.');
+    } finally {
+      setIsTestingWebhook(false);
+    }
+  };
 
   // Quais chaves já estão salvas (sem expor os valores).
   const { data: credentialStatus } = useQuery({
