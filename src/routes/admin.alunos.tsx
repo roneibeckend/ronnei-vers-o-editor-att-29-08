@@ -97,8 +97,18 @@ function AdminAlunosPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
+      const digits = cpfDigits(editingItem?.cpf);
+      if (digits && !isValidCpf(digits)) {
+        toast.error("CPF inválido. Deixe em branco se não quiser informar.");
+        return;
+      }
+
       setIsSaving(true);
-      const { error } = await supabase.from('profiles').upsert(editingItem);
+      const { role: _role, ...payload } = editingItem || {};
+      const { error } = await supabase
+        .from('profiles')
+        .update({ ...payload, cpf: digits || null })
+        .eq('id', editingItem.id);
       if (error) throw error;
       toast.success("Perfil atualizado com sucesso!");
       setIsModalOpen(false);
