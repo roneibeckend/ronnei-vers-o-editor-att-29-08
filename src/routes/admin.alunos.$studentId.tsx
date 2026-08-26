@@ -518,6 +518,10 @@ function AdminStudentProfilePage() {
             </div>
           </section>
 
+          <StudentFinancePanel studentId={studentId} />
+
+
+
           {/* Activity Log */}
           <section className="glass rounded-2xl border border-white/5 bg-white/[0.02] p-6 lg:p-8">
              <div className="flex items-center gap-3 mb-6">
