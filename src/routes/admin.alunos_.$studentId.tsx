@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/platform/Shell";
 import { useServerFn } from "@tanstack/react-start";
 import { manualConfirmEnrollment } from "@/lib/enrollment-admin.functions";
+import { formatCpf } from "@/lib/cpf";
 import { 
   generateCertificateManually,
   getContentCertificate
@@ -349,6 +350,15 @@ function AdminStudentProfilePage() {
                 <div className="min-w-0">
                   <div className="text-[10px] font-bold uppercase tracking-widest text-white/30">Telefone</div>
                   <div className="truncate text-sm font-medium">{profile.phone || "Não informado"}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="grid h-8 w-8 place-items-center rounded-lg bg-white/5 text-[#ff6a00]">
+                  <User className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-white/30">CPF</div>
+                  <div className="truncate text-sm font-medium">{profile.cpf ? formatCpf(profile.cpf) : "Não informado"}</div>
                 </div>
               </div>
             </div>

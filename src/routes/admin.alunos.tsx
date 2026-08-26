@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { deleteStudent } from "@/lib/students-admin.functions";
+import { cpfDigits, formatCpf, isValidCpf } from "@/lib/cpf";
 
 export const Route = createFileRoute("/admin/alunos")({
   head: () => ({ meta: [{ title: "Gestão de Alunos · Admin" }] }),
@@ -59,7 +60,10 @@ function AdminAlunosPage() {
       let query = supabase.from('profiles').select('*', { count: 'exact' });
       
       if (search) {
-        query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`);
+        const filters = [`name.ilike.%${search}%`, `email.ilike.%${search}%`];
+        const digits = cpfDigits(search);
+        if (digits) filters.push(`cpf.ilike.%${digits}%`);
+        query = query.or(filters.join(","));
       }
       
       const { data, error, count } = await query
@@ -93,8 +97,18 @@ function AdminAlunosPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
+      const digits = cpfDigits(editingItem?.cpf);
+      if (digits && !isValidCpf(digits)) {
+        toast.error("CPF inválido. Deixe em branco se não quiser informar.");
+        return;
+      }
+
       setIsSaving(true);
-      const { error } = await supabase.from('profiles').upsert(editingItem);
+      const { role: _role, ...payload } = editingItem || {};
+      const { error } = await supabase
+        .from('profiles')
+        .update({ ...payload, cpf: digits || null })
+        .eq('id', editingItem.id);
       if (error) throw error;
       toast.success("Perfil atualizado com sucesso!");
       setIsModalOpen(false);
@@ -131,7 +145,7 @@ function AdminAlunosPage() {
         <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-3 h-4 w-4 text-white/20" />
           <input 
-            placeholder="Buscar por nome ou e-mail..." 
+            placeholder="Buscar por nome, e-mail ou CPF..." 
             value={search}
             onChange={e => {
               setSearch(e.target.value);
@@ -187,7 +201,12 @@ function AdminAlunosPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-white/40">{p.email || "—"}</td>
+                  <td className="px-6 py-4 text-white/40">
+                    <div>{p.email || "—"}</div>
+                    <div className="text-[10px] text-white/25">
+                      {p.cpf ? `CPF ${formatCpf(p.cpf)}` : "CPF não informado"}
+                    </div>
+                  </td>
                   <td className="px-6 py-4 text-white/40">{p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : "—"}</td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -308,6 +327,19 @@ function AdminAlunosPage() {
                   <div className="relative">
                     <Phone className="absolute left-3 top-3.5 h-4 w-4 text-white/20" />
                     <input value={editingItem?.phone || ""} onChange={e => setEditingItem({...editingItem, phone: e.target.value})} className="w-full bg-white/5 border border-white/10 p-3 pl-10 rounded-lg text-sm outline-none focus:border-[#ff6a00]" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">CPF (opcional)</label>
+                  <div className="relative">
+                    <UserCheck className="absolute left-3 top-3.5 h-4 w-4 text-white/20" />
+                    <input
+                      inputMode="numeric"
+                      placeholder="000.000.000-00"
+                      value={formatCpf(editingItem?.cpf)}
+                      onChange={e => setEditingItem({ ...editingItem, cpf: cpfDigits(e.target.value).slice(0, 11) })}
+                      className="w-full bg-white/5 border border-white/10 p-3 pl-10 rounded-lg text-sm outline-none focus:border-[#ff6a00]"
+                    />
                   </div>
                 </div>
               </div>

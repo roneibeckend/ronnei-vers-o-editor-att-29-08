@@ -26,6 +26,8 @@ import {
   Download,
   ShieldAlert,
   CreditCard,
+  Upload,
+
 
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -81,6 +83,8 @@ function AdminRootLayout() {
     { to: "/admin/ao-vivo", label: "Ao Vivo", icon: Clapperboard },
     
     { to: "/admin/alunos", label: "Alunos", icon: Users },
+    { to: "/admin/importacao", label: "Importar Alunos", icon: Upload },
+    { to: "/admin/usuarios", label: "Equipe & Permissões", icon: ShieldCheck },
     { to: "/admin/feedbacks", label: "Feedbacks", icon: Star },
     { to: "/admin/suporte", label: "Suporte", icon: HelpCircle },
 

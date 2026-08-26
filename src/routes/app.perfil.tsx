@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useProgress } from "@/hooks/use-progress";
+import { cpfDigits, formatCpf, isValidCpf } from "@/lib/cpf";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -27,6 +28,7 @@ function ProfilePage() {
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [newPhone, setNewPhone] = useState("");
+  const [newCpf, setNewCpf] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
   const formatPhone = (value: string) => {
@@ -38,6 +40,10 @@ function ProfilePage() {
     if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
     if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+  };
+
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewCpf(formatCpf(e.target.value));
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,10 +62,18 @@ function ProfilePage() {
     try {
       setIsSaving(true);
       
+      const digits = cpfDigits(newCpf);
+      if (digits && !isValidCpf(digits)) {
+        toast.error("CPF inválido. Você pode deixar em branco.");
+        setIsSaving(false);
+        return;
+      }
+
       const { error } = await supabase
         .from("profiles")
         .update({ 
           phone: newPhone.replace(/\D/g, ""), // Salvar apenas dígitos
+          cpf: digits || null,
           updated_at: new Date().toISOString()
         })
         .eq("id", user.id);
@@ -67,7 +81,7 @@ function ProfilePage() {
       if (error) throw error;
 
       toast.success("Perfil atualizado com sucesso!");
-      setProfile((prev: any) => prev ? { ...prev, phone: newPhone } : null);
+      setProfile((prev: any) => prev ? { ...prev, phone: newPhone, cpf: cpfDigits(newCpf) || null } : null);
     } catch (error: any) {
       console.error("Error updating profile:", error);
       toast.error("Erro ao atualizar perfil: " + (error.message || "Tente novamente."));
@@ -191,6 +205,7 @@ function ProfilePage() {
         if (profileData) {
           setProfile(profileData);
           setNewPhone(formatPhone(profileData.phone || ""));
+          setNewCpf(formatCpf(profileData.cpf || ""));
         }
 
 
@@ -438,6 +453,14 @@ function ProfilePage() {
                 onChange={handlePhoneChange}
                 placeholder="(00) 00000-0000"
                 icon={Phone} 
+              />
+              <Field 
+                label="CPF (opcional)" 
+                value={newCpf} 
+                onChange={handleCpfChange}
+                placeholder="000.000.000-00"
+                inputMode="numeric"
+                icon={User} 
               />
               <Field label="Data de cadastro" value={profile?.created_at ? format(new Date(profile.created_at), "dd/MM/yyyy") : "—"} disabled icon={Calendar} />
             </div>
