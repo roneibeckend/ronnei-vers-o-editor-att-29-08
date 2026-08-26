@@ -88,6 +88,8 @@ export function VideoPlayer({
   const [useLight, setUseLight] = useState(false);
   const [portraitThumb, setPortraitThumb] = useState(false);
   const embedIframeRef = useRef<HTMLIFrameElement>(null);
+  const ytHostRef = useRef<HTMLDivElement>(null);
+  const ytPlayerRef = useRef<any>(null);
 
   const onEndedRef = useRef(onEnded);
   useEffect(() => {
@@ -98,6 +100,7 @@ export function VideoPlayer({
   const lastSaveRef = useRef(0);
 
   const isYouTube = isYouTubeUrl(src);
+  const ytId = isYouTube ? getYouTubeId(src) : '';
   const isShorts = src.includes('/shorts/');
   const isDrive = isDriveUrl(src);
   // Google Drive public downloads regularly return quota/HTML pages and the
@@ -254,62 +257,141 @@ export function VideoPlayer({
     return () => cancelAnimationFrame(id);
   }, [autoStart, startPlayback, playableSrc]);
 
+  // ---- YouTube via IFrame API: um único toque inicia a reprodução.
+  useEffect(() => {
+    if (!isYouTube || !started || !ytId) return;
+    let cancelled = false;
 
-  // ---- External embeds.
-  // YouTube no mobile: o iframe é montado no próprio toque com autoplay=1 e
-  // enablejsapi=1. Como o gesto pode expirar antes do player terminar de
-  // carregar, reforçamos o início mandando playVideo/unMute via postMessage
-  // assim que o iframe carrega — assim um único toque já começa o vídeo.
-  if (isEmbed) {
-    const ytId = getYouTubeId(src);
-    const embedUrl = isYouTube
-      ? `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&controls=0&iv_load_policy=3&cc_load_policy=0&hl=pt-BR&fs=1&color=white&disablekb=1`
-      : getDrivePreviewUrl(baseSrc);
-
-    // Shorts têm thumbnail vertical própria (oar2); cai para a horizontal se não existir.
-    const thumb = isYouTube
-      ? poster ||
-          (ytId
-            ? `https://i.ytimg.com/vi/${ytId}/${isShorts ? 'oar2' : 'maxresdefault'}.jpg`
-            : undefined)
-      : cleanPoster;
-
-    const sendYouTubeCommand = (func: string) => {
-      const frame = embedIframeRef.current;
-      if (!frame?.contentWindow) return;
+    const killCaptions = (player: any) => {
       try {
-        frame.contentWindow.postMessage(
-          JSON.stringify({ event: 'command', func, args: [] }),
-          'https://www.youtube.com',
-        );
+        player.unloadModule('captions');
+        player.unloadModule('cc');
       } catch {
-        /* iframe pode não estar pronto ainda */
+        /* módulo pode não estar carregado */
       }
     };
 
-    const forcePlay = () => {
-      if (!isYouTube) return;
-      // Algumas tentativas espaçadas: o player só aceita comandos depois de
-      // terminar de inicializar dentro do iframe.
-      [0, 250, 600, 1200].forEach((delay) =>
-        window.setTimeout(() => {
-          sendYouTubeCommand('unMute');
-          sendYouTubeCommand('playVideo');
-        }, delay),
-      );
+    const create = () => {
+      const YT = (window as any).YT;
+      if (cancelled || !YT?.Player || !ytHostRef.current) return;
+      ytPlayerRef.current = new YT.Player(ytHostRef.current, {
+        videoId: ytId,
+        playerVars: {
+          autoplay: 1,
+          mute: 1,
+          controls: 0,
+          rel: 0,
+          modestbranding: 1,
+          playsinline: 1,
+          iv_load_policy: 3,
+          cc_load_policy: 0,
+          disablekb: 1,
+          fs: 0,
+          hl: 'pt-BR',
+        },
+        events: {
+          onReady: (event: any) => {
+            const player = event.target;
+            killCaptions(player);
+            try {
+              player.playVideo();
+              player.unMute();
+              player.setVolume(100);
+              player.playVideo();
+            } catch {
+              /* ignora */
+            }
+            window.setTimeout(() => {
+              if (cancelled) return;
+              try {
+                if (player.getPlayerState?.() !== 1) {
+                  player.mute();
+                  player.playVideo();
+                  setNeedsUnmute(true);
+                } else if (player.isMuted?.()) {
+                  setNeedsUnmute(true);
+                }
+              } catch {
+                /* ignora */
+              }
+            }, 800);
+          },
+          onStateChange: (event: any) => {
+            killCaptions(event.target);
+            if (event.data === 1) {
+              setIsLoading(false);
+              try {
+                if (!event.target.isMuted?.()) setNeedsUnmute(false);
+              } catch {
+                /* ignora */
+              }
+            }
+            if (event.data === 0) onEndedRef.current?.();
+          },
+          onError: () => {
+            setIsLoading(false);
+            setHasError(true);
+          },
+        },
+      });
     };
 
+    const w = window as any;
+    if (w.YT?.Player) {
+      create();
+    } else {
+      const previous = w.onYouTubeIframeAPIReady;
+      w.onYouTubeIframeAPIReady = () => {
+        previous?.();
+        create();
+      };
+      if (!document.querySelector('script[data-yt-api="1"]')) {
+        const script = document.createElement('script');
+        script.src = 'https://www.youtube.com/iframe_api';
+        script.async = true;
+        script.dataset.ytApi = '1';
+        document.head.appendChild(script);
+      }
+    }
+
+    return () => {
+      cancelled = true;
+      try {
+        ytPlayerRef.current?.destroy();
+      } catch {
+        /* já destruído */
+      }
+      ytPlayerRef.current = null;
+    };
+  }, [isYouTube, started, ytId]);
+
+
+
+  // ---- External embeds.
+  // YouTube: usamos a IFrame API. Ao tocar no nosso play criamos o player e
+  // chamamos playVideo() direto por código, então o botão do YouTube nunca
+  // aparece (um único toque inicia). Legendas são desligadas via API.
+  if (isEmbed) {
+    const embedUrl = isYouTube ? '' : getDrivePreviewUrl(baseSrc);
+
+    // oar2 existe apenas em vídeos verticais; se falhar caímos na horizontal.
+    const thumb = isYouTube
+      ? poster || (ytId ? `https://i.ytimg.com/vi/${ytId}/oar2.jpg` : undefined)
+      : cleanPoster;
+
     const handleEmbedPlay = () => {
+      setIsLoading(true);
       setStarted(true);
     };
 
     return (
       <div className={cn('relative mx-auto bg-black rounded-xl overflow-hidden shadow-2xl', frameClass, className)}>
-        {started && (
+        {started && isYouTube && <div ref={ytHostRef} className="absolute inset-0 h-full w-full" />}
+
+        {started && !isYouTube && (
           <iframe
-            ref={isYouTube ? embedIframeRef : undefined}
+            ref={embedIframeRef}
             src={embedUrl}
-            onLoad={forcePlay}
             className="absolute inset-0 w-full h-full border-0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
             allowFullScreen
@@ -317,7 +399,30 @@ export function VideoPlayer({
           />
         )}
 
+        {started && isYouTube && isLoading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black pointer-events-none">
+            <Loader2 className="w-10 h-10 animate-spin text-fire" />
+          </div>
+        )}
 
+        {started && isYouTube && needsUnmute && (
+          <Button
+            type="button"
+            onClick={() => {
+              try {
+                ytPlayerRef.current?.unMute();
+                ytPlayerRef.current?.setVolume(100);
+                ytPlayerRef.current?.playVideo();
+              } catch {
+                /* player pode ter sido destruído */
+              }
+              setNeedsUnmute(false);
+            }}
+            className="btn-fire absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-widest"
+          >
+            <VolumeX className="h-4 w-4" /> Toque para ativar o som
+          </Button>
+        )}
 
         {!started && (
           <div className="absolute inset-0 z-10">
