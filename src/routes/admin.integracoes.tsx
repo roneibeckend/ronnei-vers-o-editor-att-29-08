@@ -83,11 +83,11 @@ interface Integration {
 }
 
 const WEBHOOKS = [
-  { name: 'Mercado Pago (Aprovado)', url: '/api/webhooks/mercadopago/success', category: 'mercadopago' },
-  { name: 'Mercado Pago (Recusado)', url: '/api/webhooks/mercadopago/refused', category: 'mercadopago' },
-  { name: 'Asaas Webhook', url: '/api/webhooks/asaas', category: 'asaas' },
-  { name: 'Stripe Webhook', url: '/api/webhooks/stripe', category: 'stripe' },
-  { name: 'OpenAI Callback', url: '/api/webhooks/openai', category: 'openai' },
+  { name: 'Mercado Pago (Aprovado)', url: '/api/public/webhooks/mercadopago/success', category: 'mercadopago' },
+  { name: 'Mercado Pago (Recusado)', url: '/api/public/webhooks/mercadopago/refused', category: 'mercadopago' },
+  { name: 'Asaas Webhook', url: '/api/public/webhooks/asaas', category: 'asaas' },
+  { name: 'Stripe Webhook', url: '/api/public/webhooks/stripe', category: 'stripe' },
+  { name: 'OpenAI Callback', url: '/api/public/webhooks/openai', category: 'openai' },
 ];
 
 const GUIDES: Record<string, string[]> = {
