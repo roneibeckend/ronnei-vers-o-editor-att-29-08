@@ -256,60 +256,30 @@ export function VideoPlayer({
 
 
   // ---- External embeds.
-  // YouTube no mobile: o iframe é montado no próprio toque com autoplay=1 e
-  // enablejsapi=1. Como o gesto pode expirar antes do player terminar de
-  // carregar, reforçamos o início mandando playVideo/unMute via postMessage
-  // assim que o iframe carrega — assim um único toque já começa o vídeo.
+  // YouTube: usamos a IFrame API. Ao tocar no nosso play criamos o player e
+  // chamamos playVideo() direto por código, então o botão do YouTube nunca
+  // aparece (um único toque inicia). Legendas são desligadas via API.
   if (isEmbed) {
-    const ytId = getYouTubeId(src);
-    const embedUrl = isYouTube
-      ? `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&controls=0&iv_load_policy=3&cc_load_policy=0&hl=pt-BR&fs=1&color=white&disablekb=1`
-      : getDrivePreviewUrl(baseSrc);
+    const embedUrl = isYouTube ? '' : getDrivePreviewUrl(baseSrc);
 
-    // Shorts têm thumbnail vertical própria (oar2); cai para a horizontal se não existir.
+    // oar2 existe apenas em vídeos verticais; se falhar caímos na horizontal.
     const thumb = isYouTube
-      ? poster ||
-          (ytId
-            ? `https://i.ytimg.com/vi/${ytId}/${isShorts ? 'oar2' : 'maxresdefault'}.jpg`
-            : undefined)
+      ? poster || (ytId ? `https://i.ytimg.com/vi/${ytId}/oar2.jpg` : undefined)
       : cleanPoster;
 
-    const sendYouTubeCommand = (func: string) => {
-      const frame = embedIframeRef.current;
-      if (!frame?.contentWindow) return;
-      try {
-        frame.contentWindow.postMessage(
-          JSON.stringify({ event: 'command', func, args: [] }),
-          'https://www.youtube.com',
-        );
-      } catch {
-        /* iframe pode não estar pronto ainda */
-      }
-    };
-
-    const forcePlay = () => {
-      if (!isYouTube) return;
-      // Algumas tentativas espaçadas: o player só aceita comandos depois de
-      // terminar de inicializar dentro do iframe.
-      [0, 250, 600, 1200].forEach((delay) =>
-        window.setTimeout(() => {
-          sendYouTubeCommand('unMute');
-          sendYouTubeCommand('playVideo');
-        }, delay),
-      );
-    };
-
     const handleEmbedPlay = () => {
+      setIsLoading(true);
       setStarted(true);
     };
 
     return (
       <div className={cn('relative mx-auto bg-black rounded-xl overflow-hidden shadow-2xl', frameClass, className)}>
-        {started && (
+        {started && isYouTube && <div ref={ytHostRef} className="absolute inset-0 h-full w-full" />}
+
+        {started && !isYouTube && (
           <iframe
-            ref={isYouTube ? embedIframeRef : undefined}
+            ref={embedIframeRef}
             src={embedUrl}
-            onLoad={forcePlay}
             className="absolute inset-0 w-full h-full border-0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
             allowFullScreen
@@ -317,7 +287,30 @@ export function VideoPlayer({
           />
         )}
 
+        {started && isYouTube && isLoading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black pointer-events-none">
+            <Loader2 className="w-10 h-10 animate-spin text-fire" />
+          </div>
+        )}
 
+        {started && isYouTube && needsUnmute && (
+          <Button
+            type="button"
+            onClick={() => {
+              try {
+                ytPlayerRef.current?.unMute();
+                ytPlayerRef.current?.setVolume(100);
+                ytPlayerRef.current?.playVideo();
+              } catch {
+                /* player pode ter sido destruído */
+              }
+              setNeedsUnmute(false);
+            }}
+            className="btn-fire absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-widest"
+          >
+            <VolumeX className="h-4 w-4" /> Toque para ativar o som
+          </Button>
+        )}
 
         {!started && (
           <div className="absolute inset-0 z-10">
