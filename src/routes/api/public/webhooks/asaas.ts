@@ -75,10 +75,18 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
             return new Response('Proibido', { status: 403 });
           }
 
-          if (token !== expectedToken) {
+          // Comparação em tempo constante para evitar ataques de temporização
+          const a = new TextEncoder().encode(String(token ?? ''));
+          const b = new TextEncoder().encode(String(expectedToken));
+          let diff = a.length ^ b.length;
+          for (let i = 0; i < Math.max(a.length, b.length); i++) {
+            diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
+          }
+          if (diff !== 0) {
             console.error('[Webhook Asaas] Token de acesso inválido.');
             return new Response('Não autorizado', { status: 401 });
           }
+
 
           // 3. Event Filter
           const confirmEvents = [
