@@ -86,6 +86,7 @@ export function VideoPlayer({
   const [hasError, setHasError] = useState(false);
   const [needsUnmute, setNeedsUnmute] = useState(false);
   const [useLight, setUseLight] = useState(false);
+  const [portraitThumb, setPortraitThumb] = useState(false);
 
   const onEndedRef = useRef(onEnded);
   useEffect(() => {
@@ -108,7 +109,7 @@ export function VideoPlayer({
   const driveId = isDrive ? getDriveId(src) : '';
   const cleanPoster = poster || (driveId ? `https://drive.google.com/thumbnail?id=${driveId}&sz=w1200` : undefined);
   const frameClass =
-    aspect === 'portrait' || isShorts
+    aspect === 'portrait' || isShorts || (isEmbed && portraitThumb && !started)
       ? 'aspect-[9/16] max-w-[420px] w-full'
       : 'aspect-video';
 
