@@ -125,6 +125,7 @@ export function VideoPlayer({
     setHasError(false);
     setNeedsUnmute(false);
     recoveryAttempts.current = 0;
+    setPortraitThumb(false);
   }, [src]);
 
   // Progress persistence (native <video> only), throttled to avoid layout thrash
@@ -309,6 +310,11 @@ export function VideoPlayer({
                 className={cn('h-full w-full bg-black', fit === 'cover' && !isEmbed ? 'object-cover' : 'object-contain')}
                 loading="lazy"
                 decoding="async"
+                onLoad={(event) => {
+                  const img = event.currentTarget;
+                  // Capa vertical (ex.: vídeo de celular): o quadro vira 9:16.
+                  if (img.naturalHeight > img.naturalWidth) setPortraitThumb(true);
+                }}
                 onError={(event) => {
                   const img = event.currentTarget;
                   if (ytId && img.src.includes('oar2')) {
