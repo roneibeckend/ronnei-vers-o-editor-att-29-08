@@ -94,6 +94,7 @@ function OpsRecoveryPage() {
       if (args.kind === "fix") return await fixItem({ data: { id: args.id } });
       if (args.kind === "ignore") return await ignoreItem({ data: { id: args.id } });
       if (args.kind === "email") return await retryEmail({ data: { id: args.id } });
+      if (args.kind === "email-dismiss") return await dismissEmail({ data: { id: args.id } });
       return await resolveAlert({ data: { id: args.id } });
     },
     onSuccess: (res: any) => {
@@ -101,6 +102,15 @@ function OpsRecoveryPage() {
       invalidate();
     },
     onError: (err: any) => toast.error(err?.message || "Falha ao executar a ação."),
+  });
+
+  const clearQueueMutation = useMutation({
+    mutationFn: () => clearQueue(),
+    onSuccess: (res: any) => {
+      toast.success(res?.message || "Fila limpa.");
+      invalidate();
+    },
+    onError: (err: any) => toast.error(err?.message || "Falha ao limpar a fila."),
   });
 
   const reconciliations = (data?.reconciliations || []) as any[];
