@@ -3062,6 +3062,11 @@ export type Database = {
         | "NEGOCIO DE ESPETINHOS"
         | "CURSO E CONTEUDO"
         | "PAGAMENTOS"
+        | "CMV E PRECIFICACAO"
+        | "EQUIPAMENTOS"
+        | "CONSERVACAO E SEGURANCA ALIMENTAR"
+        | "DELIVERY E VENDAS"
+        | "GESTAO DO NEGOCIO"
       live_class_status: "scheduled" | "live" | "completed"
       payout_status:
         | "pending"
@@ -3227,6 +3232,11 @@ export const Constants = {
         "NEGOCIO DE ESPETINHOS",
         "CURSO E CONTEUDO",
         "PAGAMENTOS",
+        "CMV E PRECIFICACAO",
+        "EQUIPAMENTOS",
+        "CONSERVACAO E SEGURANCA ALIMENTAR",
+        "DELIVERY E VENDAS",
+        "GESTAO DO NEGOCIO",
       ],
       live_class_status: ["scheduled", "live", "completed"],
       payout_status: [
