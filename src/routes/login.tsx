@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { IMG } from "@/lib/platform-data";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { validatePassword } from "@/lib/password-validation";
 import { checkSession } from "@/lib/session-guard";
 import {
