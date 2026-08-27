@@ -738,6 +738,7 @@ export type Database = {
           description: string | null
           duration_minutes: number
           id: string
+          materials: Json
           price: number
           sort_order: number
           status: string
@@ -753,6 +754,7 @@ export type Database = {
           description?: string | null
           duration_minutes?: number
           id: string
+          materials?: Json
           price?: number
           sort_order?: number
           status?: string
@@ -768,6 +770,7 @@ export type Database = {
           description?: string | null
           duration_minutes?: number
           id?: string
+          materials?: Json
           price?: number
           sort_order?: number
           status?: string
@@ -798,6 +801,8 @@ export type Database = {
           google_calendar_id: string | null
           google_event_id: string | null
           id: string
+          materials: Json
+          materials_released_at: string | null
           meet_link: string | null
           payment_id: string | null
           product_id: string | null
@@ -806,9 +811,13 @@ export type Database = {
           recording_sent_at: string | null
           recording_url: string | null
           reminder_1h_sent_at: string | null
+          reminder_24h_sent_at: string | null
           reminder_8h_sent_at: string | null
+          reschedule_count: number
+          rescheduled_from: string | null
           scheduled_at: string
           status: Database["public"]["Enums"]["consultation_status"]
+          student_notes: string | null
           timezone: string
           updated_at: string
           user_id: string
@@ -833,6 +842,8 @@ export type Database = {
           google_calendar_id?: string | null
           google_event_id?: string | null
           id?: string
+          materials?: Json
+          materials_released_at?: string | null
           meet_link?: string | null
           payment_id?: string | null
           product_id?: string | null
@@ -841,9 +852,13 @@ export type Database = {
           recording_sent_at?: string | null
           recording_url?: string | null
           reminder_1h_sent_at?: string | null
+          reminder_24h_sent_at?: string | null
           reminder_8h_sent_at?: string | null
+          reschedule_count?: number
+          rescheduled_from?: string | null
           scheduled_at: string
           status?: Database["public"]["Enums"]["consultation_status"]
+          student_notes?: string | null
           timezone?: string
           updated_at?: string
           user_id: string
@@ -868,6 +883,8 @@ export type Database = {
           google_calendar_id?: string | null
           google_event_id?: string | null
           id?: string
+          materials?: Json
+          materials_released_at?: string | null
           meet_link?: string | null
           payment_id?: string | null
           product_id?: string | null
@@ -876,9 +893,13 @@ export type Database = {
           recording_sent_at?: string | null
           recording_url?: string | null
           reminder_1h_sent_at?: string | null
+          reminder_24h_sent_at?: string | null
           reminder_8h_sent_at?: string | null
+          reschedule_count?: number
+          rescheduled_from?: string | null
           scheduled_at?: string
           status?: Database["public"]["Enums"]["consultation_status"]
+          student_notes?: string | null
           timezone?: string
           updated_at?: string
           user_id?: string
