@@ -759,7 +759,7 @@ function EbookReaderPage() {
                 <p className="text-fire font-bold uppercase tracking-widest text-sm">Vídeo de Abertura</p>
               </div>
 
-              <div className="relative min-h-0 flex-1 w-full overflow-hidden bg-black sm:aspect-[9/16] sm:max-h-[68dvh] sm:max-w-[400px] sm:mx-auto sm:flex-none sm:rounded-3xl sm:border sm:border-white/10 sm:shadow-[0_0_50px_rgba(255,106,0,0.2)] group/intro">
+              <div className="relative min-h-0 flex-1 w-full max-h-[calc(100dvh-10rem)] overflow-hidden bg-black sm:aspect-[9/16] sm:max-h-[68dvh] sm:max-w-[400px] sm:mx-auto sm:flex-none sm:rounded-3xl sm:border sm:border-white/10 sm:shadow-[0_0_50px_rgba(255,106,0,0.2)] group/intro">
 
                 {introNeedsSigning && !signedIntroUrl ? (
                   <div className="w-full h-full flex items-center justify-center"><Loader2 className="animate-spin text-fire" /></div>
@@ -784,7 +784,7 @@ function EbookReaderPage() {
               </div>
 
               <div
-                className="shrink-0 px-3 pb-safe pt-2 sm:mt-8 sm:flex sm:justify-center sm:px-0 sm:pb-0 sm:pt-0"
+                className="shrink-0 px-3 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] sm:mt-8 sm:flex sm:justify-center sm:px-0 sm:pb-0 sm:pt-0"
               >
                 <button 
                   onClick={() => {
