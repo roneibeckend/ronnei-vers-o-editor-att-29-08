@@ -137,6 +137,9 @@ function AdminConsultationsPage() {
         <TabsContent value="reunioes" className="mt-4">
           <MeetingsTab consultations={data?.consultations ?? []} onChanged={refresh} />
         </TabsContent>
+        <TabsContent value="relatorios" className="mt-4">
+          <ConsultationReports />
+        </TabsContent>
         <TabsContent value="produtos" className="mt-4">
           <ProductsTab products={data?.products ?? []} onChanged={refresh} />
         </TabsContent>
