@@ -25,6 +25,8 @@ const inputSchema = z.object({
   productId: z.string().min(1).optional().nullable(),
   sendPasswordEmail: z.boolean().default(false),
   sendWelcomeEmail: z.boolean().default(false),
+  /** Dispara o e-mail "Acesso liberado" do produto para quem foi matriculado. */
+  sendAccessEmail: z.boolean().default(false),
   dryRun: z.boolean().default(false),
 });
 
