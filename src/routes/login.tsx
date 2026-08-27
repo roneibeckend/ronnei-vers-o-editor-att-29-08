@@ -308,7 +308,7 @@ function LoginPage() {
 
   const handleForgotPassword = async () => {
     if (loading) return;
-    if (!email.trim()) {
+    if (!resetEmail.trim()) {
       toast.info("Informe seu e-mail", { description: "Digite o e-mail da sua conta para receber o link de recuperação." });
       return;
     }
@@ -317,15 +317,19 @@ function LoginPage() {
     try {
       const { publicOrigin } = await import("@/lib/auth-callback");
       const { sendPasswordResetEmail } = await import("@/lib/auth-recovery.functions");
-      await sendPasswordResetEmail({ data: { email: email.trim(), origin: publicOrigin() } });
-      toast.success("E-mail enviado!", {
-        description: "Verifique sua caixa de entrada (e o spam) para criar uma nova senha.",
-      });
+      await sendPasswordResetEmail({ data: { email: resetEmail.trim(), origin: publicOrigin() } });
+      setResetSent(true);
     } catch (err: any) {
       toast.error("Não foi possível enviar o e-mail", { description: err?.message });
     } finally {
       setLoading(false);
     }
+  };
+
+  const openResetModal = () => {
+    setResetEmail(email.trim());
+    setResetSent(false);
+    setResetOpen(true);
   };
 
 
