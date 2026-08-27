@@ -193,11 +193,23 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
     // 3. Resposta Baseada em Confiança
     // Threshold ajustado para 0.25 para capturar intenções parciais
     if (bestMatch && maxScore >= 0.4) {
+      let answer = bestMatch.content;
+
+      // Camada comercial (somente landing, e só quando faz sentido pelo tema)
+      let commercial: string | null = null;
+      if (isLanding) {
+        commercial = commercialLineFor(`${bestMatch.title} ${bestMatch.category} ${message}`);
+        if (commercial && !normalize(answer).includes(normalize(commercial))) {
+          answer = `${answer}\n\n${commercial}`;
+        }
+      }
+
       return {
-        answer: bestMatch.content,
+        answer,
         confidence,
         knowledgeId: bestMatch.id,
-        needsHuman: maxScore < 0.7 // Precisa de ajuda se não houver match forte (> 0.7 real score)
+        needsHuman: maxScore < 0.7, // Precisa de ajuda se não houver match forte (> 0.7 real score)
+        suggestions: isLanding ? LANDING_SUGGESTIONS : [],
       };
     }
 
