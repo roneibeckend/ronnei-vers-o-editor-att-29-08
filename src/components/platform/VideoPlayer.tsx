@@ -399,9 +399,12 @@ export function VideoPlayer({
     // oar2 existe apenas em vídeos verticais; se falhar caímos na horizontal.
     // Para YouTube priorizamos a miniatura do próprio vídeo (oar2 = vertical),
     // pois a capa do e-book é horizontal e ficaria distorcida no quadro 9:16.
-    const thumb = isYouTube
-      ? (ytId ? `https://i.ytimg.com/vi/${ytId}/oar2.jpg` : poster)
-      : cleanPoster;
+    const thumb = preferPoster && poster
+      ? poster
+      : isYouTube
+        ? (ytId ? `https://i.ytimg.com/vi/${ytId}/oar2.jpg` : poster)
+        : cleanPoster;
+
 
     const handleEmbedPlay = () => {
       setIsLoading(true);
