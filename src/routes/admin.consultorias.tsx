@@ -237,6 +237,9 @@ function MeetingsTab({ consultations, onChanged }: { consultations: any[]; onCha
             <Button size="sm" variant="outline" onClick={() => setRecordingFor(c)}>
               Gravação
             </Button>
+            <Button size="sm" onClick={() => setManaging(c)}>
+              Gerenciar
+            </Button>
             <Select value={c.status} onValueChange={(v) => status.mutate({ id: c.id, status: v })}>
               <SelectTrigger className="h-9 w-[190px]">
                 <SelectValue />
