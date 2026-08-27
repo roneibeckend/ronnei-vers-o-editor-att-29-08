@@ -17,6 +17,7 @@ import { CourseCardSkeleton } from "@/components/ui/skeleton";
 import { PostPurchaseOffer } from "@/components/platform/PostPurchaseOffer";
 import { usePostPurchaseOfferStore } from "@/hooks/use-post-purchase-offer";
 import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
+import { VISIBLE_STATUSES, isComingSoon, COMING_SOON_NOTICE } from "@/lib/product-status";
 
 export const Route = createFileRoute("/app/")({
   head: () => ({
@@ -202,8 +203,9 @@ function Dashboard() {
   const visibleItems = (showcaseItems ?? [])
     .map((item: any) => ({
       ...item,
-      isEnrolled:
-        item.type === 'course'
+      isEnrolled: isComingSoon(item.status)
+        ? false
+        : item.type === 'course'
           ? isEnrolledInCourse(item.id) || (item.price || 0) === 0
           : isEnrolledInEbook(item.id) || (item.price || 0) === 0,
     }))
@@ -300,9 +302,16 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
   const navigate = useNavigate();
 
   
+  const comingSoon = isComingSoon(item.status);
+
   const handlePurchase = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (comingSoon) {
+      toast.info(COMING_SOON_NOTICE);
+      return;
+    }
     
     if (isOfferEnabled) {
       const data = await getIntegrationConfig('offer_settings');
@@ -410,7 +419,13 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
-        {item.badge && !isLocked && (
+        {comingSoon && (
+          <div className="absolute left-3 top-3 rounded-full bg-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-foreground backdrop-blur-md">
+            Em breve
+          </div>
+        )}
+
+        {item.badge && !isLocked && !comingSoon && (
           <div className="absolute left-3 top-3 rounded-full bg-gold px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-black">
             <Sparkles className="mr-1 inline h-3 w-3" /> {item.badge}
           </div>
@@ -436,14 +451,24 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Acesso imediato</span>
                 <div className="font-display text-xl font-bold text-gold">R$ {item.price?.toString().replace(".", ",")}</div>
               </div>
-              <button 
-                onClick={handlePurchase}
-                disabled={isProcessing}
-                className="btn-fire px-4 py-2 text-xs flex items-center gap-1.5 disabled:opacity-50 active:scale-[0.98] touch-action-manipulation"
-              >
-                {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShoppingCart className="h-3.5 w-3.5" />}
-                {isProcessing ? "..." : "Comprar"}
-              </button>
+              {comingSoon ? (
+                <button
+                  type="button"
+                  disabled
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-widest text-muted-foreground cursor-not-allowed"
+                >
+                  Em breve
+                </button>
+              ) : (
+                <button 
+                  onClick={handlePurchase}
+                  disabled={isProcessing}
+                  className="btn-fire px-4 py-2 text-xs flex items-center gap-1.5 disabled:opacity-50 active:scale-[0.98] touch-action-manipulation"
+                >
+                  {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShoppingCart className="h-3.5 w-3.5" />}
+                  {isProcessing ? "..." : "Comprar"}
+                </button>
+              )}
 
             </div>
           </div>
