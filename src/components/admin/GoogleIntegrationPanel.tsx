@@ -30,6 +30,7 @@ import {
   saveGoogleSettings,
   testGoogleIntegration,
   listGoogleCalendars,
+  saveGoogleOAuthClient,
 } from "@/lib/google-integration.functions";
 
 const ORANGE = "#ff6a00";
@@ -55,7 +56,7 @@ const CHECKLIST = [
   },
   {
     title: "Credencial OAuth do tipo Aplicativo da Web",
-    detail: "Copie o Client ID e o Client Secret e salve nos secrets GOOGLE_OAUTH_CLIENT_ID e GOOGLE_OAUTH_CLIENT_SECRET.",
+    detail: "Copie o Client ID e o Client Secret e cadastre logo abaixo, no painel — o secret fica criptografado no banco.",
   },
   {
     title: "URIs de redirecionamento autorizados",
@@ -85,6 +86,7 @@ export function GoogleIntegrationPanel() {
   const saveSettings = useServerFn(saveGoogleSettings);
   const runTest = useServerFn(testGoogleIntegration);
   const fetchCalendars = useServerFn(listGoogleCalendars);
+  const saveClient = useServerFn(saveGoogleOAuthClient);
 
   const { data, isLoading } = useQuery({
     queryKey: ["google-integration"],
@@ -102,6 +104,7 @@ export function GoogleIntegrationPanel() {
   });
   const [calendars, setCalendars] = useState<{ id: string; summary: string; primary: boolean }[] | null>(null);
   const [testResult, setTestResult] = useState<any>(null);
+  const [clientForm, setClientForm] = useState({ clientId: "", clientSecret: "" });
 
   useEffect(() => {
     if (!data?.settings) return;
@@ -196,6 +199,22 @@ export function GoogleIntegrationPanel() {
       setTestResult(null);
       toast.error(err?.message || "Falha no teste.");
     },
+  });
+
+  const saveClientMutation = useMutation({
+    mutationFn: () =>
+      saveClient({
+        data: {
+          clientId: clientForm.clientId.trim(),
+          clientSecret: clientForm.clientSecret.trim(),
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Credenciais OAuth salvas.");
+      setClientForm({ clientId: "", clientSecret: "" });
+      queryClient.invalidateQueries({ queryKey: ["google-integration"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Falha ao salvar as credenciais."),
   });
 
   const calendarsMutation = useMutation({
