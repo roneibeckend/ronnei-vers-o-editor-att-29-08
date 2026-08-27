@@ -33,7 +33,7 @@ export const bookConsultation = createServerFn({ method: "POST" })
       .object({
         productId: z.string().min(1),
         startIso: z.string().min(10),
-        briefing: z.string().trim().max(5000).optional(),
+        briefingData: briefingSchema.optional(),
         phone: z.string().trim().max(30).optional(),
       })
       .parse(data),
@@ -58,9 +58,9 @@ export const bookConsultation = createServerFn({ method: "POST" })
     if (!product) throw new Error("Consultoria não encontrada.");
     if (product.status !== "active") throw new Error("Esta consultoria ainda não está disponível para agendamento.");
 
-    const briefing = (data.briefing ?? "").trim();
-    if (product.briefing_required && briefing.length < 20) {
-      throw new Error("Descreva seu briefing com pelo menos 20 caracteres antes de agendar.");
+    const briefing = data.briefingData ? formatBriefingText(data.briefingData) : "";
+    if (product.briefing_required && !data.briefingData) {
+      throw new Error("Preencha o briefing antes de agendar.");
     }
 
     const start = new Date(data.startIso);
