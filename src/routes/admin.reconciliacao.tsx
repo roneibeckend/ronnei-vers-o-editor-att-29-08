@@ -232,6 +232,29 @@ function OpsRecoveryPage() {
         </section>
       ) : tab === "emails" ? (
         <section className="space-y-3">
+          {emails.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+              <p className="text-xs text-white/50">
+                {emailPending} e-mail(is) pendente(s) na fila. Limpar arquiva todos sem reenviar.
+              </p>
+              <button
+                onClick={() => {
+                  if (window.confirm("Arquivar todos os e-mails pendentes da fila? Eles não serão reenviados.")) {
+                    clearQueueMutation.mutate();
+                  }
+                }}
+                disabled={clearQueueMutation.isPending || emailPending === 0}
+                className="flex min-h-9 items-center gap-2 rounded-lg border border-white/15 px-3 text-xs font-semibold text-white/70 disabled:opacity-50"
+              >
+                {clearQueueMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" />
+                )}
+                Limpar fila
+              </button>
+            </div>
+          )}
           {emails.length === 0 ? (
             <EmptyState message="Nenhum e-mail com falha. A fila de reenvio está vazia." />
           ) : (
