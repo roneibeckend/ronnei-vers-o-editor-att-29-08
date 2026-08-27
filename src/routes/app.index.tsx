@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Play, ShoppingCart, Sparkles, Lock, Loader2 } from "lucide-react";
+import { Play, ShoppingCart, Sparkles, Lock, Loader2, CalendarDays } from "lucide-react";
 import { usePaymentModal } from "@/hooks/use-payment-modal";
 import { createAsaasPaymentLink } from "@/lib/asaas.functions";
 import { savePendingCheckout, getPendingCheckout, completePendingCheckout } from "@/lib/checkout.functions";
@@ -104,7 +104,7 @@ function Dashboard() {
     staleTime: 1000 * 60 * 60, // 1 hour
     gcTime: 1000 * 60 * 60 * 24,
     queryFn: async () => {
-      const [coursesRes, ebooksRes] = await Promise.all([
+      const [coursesRes, ebooksRes, consultRes] = await Promise.all([
         supabase
           .from("courses")
           .select("id, title, description, price, cover_url, created_at, badge, status")
@@ -115,6 +115,10 @@ function Dashboard() {
           .select("id, title, description, price, cover_url, created_at, badge, status")
           .eq("is_locked", false)
           .in("status", VISIBLE_STATUSES),
+        supabase
+          .from("consultation_products")
+          .select("id, title, subtitle, description, price, cover_url, created_at, status")
+          .in("status", ["active", "coming_soon"]),
       ]);
 
       if (coursesRes.error) throw coursesRes.error;
@@ -128,6 +132,12 @@ function Dashboard() {
         ...(ebooksRes.data || []).map(e => ({ 
           ...e,
           type: 'ebook' as const 
+        })),
+        ...(consultRes.data || []).map((c: any) => ({
+          ...c,
+          description: c.description || c.subtitle,
+          badge: null,
+          type: 'consultation' as const,
         })),
       ];
 
@@ -203,7 +213,7 @@ function Dashboard() {
   const visibleItems = (showcaseItems ?? [])
     .map((item: any) => ({
       ...item,
-      isEnrolled: isComingSoon(item.status)
+      isEnrolled: isComingSoon(item.status) || item.type === 'consultation'
         ? false
         : item.type === 'course'
           ? isEnrolledInCourse(item.id) || (item.price || 0) === 0
@@ -303,6 +313,7 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
 
   
   const comingSoon = isComingSoon(item.status);
+  const isConsultation = item.type === 'consultation';
 
   const handlePurchase = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -396,15 +407,17 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
   
   return (
     <>
-      <PostPurchaseOffer
-        isOpen={showOffer}
-        onClose={() => setShowOffer(false)}
-        onProceedWithOffers={(selected) => executeCheckout(selected)}
-        onProceedWithoutOffers={() => executeCheckout([])}
-        originalProductId={item.id}
-        productType={item.type}
-        amount={item.price || 0}
-      />
+      {!isConsultation && (
+        <PostPurchaseOffer
+          isOpen={showOffer}
+          onClose={() => setShowOffer(false)}
+          onProceedWithOffers={(selected) => executeCheckout(selected)}
+          onProceedWithoutOffers={() => executeCheckout([])}
+          originalProductId={item.id}
+          productType={item.type}
+          amount={item.price || 0}
+        />
+      )}
       <article className={`glass overflow-hidden rounded-2xl transition-all duration-300 ${isLocked ? "opacity-90 grayscale-[0.3]" : "card-tilt shadow-lg"} flex flex-col h-full active:scale-[0.99] touch-action-manipulation relative z-[1]`}>
       <div className="relative aspect-video max-h-[220px] bg-muted/20 shrink-0 overflow-hidden">
         <img 
@@ -452,7 +465,9 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Lançamento em breve</span>
                 ) : (
                   <>
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Acesso imediato</span>
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {isConsultation ? "Mentoria individual" : "Acesso imediato"}
+                    </span>
                     <div className="font-display text-xl font-bold text-gold">R$ {item.price?.toString().replace(".", ",")}</div>
                   </>
                 )}
@@ -465,6 +480,13 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
                 >
                   Em breve
                 </button>
+              ) : isConsultation ? (
+                <Link
+                  to="/app/consultorias"
+                  className="btn-fire px-4 py-2 text-xs flex items-center gap-1.5 active:scale-[0.98] touch-action-manipulation"
+                >
+                  <CalendarDays className="h-3.5 w-3.5" /> Agendar
+                </Link>
               ) : (
                 <button 
                   onClick={handlePurchase}
