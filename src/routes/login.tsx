@@ -544,6 +544,72 @@ function LoginPage() {
             )}
           </form>
 
+          <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Recuperar senha</DialogTitle>
+                <DialogDescription>
+                  Digite o e-mail da sua conta e enviaremos um link seguro para criar uma nova senha.
+                </DialogDescription>
+              </DialogHeader>
+
+              {!resetSent ? (
+                <>
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm">E-mail</span>
+                    <div className="relative">
+                      <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="email"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        placeholder="seu@email.com"
+                        className="w-full rounded-xl border border-white/10 bg-secondary/50 px-10 py-3 outline-none focus:border-primary"
+                        required
+                        autoComplete="email"
+                      />
+                    </div>
+                  </label>
+
+                  <DialogFooter>
+                    <button
+                      type="button"
+                      onClick={() => setResetOpen(false)}
+                      disabled={loading}
+                      className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-secondary/50 px-4 py-2.5 text-sm font-semibold transition hover:bg-secondary disabled:opacity-60"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      disabled={loading || !resetEmail.trim()}
+                      className="btn-fire inline-flex items-center gap-2 px-4 py-2.5"
+                    >
+                      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                      Enviar link
+                    </button>
+                  </DialogFooter>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-green-500/20 bg-green-500/10 p-4 text-sm text-green-100">
+                    E-mail enviado com sucesso! Verifique sua caixa de entrada (e o spam) para criar uma nova senha.
+                  </div>
+                  <DialogFooter>
+                    <button
+                      type="button"
+                      onClick={() => setResetOpen(false)}
+                      className="btn-fire w-full"
+                    >
+                      Entendido
+                    </button>
+                  </DialogFooter>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+
           <p className="mt-6 text-center text-sm text-muted-foreground">
             {isSignup ? (
               <>
