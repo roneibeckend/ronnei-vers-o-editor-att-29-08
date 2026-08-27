@@ -58,7 +58,8 @@ export const sendPasswordResetEmail = createServerFn({ method: "POST" })
       return { ok: true };
     } catch (err: any) {
       console.error("[auth-recovery] falha ao enviar reset:", err?.message);
-      // Não expõe detalhes internos nem existência da conta.
-      return { ok: true };
+      // Falhas de envio real (Resend/Supabase) retornam erro amigável para o front,
+      // mas sem expor se a conta existe ou não.
+      return { ok: false, error: err?.message || "Não foi possível enviar o e-mail de redefinição. Tente novamente em alguns instantes." };
     }
   });
