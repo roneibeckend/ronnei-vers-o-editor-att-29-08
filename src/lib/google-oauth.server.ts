@@ -14,6 +14,14 @@ export const GOOGLE_SCOPES = [
 
 export const GOOGLE_CALLBACK_PATH = "/api/public/google/oauth/callback";
 
+const GOOGLE_ALLOWED_ORIGINS = new Set([
+  "https://ronneinv.lovable.app",
+  "https://id-preview--19870d22-c8ea-4f04-9619-f074c2594e7b.lovable.app",
+]);
+
+const GOOGLE_PREVIEW_ORIGIN =
+  "https://id-preview--19870d22-c8ea-4f04-9619-f074c2594e7b.lovable.app";
+
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
@@ -168,7 +176,16 @@ export async function logGoogleCall(entry: {
 }
 
 export function buildRedirectUri(origin: string): string {
-  return `${origin.replace(/\/$/, "")}${GOOGLE_CALLBACK_PATH}`;
+  const normalizedOrigin = origin.replace(/\/$/, "");
+  const callbackOrigin = normalizedOrigin.endsWith(".lovableproject.com")
+    ? GOOGLE_PREVIEW_ORIGIN
+    : normalizedOrigin;
+
+  if (!GOOGLE_ALLOWED_ORIGINS.has(callbackOrigin)) {
+    throw new Error("Origem não autorizada para conectar a conta Google.");
+  }
+
+  return `${callbackOrigin}${GOOGLE_CALLBACK_PATH}`;
 }
 
 /** Cria o state de uso único e devolve a URL de consentimento do Google. */
