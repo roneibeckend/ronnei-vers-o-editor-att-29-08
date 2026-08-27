@@ -31,7 +31,7 @@ export const briefingSchema = z.object({
   city_state: z.string().trim().min(3, "Informe cidade e estado").max(120),
   works_with_skewers: z.enum(["Sim", "Não"]),
   monthly_revenue: z.enum(REVENUE_OPTIONS),
-  main_challenge: z.enum(CHALLENGE_OPTIONS),
+  main_challenge: z.array(z.enum(CHALLENGE_OPTIONS)).min(1, "Selecione pelo menos um desafio"),
   main_challenge_other: z.string().trim().max(120).optional().default(""),
   goal: z.string().trim().min(10, "Conte em poucas palavras o que espera alcançar").max(500),
   specific_question: z.string().trim().max(500).optional().default(""),
@@ -46,15 +46,25 @@ export const BRIEFING_LABELS: Record<keyof ConsultationBriefing, string> = {
   city_state: "Cidade/Estado",
   works_with_skewers: "Já trabalha com espetinhos",
   monthly_revenue: "Faturamento mensal",
-  main_challenge: "Principal desafio",
+  main_challenge: "Principais desafios",
   main_challenge_other: "Desafio (detalhe)",
   goal: "O que espera alcançar",
   specific_question: "Dúvidas específicas",
 };
 
 export function challengeLabel(b: Partial<ConsultationBriefing>) {
-  if (b.main_challenge === "Outro" && b.main_challenge_other) return b.main_challenge_other;
-  return b.main_challenge ?? "-";
+  const list = b.main_challenge ?? [];
+  const hasOther = Array.isArray(list) && list.includes("Outro");
+  const base = Array.isArray(list) && list.length > 0
+    ? list.filter((c) => c !== "Outro").join(", ")
+    : list || "-";
+  if (hasOther && b.main_challenge_other) {
+    return base && base !== "-"
+      ? `${base}, ${b.main_challenge_other}`
+      : b.main_challenge_other;
+  }
+  if (hasOther) return base && base !== "-" ? base : "Outro";
+  return base || "-";
 }
 
 /** Versão em texto — usada no evento do Calendar, e-mails e histórico legado. */
@@ -66,7 +76,7 @@ export function formatBriefingText(b: ConsultationBriefing) {
     `Cidade/Estado: ${b.city_state}`,
     `Já trabalha com espetinhos: ${b.works_with_skewers}`,
     `Faturamento mensal: ${b.monthly_revenue}`,
-    `Principal desafio: ${challengeLabel(b)}`,
+    `Principais desafios: ${challengeLabel(b)}`,
     `Objetivo: ${b.goal}`,
     b.specific_question ? `Dúvidas específicas: ${b.specific_question}` : null,
   ]
@@ -90,7 +100,7 @@ export const EMPTY_BRIEFING: ConsultationBriefing = {
   city_state: "",
   works_with_skewers: "Sim",
   monthly_revenue: REVENUE_OPTIONS[0],
-  main_challenge: CHALLENGE_OPTIONS[0],
+  main_challenge: [],
   main_challenge_other: "",
   goal: "",
   specific_question: "",
@@ -101,7 +111,8 @@ export function isStepValid(step: number, value: ConsultationBriefing) {
   const fields = BRIEFING_STEPS[step]?.fields ?? [];
   return fields.every((f) => {
     if (f === "main_challenge_other") {
-      return value.main_challenge !== "Outro" || (value.main_challenge_other ?? "").trim().length >= 2;
+      const hasOther = Array.isArray(value.main_challenge) && value.main_challenge.includes("Outro");
+      return !hasOther || (value.main_challenge_other ?? "").trim().length >= 2;
     }
     if (f === "specific_question") return true;
     const single = (briefingSchema.shape as any)[f];
