@@ -223,6 +223,28 @@ export const importKiwifyStudents = createServerFn({ method: "POST" })
           }
         }
 
+        // "Acesso liberado" do produto: enviado a quem realmente ganhou acesso agora.
+        if (data.sendAccessEmail && enrolled && productName) {
+          try {
+            const { triggerEmailEvent } = await import("@/lib/resend.server");
+            await triggerEmailEvent({
+              event: "access_granted",
+              to: email,
+              data: {
+                name,
+                product_name: productName,
+                amount: "—",
+                date: new Date().toLocaleDateString("pt-BR"),
+                access_link: productLink,
+                link: productLink,
+              },
+              idempotencyKey: `kiwify-import-access-${userId}-${data.productId}`,
+            });
+          } catch {
+            /* falha de e-mail não invalida a importação */
+          }
+        }
+
         if (data.sendWelcomeEmail) {
           try {
             const { LINKS } = await import("@/emails/layout");
