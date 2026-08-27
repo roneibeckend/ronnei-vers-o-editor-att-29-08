@@ -462,7 +462,9 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Lançamento em breve</span>
                 ) : (
                   <>
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Acesso imediato</span>
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {isConsultation ? "Mentoria individual" : "Acesso imediato"}
+                    </span>
                     <div className="font-display text-xl font-bold text-gold">R$ {item.price?.toString().replace(".", ",")}</div>
                   </>
                 )}
@@ -475,6 +477,13 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
                 >
                   Em breve
                 </button>
+              ) : isConsultation ? (
+                <Link
+                  to="/app/consultorias"
+                  className="btn-fire px-4 py-2 text-xs flex items-center gap-1.5 active:scale-[0.98] touch-action-manipulation"
+                >
+                  <CalendarDays className="h-3.5 w-3.5" /> Agendar
+                </Link>
               ) : (
                 <button 
                   onClick={handlePurchase}
