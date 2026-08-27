@@ -563,7 +563,22 @@ function KiwifyImportPage() {
                 {busy ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : <><Upload className="mr-2 inline h-4 w-4" />Importar alunos</>}
               </button>
             </div>
+
+            {busy && progress && (
+              <div className="space-y-2">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full bg-[#ff6a00] transition-all"
+                    style={{ width: `${Math.round((progress.done / Math.max(progress.total, 1)) * 100)}%` }}
+                  />
+                </div>
+                <p className="text-center text-[11px] text-white/50">
+                  Processando em lotes de 25 — {progress.done} de {progress.total} alunos
+                </p>
+              </div>
+            )}
           </div>
+
         )}
       </div>
 
