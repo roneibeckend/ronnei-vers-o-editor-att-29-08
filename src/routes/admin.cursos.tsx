@@ -545,6 +545,36 @@ function AdminCursosPage() {
                     </div>
                   </div>
 
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                    <div className="space-y-0.5">
+                      <div className="text-sm font-bold">Disponível para Afiliados</div>
+                      <div className="text-[10px] text-white/40 uppercase tracking-widest">Se desativado, afiliados não podem gerar links deste curso</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingItem({...editingItem, affiliate_enabled: false})}
+                        className={cn(
+                          "px-4 py-2 rounded-lg text-xs font-bold transition-all",
+                          editingItem?.affiliate_enabled === false ? "bg-red-500/20 text-red-400 border border-red-500/50" : "bg-white/5 text-white/40 border border-transparent"
+                        )}
+                      >
+                        Não
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingItem({...editingItem, affiliate_enabled: true})}
+                        className={cn(
+                          "px-4 py-2 rounded-lg text-xs font-bold transition-all",
+                          editingItem?.affiliate_enabled !== false ? "bg-green-500/20 text-green-500 border border-green-500/50" : "bg-white/5 text-white/40 border border-transparent"
+                        )}
+                      >
+                        Sim
+                      </button>
+                    </div>
+                  </div>
+
+
                   <div className="pt-4 flex gap-3">
                     <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 rounded-lg bg-white/5 font-bold hover:bg-white/10 transition-colors">Cancelar</button>
                     <button type="submit" disabled={isSaving} className="flex-1 py-3 rounded-lg bg-[#ff6a00] text-black font-bold disabled:opacity-50 hover:bg-[#ff8c33] transition-colors">
