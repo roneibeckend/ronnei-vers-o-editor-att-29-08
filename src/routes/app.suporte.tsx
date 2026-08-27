@@ -413,8 +413,88 @@ function SupportPage() {
                 <div ref={endRef} />
               </div>
 
+              {/* Category Browser (mobile-friendly) */}
+              {menuOpen && (
+                <div className="absolute inset-0 z-20 flex flex-col bg-[#0d0d0d]/95 backdrop-blur-sm">
+                  <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
+                    <div className="flex items-center gap-2">
+                      {selectedCategory && (
+                        <button
+                          onClick={() => setSelectedCategory(null)}
+                          className="grid h-8 w-8 place-items-center rounded-lg bg-white/5 text-white/60 hover:text-white"
+                          aria-label="Voltar às categorias"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </button>
+                      )}
+                      <h4 className="text-sm font-bold uppercase tracking-widest text-white/80">
+                        {selectedCategory ?? "Categorias de dúvidas"}
+                      </h4>
+                    </div>
+                    <button
+                      onClick={() => { setMenuOpen(false); setSelectedCategory(null); }}
+                      className="grid h-8 w-8 place-items-center rounded-lg bg-white/5 text-white/60 hover:text-white"
+                      aria-label="Fechar categorias"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-4">
+                    {menuLoading ? (
+                      <div className="flex h-full items-center justify-center">
+                        <Loader2 className="h-6 w-6 animate-spin text-[#ff6a00]" />
+                      </div>
+                    ) : menuData.length === 0 ? (
+                      <p className="py-8 text-center text-xs text-white/30">Nenhuma categoria disponível no momento.</p>
+                    ) : selectedCategory ? (
+                      <div className="grid gap-2">
+                        {menuData
+                          .find((c) => c.name === selectedCategory)
+                          ?.items.map((item) => (
+                            <button
+                              key={item.id}
+                              onClick={() => {
+                                setMenuOpen(false);
+                                setSelectedCategory(null);
+                                send(item.title);
+                              }}
+                              className="group flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-4 text-left transition hover:border-[#ff6a00]/30 hover:bg-[#ff6a00]/5"
+                            >
+                              <span className="text-sm font-medium text-white/70 group-hover:text-white whitespace-normal">{item.title}</span>
+                              <ChevronRight className="h-4 w-4 shrink-0 text-white/10 group-hover:text-[#ff6a00]" />
+                            </button>
+                          ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {menuData.map((category) => (
+                          <button
+                            key={category.name}
+                            onClick={() => setSelectedCategory(category.name)}
+                            className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-white/60 transition hover:border-[#ff6a00]/40 hover:bg-[#ff6a00]/10 hover:text-white"
+                          >
+                            {category.name}
+                            <span className="rounded-full bg-[#ff6a00]/15 px-2 py-0.5 text-[10px] text-[#ff6a00]">
+                              {category.items.length}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Chat Input */}
               <div className="border-t border-white/5 bg-white/[0.01] p-4">
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((v) => !v)}
+                  className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/50 transition hover:border-[#ff6a00]/40 hover:text-[#ff6a00] sm:w-auto sm:px-4"
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                  Ver categorias de dúvidas
+                </button>
                 <form
                   onSubmit={(e) => { e.preventDefault(); send(input); }}
                   className="relative flex items-center"
