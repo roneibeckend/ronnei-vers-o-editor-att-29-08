@@ -20,7 +20,10 @@ interface VideoPlayerProps {
   autoStart?: boolean;
   /** Called when playback reaches the end (used to auto-close intro modals). */
   onEnded?: () => void;
+  /** Uses `poster` as the cover even for YouTube/Drive embeds (ignores the platform thumbnail). */
+  preferPoster?: boolean;
 }
+
 
 const isYouTubeUrl = (url: string) =>
   url.includes('youtube.com') || url.includes('youtu.be') || url.includes('youtube-nocookie.com');
@@ -79,7 +82,9 @@ export function VideoPlayer({
   fit = 'cover',
   autoStart = false,
   onEnded,
+  preferPoster = false,
 }: VideoPlayerProps) {
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const [started, setStarted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -394,9 +399,12 @@ export function VideoPlayer({
     // oar2 existe apenas em vídeos verticais; se falhar caímos na horizontal.
     // Para YouTube priorizamos a miniatura do próprio vídeo (oar2 = vertical),
     // pois a capa do e-book é horizontal e ficaria distorcida no quadro 9:16.
-    const thumb = isYouTube
-      ? (ytId ? `https://i.ytimg.com/vi/${ytId}/oar2.jpg` : poster)
-      : cleanPoster;
+    const thumb = preferPoster && poster
+      ? poster
+      : isYouTube
+        ? (ytId ? `https://i.ytimg.com/vi/${ytId}/oar2.jpg` : poster)
+        : cleanPoster;
+
 
     const handleEmbedPlay = () => {
       setIsLoading(true);

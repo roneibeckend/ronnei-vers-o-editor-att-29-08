@@ -2,6 +2,8 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { Lock, ChevronLeft, ChevronRight, Loader2, ShoppingCart, BookOpen, CheckCircle2, X, Play, ArrowDown, Award, Download } from "lucide-react";
 import { VideoPlayer } from "@/components/platform/VideoPlayer";
+import ebookVideoCoverAsset from "@/assets/capa-video-ebook.png.asset.json";
+
 import { needsSignedUrl } from "@/lib/video-source";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/platform/Shell";
@@ -766,7 +768,8 @@ function EbookReaderPage() {
                     key={signedIntroUrl || ebook.opening_video_url}
                     videoId={`intro-${ebook.id}`}
                     src={signedIntroUrl || ebook.opening_video_url}
-                    poster={ebook.cover_url || undefined}
+                    poster={ebookVideoCoverAsset.url}
+                    preferPoster
                     isIntro={false}
                     aspect="portrait"
                     fit="contain"
@@ -827,7 +830,8 @@ function EbookReaderPage() {
                         <VideoPlayer
                           videoId={`chapter-${activeChapter.id}`}
                           src={signedChapterUrl || activeChapter.video_url}
-                          poster={ebook.cover_url || undefined}
+                          poster={ebookVideoCoverAsset.url}
+                          preferPoster
                           aspect="portrait"
                           className="w-full h-full"
                         />
