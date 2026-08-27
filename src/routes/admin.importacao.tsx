@@ -199,6 +199,7 @@ function KiwifyImportPage() {
   const [products, setProducts] = useState<{ id: string; title: string; type: "course" | "ebook" }[]>([]);
   const [product, setProduct] = useState("");
   const [sendPasswordEmail, setSendPasswordEmail] = useState(true);
+  const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
@@ -306,6 +307,7 @@ function KiwifyImportPage() {
         productType: selected?.type ?? null,
         productId: selected?.id ?? null,
         sendPasswordEmail: dryRun ? false : sendPasswordEmail,
+        sendWelcomeEmail: dryRun ? false : sendWelcomeEmail,
         dryRun,
       };
       const res = await importKiwifyStudents({ data: payload });
@@ -406,16 +408,36 @@ function KiwifyImportPage() {
               ))}
             </select>
           </div>
-          <label className="flex items-end gap-2 pb-3 text-sm text-white/70">
-            <input
-              type="checkbox"
-              checked={sendPasswordEmail}
-              onChange={(e) => setSendPasswordEmail(e.target.checked)}
-              className="h-4 w-4 accent-[#ff6a00]"
-            />
-            Enviar e-mail para o aluno definir a senha
-          </label>
+          <div className="flex flex-col justify-end gap-2 pb-1 text-sm text-white/70">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={sendPasswordEmail}
+                onChange={(e) => setSendPasswordEmail(e.target.checked)}
+                className="h-4 w-4 accent-[#ff6a00]"
+              />
+              Enviar e-mail para o aluno definir a senha
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={sendWelcomeEmail}
+                onChange={(e) => setSendWelcomeEmail(e.target.checked)}
+                className="h-4 w-4 accent-[#ff6a00]"
+              />
+              Enviar e-mail de boas-vindas com instruções
+            </label>
+          </div>
         </div>
+
+        {!sendPasswordEmail && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300">
+            <strong>Atenção:</strong> sem o e-mail de definição de senha, os alunos novos ficam com uma senha
+            aleatória que ninguém conhece. Eles só conseguirão entrar usando "Esqueci minha senha" na tela de
+            login. Recomendamos manter esta opção ativada.
+          </div>
+        )}
+
 
         {rows.length > 0 && (
           <div className="space-y-3">

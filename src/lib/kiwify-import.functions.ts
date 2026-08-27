@@ -24,6 +24,7 @@ const inputSchema = z.object({
   productType: z.enum(["course", "ebook"]).optional().nullable(),
   productId: z.string().min(1).optional().nullable(),
   sendPasswordEmail: z.boolean().default(false),
+  sendWelcomeEmail: z.boolean().default(false),
   dryRun: z.boolean().default(false),
 });
 
@@ -200,6 +201,21 @@ export const importKiwifyStudents = createServerFn({ method: "POST" })
                 idempotencyKey: `kiwify-import-${userId}`,
               });
             }
+          } catch {
+            /* falha de e-mail não invalida a importação */
+          }
+        }
+
+        if (data.sendWelcomeEmail) {
+          try {
+            const { LINKS } = await import("@/emails/layout");
+            const { triggerEmailEvent } = await import("@/lib/resend.server");
+            await triggerEmailEvent({
+              event: "welcome",
+              to: email,
+              data: { name, dashboard_url: LINKS.dashboard, link: LINKS.dashboard },
+              idempotencyKey: `kiwify-import-welcome-${userId}`,
+            });
           } catch {
             /* falha de e-mail não invalida a importação */
           }
