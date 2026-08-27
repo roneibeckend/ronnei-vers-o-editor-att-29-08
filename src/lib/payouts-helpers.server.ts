@@ -66,6 +66,27 @@ export async function notifyAdmins(
   await supabaseAdmin
     .from("user_notifications")
     .insert(admins.map((a) => ({ user_id: a.id, notification_id: notification.id })));
+
+  // Espelha na central administrativa (tempo real + push), exceto alertas de ops
+  // que já publicam por conta própria com severidade correta.
+  if (!metadata["ops_alert_id"]) {
+    try {
+      const { notifyAdmin } = await import("@/lib/admin-notify.server");
+      await notifyAdmin({
+        type: "payout",
+        severity: "warning",
+        title,
+        body: message,
+        link: "/admin/saques",
+        entityType: metadata["payout_id"] ? "payout" : null,
+        entityId: metadata["payout_id"] ? String(metadata["payout_id"]) : null,
+        dedupKey: metadata["payout_id"] ? `payout:${metadata["payout_id"]}:${title}` : null,
+        metadata,
+      });
+    } catch (err) {
+      console.warn("[payouts] Falha ao publicar na central de notificações:", err);
+    }
+  }
 }
 
 /** Dispara e-mail transacional do fluxo de saques. Falhas de e-mail nunca quebram o fluxo. */
