@@ -21,21 +21,103 @@ const USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
 /** Cache do access token em memória do worker (curto, revalidado sempre). */
 let accessTokenCache: { token: string; expiresAt: number } | null = null;
 
-export function googleClientConfigured(): boolean {
-  return Boolean(process.env["GOOGLE_OAUTH_CLIENT_ID"] && process.env["GOOGLE_OAUTH_CLIENT_SECRET"]);
+/** Cache do client OAuth (id/secret) guardado no banco pelo painel admin. */
+let clientCache: { clientId: string; clientSecret: string } | null = null;
+
+/** Lê o client OAuth do banco (cadastro no admin) com fallback para os secrets. */
+async function loadClient(): Promise<{ clientId: string; clientSecret: string } | null> {
+  if (clientCache) return clientCache;
+
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("google_oauth_client")
+      .select("client_id, client_secret_ciphertext")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (data?.client_id && data?.client_secret_ciphertext) {
+      clientCache = {
+        clientId: data.client_id,
+        clientSecret: decryptToken(data.client_secret_ciphertext),
+      };
+      return clientCache;
+    }
+  } catch (err) {
+    console.warn("[google] falha ao carregar client OAuth do banco:", err);
+  }
+
+  const envId = process.env["GOOGLE_OAUTH_CLIENT_ID"];
+  const envSecret = process.env["GOOGLE_OAUTH_CLIENT_SECRET"];
+  if (envId && envSecret) {
+    clientCache = { clientId: envId, clientSecret: envSecret };
+    return clientCache;
+  }
+
+  return null;
 }
 
-function clientId(): string {
-  const value = process.env["GOOGLE_OAUTH_CLIENT_ID"];
-  if (!value) throw new Error("GOOGLE_OAUTH_CLIENT_ID não configurado.");
-  return value;
+export function invalidateGoogleClientCache() {
+  clientCache = null;
+  accessTokenCache = null;
 }
 
-function clientSecret(): string {
-  const value = process.env["GOOGLE_OAUTH_CLIENT_SECRET"];
-  if (!value) throw new Error("GOOGLE_OAUTH_CLIENT_SECRET não configurado.");
-  return value;
+export async function googleClientConfigured(): Promise<boolean> {
+  return Boolean(await loadClient());
 }
+
+/** Client ID/Secret ou erro legível quando ainda não foram cadastrados. */
+async function requireClient() {
+  const client = await loadClient();
+  if (!client) {
+    throw new Error(
+      "Credenciais OAuth do Google não cadastradas. Informe o Client ID e o Client Secret em Admin → Integrações → Google.",
+    );
+  }
+  return client;
+}
+
+/** Cadastra/atualiza o client OAuth (Client Secret guardado criptografado). */
+export async function saveGoogleClient(input: { clientId: string; clientSecret: string; userId: string }) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  const ciphertext = encryptToken(input.clientSecret.trim());
+  const { data: existing } = await supabaseAdmin
+    .from("google_oauth_client")
+    .select("id")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const payload = {
+    client_id: input.clientId.trim(),
+    client_secret_ciphertext: ciphertext,
+    updated_by: input.userId,
+  };
+
+  const { error } = existing?.id
+    ? await supabaseAdmin.from("google_oauth_client").update(payload).eq("id", existing.id)
+    : await supabaseAdmin.from("google_oauth_client").insert(payload);
+
+  if (error) throw new Error(`Falha ao salvar as credenciais: ${error.message}`);
+
+  invalidateGoogleClientCache();
+  await logGoogleCall({ action: "oauth.client_saved", status: "success" });
+  return { saved: true };
+}
+
+/** Client ID mascarado para exibir no painel (nunca expõe o secret). */
+export async function getGoogleClientSummary() {
+  const client = await loadClient();
+  if (!client) return { configured: false as const, clientIdMasked: null as string | null };
+  const id = client.clientId;
+  return {
+    configured: true as const,
+    clientIdMasked: id.length > 14 ? `${id.slice(0, 8)}…${id.slice(-14)}` : id,
+  };
+}
+
 
 function encKey(): Buffer {
   const raw = process.env["GOOGLE_TOKEN_ENC_KEY"];
