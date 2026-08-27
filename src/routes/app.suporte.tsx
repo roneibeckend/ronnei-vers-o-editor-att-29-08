@@ -15,6 +15,9 @@ import {
   AlertCircle,
   ThumbsUp,
   ThumbsDown,
+  LayoutGrid,
+  ChevronLeft,
+  X,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/platform/Shell";
@@ -24,7 +27,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useServerFn } from "@tanstack/react-start";
-import { getChatbotResponse, submitKnowledgeFeedback } from "@/lib/chatbot.functions";
+import { getChatbotResponse, getKnowledgeMenu, submitKnowledgeFeedback } from "@/lib/chatbot.functions";
+import type { KnowledgeMenuCategory } from "@/lib/chatbot.functions";
 
 type Msg = { 
   role: "user" | "ai"; 
