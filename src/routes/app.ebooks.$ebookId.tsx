@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/platform/Shell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { isComingSoon, COMING_SOON_NOTICE } from "@/lib/product-status";
 import { useEnrollments } from "@/hooks/use-enrollments";
 import { useProgress } from "@/hooks/use-progress";
 import { createAsaasPaymentLink } from "@/lib/asaas.functions";
@@ -79,7 +80,7 @@ export const Route = createFileRoute("/app/ebooks/$ebookId")({
     let isEnrolled = !!enrollmentRes.data;
 
     // E-books gratuitos: garante matrícula para liberar módulos/capítulos (RLS)
-    if (userId && !isEnrolled && (ebook.price || 0) === 0) {
+    if (userId && !isEnrolled && (ebook.price || 0) === 0 && ebook.status !== 'coming_soon') {
       const { data: enrolled } = await supabase.rpc("enroll_free_ebook", { p_ebook_id: params.ebookId });
       if (enrolled) {
         isEnrolled = true;
@@ -122,9 +123,10 @@ function EbookReaderPage() {
   const [hasSubmittedFeedback, setHasSubmittedFeedback] = useState(false);
   const { isEnabled: isOfferEnabled, syncWithDatabase } = usePostPurchaseOfferStore();
 
-  const isFree = ebook ? (ebook.price || 0) === 0 : false;
+  const comingSoon = isComingSoon(ebook?.status);
+  const isFree = ebook ? (ebook.price || 0) === 0 && !comingSoon : false;
   const isEnrolled = serverSideEnrolled || (ebook ? isEnrolledInEbook(ebook.id) : false);
-  const hasAccess = isFree || isEnrolled;
+  const hasAccess = !comingSoon && (isFree || isEnrolled);
 
   const { data: interactivePreviewsStatus } = useQuery({
     queryKey: ['interactive-previews-status'],
@@ -430,6 +432,10 @@ function EbookReaderPage() {
 
 
   const handlePurchase = async () => {
+    if (isComingSoon(ebook?.status)) {
+      toast.info(COMING_SOON_NOTICE);
+      return;
+    }
     if (isOfferEnabled) {
       // Check for available offers before showing modal
       const { data: otherCourses } = await supabase.from('courses').select('id').eq('status', 'active').eq('is_locked', false).limit(1);
@@ -627,9 +633,20 @@ function EbookReaderPage() {
           <Lock className="h-16 w-16" />
         </div>
         <h2 className="font-display text-3xl font-black">{ebook.title}</h2>
-        <p className="mt-4 max-w-md text-muted-foreground">
-          Este e-book é exclusivo para alunos. Adquira agora para liberar o acesso imediato ao conteúdo completo.
-        </p>
+        {comingSoon ? (
+          <>
+            <div className="mt-4 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Em breve
+            </div>
+            <p className="mt-4 max-w-md text-muted-foreground">{COMING_SOON_NOTICE}</p>
+            {ebook.description && (
+              <p className="mt-2 max-w-md text-sm text-muted-foreground/80">{ebook.description}</p>
+            )}
+            <Link to="/app/cursos" className="btn-ghost-fire mt-8 px-8 py-3 font-bold active:scale-[0.98] touch-action-manipulation">
+              Voltar
+            </Link>
+          </>
+        ) : (
         <div className="mt-8 w-full max-w-md space-y-4">
           <CouponInput
             productId={ebook.id}
@@ -667,6 +684,7 @@ function EbookReaderPage() {
             </p>
           )}
         </div>
+        )}
       </div>
     );
   }

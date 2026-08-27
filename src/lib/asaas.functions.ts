@@ -40,10 +40,12 @@ export const createAsaasPaymentLink = createServerFn({ method: "POST" })
         const table = p.productType === 'course' ? 'courses' : 'ebooks';
         const { data: row, error: priceError } = await supabaseAdmin
           .from(table)
-          .select('price, title')
+          .select('price, title, status')
           .eq('id', p.productId)
           .maybeSingle();
         if (priceError || !row) throw new Error("Produto não encontrado.");
+        if ((row as any).status === 'coming_soon') throw new Error("Este conteúdo será lançado em breve.");
+        if ((row as any).status !== 'active') throw new Error("Produto indisponível para compra.");
         const price = Number((row as any).price ?? 0);
         if (!(price > 0)) throw new Error("Produto sem preço válido para checkout.");
         pricedProducts.push({

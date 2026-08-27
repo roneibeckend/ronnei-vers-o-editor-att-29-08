@@ -47,7 +47,8 @@ function AffiliateLinksPage() {
       const { data, error } = await supabase
         .from("courses")
         .select("id, title")
-        .eq("affiliate_enabled", true);
+        .eq("affiliate_enabled", true)
+        .eq("status", "active");
       if (error) throw error;
       return data;
     }
