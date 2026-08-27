@@ -12,6 +12,12 @@ interface KnowledgeItem {
   status: string;
 }
 
+export type KnowledgeMenuCategory = {
+  name: string;
+  items: { id: string; title: string }[];
+};
+
+
 export const getChatbotResponse = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ 
     message: z.string(),
@@ -158,4 +164,35 @@ export const submitKnowledgeFeedback = createServerFn({ method: "POST" })
       throw error;
     }
     return { success: true };
+  });
+
+export const getKnowledgeMenu = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data, error } = await supabaseAdmin
+      .from("knowledge_base")
+      .select("id, title, category")
+      .eq("status", "active")
+      .order("category", { ascending: true })
+      .order("title", { ascending: true });
+
+    if (error || !data) {
+      console.error("[Chatbot] Erro ao buscar menu de categorias:", error);
+      return { categories: [] as KnowledgeMenuCategory[] };
+    }
+
+    const grouped = new Map<string, { id: string; title: string }[]>();
+    for (const item of data as { id: string; title: string; category: string | null }[]) {
+      const category = item.category?.trim() || "Geral";
+      if (!grouped.has(category)) grouped.set(category, []);
+      grouped.get(category)!.push({ id: item.id, title: item.title });
+    }
+
+    return {
+      categories: Array.from(grouped.entries()).map(([name, items]) => ({
+        name,
+        items,
+      })) as KnowledgeMenuCategory[],
+    };
   });
