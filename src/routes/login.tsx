@@ -42,6 +42,18 @@ const ENABLE_APPLE_LOGIN = false;
 function LoginPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // Destinos vindos de ?redirectTo podem trazer query string (ex.: retorno do
+  // OAuth Google no painel admin). navigate({ to }) não interpreta a query,
+  // então nesses casos usamos navegação nativa.
+  const goTo = (target: string, replace = false) => {
+    if (/[?#]/.test(target)) {
+      if (replace) window.location.replace(target);
+      else window.location.assign(target);
+      return;
+    }
+    navigate({ to: target, replace });
+  };
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -88,8 +100,7 @@ function LoginPage() {
         return;
       }
       if (check === "unknown") return;
-      const target = redirectTo || "/inicio";
-      navigate({ to: target, replace: true });
+      goTo(redirectTo || "/inicio", true);
     });
 
 
@@ -97,7 +108,7 @@ function LoginPage() {
     // Após o retorno do OAuth (Facebook), a sessão pode chegar de forma assíncrona
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session) {
-        navigate({ to: redirectTo || "/inicio", replace: true });
+        goTo(redirectTo || "/inicio", true);
       }
     });
     return () => sub.subscription.unsubscribe();
@@ -120,7 +131,7 @@ function LoginPage() {
       // Tokens já setados; segue pra plataforma
       const urlParams = new URLSearchParams(window.location.search);
       const redirectTo = urlParams.get('redirectTo');
-      navigate({ to: redirectTo || "/inicio" });
+      goTo(redirectTo || "/inicio");
     } catch (err) {
 
       toast.error("Erro ao conectar com Google");
@@ -261,7 +272,7 @@ function LoginPage() {
 
         const urlParams = new URLSearchParams(window.location.search);
         const redirectTo = urlParams.get('redirectTo');
-        navigate({ to: redirectTo || "/inicio", replace: true });
+        goTo(redirectTo || "/inicio", true);
 
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -273,7 +284,7 @@ function LoginPage() {
 
         const urlParams = new URLSearchParams(window.location.search);
         const redirectTo = urlParams.get('redirectTo');
-        navigate({ to: redirectTo || "/inicio" });
+        goTo(redirectTo || "/inicio");
       }
     } catch (err: any) {
 
