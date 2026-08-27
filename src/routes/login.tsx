@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 const brandLockup = { url: "/brand-lockup.webp" };
-import { Flame, Mail, Lock, ArrowRight, Loader2, User, Phone } from "lucide-react";
+import { Flame, Mail, Lock, ArrowRight, Loader2, User, Phone, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { IMG } from "@/lib/platform-data";
@@ -8,6 +8,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { validatePassword } from "@/lib/password-validation";
 import { checkSession } from "@/lib/session-guard";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 import { useQueryClient } from "@tanstack/react-query";
 
