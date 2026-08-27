@@ -1666,6 +1666,147 @@ export type Database = {
         }
         Relationships: []
       }
+      google_api_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json
+          duration_ms: number | null
+          error: string | null
+          http_status: number | null
+          id: string
+          status: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json
+          duration_ms?: number | null
+          error?: string | null
+          http_status?: number | null
+          id?: string
+          status: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json
+          duration_ms?: number | null
+          error?: string | null
+          http_status?: number | null
+          id?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      google_credentials: {
+        Row: {
+          account_email: string | null
+          account_name: string | null
+          connected_by: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          last_refresh_at: string | null
+          refresh_token_ciphertext: string
+          scopes: string[]
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_email?: string | null
+          account_name?: string | null
+          connected_by?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_refresh_at?: string | null
+          refresh_token_ciphertext: string
+          scopes?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_email?: string | null
+          account_name?: string | null
+          connected_by?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_refresh_at?: string | null
+          refresh_token_ciphertext?: string
+          scopes?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      google_integration_settings: {
+        Row: {
+          calendar_id: string
+          create_meet_links: boolean
+          created_at: string
+          default_duration_minutes: number
+          drive_recordings_folder_id: string | null
+          enabled: boolean
+          id: string
+          send_calendar_invites: boolean
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          calendar_id?: string
+          create_meet_links?: boolean
+          created_at?: string
+          default_duration_minutes?: number
+          drive_recordings_folder_id?: string | null
+          enabled?: boolean
+          id?: string
+          send_calendar_invites?: boolean
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          calendar_id?: string
+          create_meet_links?: boolean
+          created_at?: string
+          default_duration_minutes?: number
+          drive_recordings_folder_id?: string | null
+          enabled?: boolean
+          id?: string
+          send_calendar_invites?: boolean
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      google_oauth_states: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          redirect_uri: string
+          state: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          redirect_uri: string
+          state: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          redirect_uri?: string
+          state?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       integration_logs: {
         Row: {
           created_at: string | null

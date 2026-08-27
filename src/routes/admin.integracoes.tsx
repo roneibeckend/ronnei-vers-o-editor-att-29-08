@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { 
   Sparkles, 
   CreditCard, 
-  Settings2, 
+  Settings2, CalendarDays, 
   Activity, 
   CheckCircle2, 
   XCircle,
@@ -63,6 +63,7 @@ import { Label } from "@/components/ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { OAuthProvidersPanel } from "@/components/admin/OAuthProvidersPanel";
+import { GoogleIntegrationPanel } from "@/components/admin/GoogleIntegrationPanel";
 import { CouponsPanel } from "@/components/admin/CouponsPanel";
 import { invalidateIntegrationConfig } from "@/lib/integration-settings";
 
@@ -166,7 +167,10 @@ function IntegrationsPage() {
   const navigate = useNavigate();
   const { role, isLoading: isLoadingAuth } = useAuth();
   const queryClient = useQueryClient();
-  const [activeCategory, setActiveCategory] = useState<'ia' | 'payment' | 'email' | 'webhooks' | 'offers' | 'feature' | 'oauth'>('ia');
+  const [activeCategory, setActiveCategory] = useState<'ia' | 'payment' | 'email' | 'webhooks' | 'offers' | 'feature' | 'oauth' | 'google'>(() => {
+    if (typeof window === 'undefined') return 'ia';
+    return new URLSearchParams(window.location.search).get('tab') === 'google' ? 'google' : 'ia';
+  });
   const [selectedItem, setSelectedItem] = useState<Integration | null>(null);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
@@ -381,6 +385,13 @@ function IntegrationsPage() {
           >
             <ShieldCheck className="h-3.5 w-3.5" /> Login Social
           </Button>
+          <Button
+            variant="ghost"
+            onClick={() => { setActiveCategory('google'); setSelectedItem(null); }}
+            className={`flex shrink-0 items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition h-10 ${activeCategory === 'google' ? 'bg-[#ff6a00] text-black hover:bg-[#ff6a00]' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+          >
+            <CalendarDays className="h-3.5 w-3.5" /> Google
+          </Button>
         </div>
 
         {/* Mobile category selector — tabs are hidden on small screens to avoid horizontal scroll */}
@@ -398,14 +409,16 @@ function IntegrationsPage() {
             <option value="offers">Ofertas</option>
             <option value="feature">Recursos</option>
             <option value="oauth">Login Social</option>
+            <option value="google">Google</option>
           </select>
         </div>
       </div>
 
       {activeCategory === 'oauth' && <OAuthProvidersPanel />}
+      {activeCategory === 'google' && <GoogleIntegrationPanel />}
 
 
-      <div className={`grid gap-6 lg:gap-8 grid-cols-1 lg:grid-cols-12 ${activeCategory === 'oauth' ? 'hidden' : ''}`}>
+      <div className={`grid gap-6 lg:gap-8 grid-cols-1 lg:grid-cols-12 ${activeCategory === 'oauth' || activeCategory === 'google' ? 'hidden' : ''}`}>
         {/* Sidebar List — no mobile, esconde quando um item está aberto */}
         <div className={`lg:col-span-4 space-y-4 ${activeCategory === 'email' ? 'hidden lg:block' : ''} ${selectedItem && (activeCategory === 'ia' || activeCategory === 'payment') ? 'hidden lg:block' : ''}`}>
 
