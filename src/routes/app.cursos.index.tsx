@@ -19,6 +19,7 @@ import { CourseCardSkeleton, Skeleton } from "@/components/ui/skeleton";
 import { PostPurchaseOffer } from "@/components/platform/PostPurchaseOffer";
 import { usePostPurchaseOfferStore } from "@/hooks/use-post-purchase-offer";
 import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
+import { VISIBLE_STATUSES, isComingSoon, COMING_SOON_NOTICE } from "@/lib/product-status";
 
 export const Route = createFileRoute("/app/cursos/")({
   head: () => ({ meta: [{ title: "Meus cursos — Ronnei na Veia" }] }),
@@ -103,6 +104,11 @@ function CoursesPage() {
   const queryClient = useQueryClient();
 
   const handlePurchase = async (item: any, type: 'course' | 'ebook') => {
+    if (isComingSoon(item?.status)) {
+      toast.info(COMING_SOON_NOTICE);
+      return;
+    }
+
     // Check if item is already owned (safety check)
     if (type === 'course' ? courseEnrollments.includes(item.id) : ebookEnrollments.includes(item.id)) {
       navigate({ to: type === 'course' ? `/app/cursos/${item.id}` : `/app/ebooks/${item.id}` });
@@ -239,11 +245,11 @@ function CoursesPage() {
     },
   });
 
-  const ownedCourses = dbCourses?.filter((c) => courseEnrollments.includes(c.id) || ((c.price || 0) === 0 && !c.is_locked)) || [];
-  const otherCourses = dbCourses?.filter((c) => !courseEnrollments.includes(c.id) && (c.price || 0) > 0) || [];
+  const ownedCourses = dbCourses?.filter((c) => !isComingSoon(c.status) && (courseEnrollments.includes(c.id) || ((c.price || 0) === 0 && !c.is_locked))) || [];
+  const otherCourses = dbCourses?.filter((c) => isComingSoon(c.status) || (!courseEnrollments.includes(c.id) && (c.price || 0) > 0)) || [];
   
-  const ownedEbooks = dbEbooks?.filter((e) => ebookEnrollments.includes(e.id) || ((e.price || 0) === 0 && !e.is_locked)) || [];
-  const otherEbooks = dbEbooks?.filter((e) => !ebookEnrollments.includes(e.id) && (e.price || 0) > 0) || [];
+  const ownedEbooks = dbEbooks?.filter((e) => !isComingSoon(e.status) && (ebookEnrollments.includes(e.id) || ((e.price || 0) === 0 && !e.is_locked))) || [];
+  const otherEbooks = dbEbooks?.filter((e) => isComingSoon(e.status) || (!ebookEnrollments.includes(e.id) && (e.price || 0) > 0)) || [];
 
   if (isLoadingCourses || isLoadingEnrollments || isLoadingEbooks || isLoadingProgress) {
     return (
@@ -418,11 +424,17 @@ function CoursesPage() {
                     loading="lazy" 
                   />
                   <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="rounded-full bg-black/60 p-3 text-gold backdrop-blur-md">
-                      <Lock className="h-6 w-6" />
+                  {isComingSoon(c.status) ? (
+                    <div className="absolute left-3 top-3 rounded-full bg-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-foreground backdrop-blur-md">
+                      Em breve
                     </div>
-                  </div>
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="rounded-full bg-black/60 p-3 text-gold backdrop-blur-md">
+                        <Lock className="h-6 w-6" />
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="p-4 flex flex-col flex-1">
@@ -437,14 +449,24 @@ function CoursesPage() {
                       </div>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => handlePurchase(c, 'course')}
-                    disabled={processingId === c.id}
-                    className="btn-fire mt-auto flex w-full items-center justify-center gap-2 py-3 text-sm font-bold shadow-lg shadow-fire/10 disabled:opacity-50 active:scale-[0.98] touch-action-manipulation"
-                  >
-                    {processingId === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
-                    {processingId === c.id ? "Processando..." : "Comprar acesso"}
-                  </button>
+                  {isComingSoon(c.status) ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="mt-auto flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-bold uppercase tracking-widest text-muted-foreground"
+                    >
+                      Em breve
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => handlePurchase(c, 'course')}
+                      disabled={processingId === c.id}
+                      className="btn-fire mt-auto flex w-full items-center justify-center gap-2 py-3 text-sm font-bold shadow-lg shadow-fire/10 disabled:opacity-50 active:scale-[0.98] touch-action-manipulation"
+                    >
+                      {processingId === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
+                      {processingId === c.id ? "Processando..." : "Comprar acesso"}
+                    </button>
+                  )}
                 </div>
               </article>
             ))}
@@ -473,11 +495,17 @@ function CoursesPage() {
                     loading="lazy" 
                   />
 
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="rounded-full bg-black/60 p-3 text-gold backdrop-blur-md">
-                      <Lock className="h-6 w-6" />
+                  {isComingSoon(e.status) ? (
+                    <div className="absolute left-3 top-3 rounded-full bg-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-foreground backdrop-blur-md">
+                      Em breve
                     </div>
-                  </div>
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="rounded-full bg-black/60 p-3 text-gold backdrop-blur-md">
+                        <Lock className="h-6 w-6" />
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="p-4 flex flex-col flex-1">
@@ -492,14 +520,24 @@ function CoursesPage() {
                       </div>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => handlePurchase(e, 'ebook')}
-                    disabled={processingId === e.id}
-                    className="btn-ghost-fire mt-auto flex w-full items-center justify-center gap-2 py-3 text-sm font-bold shadow-lg disabled:opacity-50 active:scale-[0.98] touch-action-manipulation"
-                  >
-                    {processingId === e.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
-                    {processingId === e.id ? "Processando..." : "Comprar acesso"}
-                  </button>
+                  {isComingSoon(e.status) ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="mt-auto flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-bold uppercase tracking-widest text-muted-foreground"
+                    >
+                      Em breve
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => handlePurchase(e, 'ebook')}
+                      disabled={processingId === e.id}
+                      className="btn-ghost-fire mt-auto flex w-full items-center justify-center gap-2 py-3 text-sm font-bold shadow-lg disabled:opacity-50 active:scale-[0.98] touch-action-manipulation"
+                    >
+                      {processingId === e.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
+                      {processingId === e.id ? "Processando..." : "Comprar acesso"}
+                    </button>
+                  )}
                 </div>
               </article>
             ))}
