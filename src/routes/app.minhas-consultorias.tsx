@@ -5,6 +5,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/platform/Shell";
 import { listMyConsultations } from "@/lib/consultations.functions";
 import { ConsultationBriefingSummary } from "@/components/platform/ConsultationBriefingSummary";
+import { consultationCalendarUrl } from "@/lib/google-calendar-link";
 import { VideoPlayer } from "@/components/platform/VideoPlayer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";

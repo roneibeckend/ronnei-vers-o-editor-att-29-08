@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { ConsultationBriefingForm } from "@/components/platform/ConsultationBriefingForm";
 import { ConsultationBriefingSummary } from "@/components/platform/ConsultationBriefingSummary";
 import type { ConsultationBriefing } from "@/lib/consultation-briefing";
+import { consultationCalendarUrl } from "@/lib/google-calendar-link";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar, Clock, Loader2, Video, FileText, History, ExternalLink, PlayCircle } from "lucide-react";
 
