@@ -223,7 +223,7 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
 
           const { data: existingProduct, error: productError } = await supabaseAdmin
             .from(productTable)
-            .select('id')
+            .select('id, title')
             .eq('id', productId)
             .maybeSingle();
 
@@ -262,6 +262,25 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
           }
 
           console.log(`[Webhook Asaas] Acesso liberado: ${productType}/${productId} -> ${userId}`);
+
+          // Central de notificações: venda aprovada em tempo real
+          try {
+            const { notifyAdmin, formatMoney } = await import('@/lib/admin-notify.server');
+            const buyerName = verifiedPayment.customerEmail || 'Cliente';
+            await notifyAdmin({
+              type: 'sale',
+              severity: 'success',
+              title: `💰 Venda aprovada — ${formatMoney(Number(verifiedPayment.value || 0))}`,
+              body: `${(existingProduct as any)?.title || productId} · ${buyerName}`,
+              entityType: 'payment',
+              entityId: paymentId as string,
+              link: '/admin/financeiro',
+              dedupKey: `sale:${paymentId}`,
+              metadata: { productType, productId, userId, paymentId },
+            });
+          } catch (notifyErr) {
+            console.warn('[Webhook Asaas] Falha ao publicar notificação de venda:', notifyErr);
+          }
 
           // 9. Process Secondary Effects
           try {
@@ -384,6 +403,23 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
                         });
                         if (creditError) {
                           console.error('[Webhook Asaas] Falha ao creditar comissão:', creditError.message);
+                        }
+
+                        try {
+                          const { notifyAdmin, formatMoney } = await import('@/lib/admin-notify.server');
+                          await notifyAdmin({
+                            type: 'affiliate',
+                            severity: 'info',
+                            title: `🤝 Comissão de afiliado — ${formatMoney(commission)}`,
+                            body: `${(affProfile as any)?.name || 'Parceiro'} vendeu ${product?.title || 'produto'} (${formatMoney(amount)})`,
+                            entityType: 'affiliate',
+                            entityId: String((affiliate as any).id),
+                            link: '/admin/afiliados',
+                            dedupKey: `affiliate-sale:${paymentId}`,
+                            metadata: { affiliateCode, commission, amount, paymentId },
+                          });
+                        } catch (notifyErr) {
+                          console.warn('[Webhook Asaas] Falha ao notificar comissão:', notifyErr);
                         }
                       }
                     }

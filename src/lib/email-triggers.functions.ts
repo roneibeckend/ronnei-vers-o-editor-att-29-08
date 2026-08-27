@@ -77,6 +77,24 @@ export const notifySupportTicketCreated = createServerFn({ method: "POST" })
       .eq("id", context.userId)
       .maybeSingle();
 
+    // Alerta imediato para a equipe na central administrativa
+    try {
+      const { notifyAdmin } = await import("@/lib/admin-notify.server");
+      await notifyAdmin({
+        type: "support",
+        severity: "warning",
+        title: "🎧 Novo chamado de suporte",
+        body: `${(profile as any)?.name || "Aluno"}: ${(ticket as any).subject || data.message || "Sem assunto"}`,
+        entityType: "support_ticket",
+        entityId: String((ticket as any).id),
+        link: "/admin/suporte",
+        dedupKey: `support:${(ticket as any).id}`,
+        metadata: { ticket_id: (ticket as any).id, user_id: context.userId },
+      });
+    } catch (err) {
+      console.warn("[suporte] Falha ao notificar admins:", err);
+    }
+
     if (!profile?.email || (profile as any).email_notifications_opt_in === false) {
       return { sent: false, reason: "no_email_or_opt_out" };
     }

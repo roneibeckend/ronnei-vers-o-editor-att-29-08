@@ -53,6 +53,99 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_notification_settings: {
+        Row: {
+          affiliates: boolean
+          emails: boolean
+          finance: boolean
+          id: string
+          payouts: boolean
+          push_enabled: boolean
+          sales: boolean
+          security: boolean
+          sound_enabled: boolean
+          support: boolean
+          system: boolean
+          updated_at: string
+        }
+        Insert: {
+          affiliates?: boolean
+          emails?: boolean
+          finance?: boolean
+          id?: string
+          payouts?: boolean
+          push_enabled?: boolean
+          sales?: boolean
+          security?: boolean
+          sound_enabled?: boolean
+          support?: boolean
+          system?: boolean
+          updated_at?: string
+        }
+        Update: {
+          affiliates?: boolean
+          emails?: boolean
+          finance?: boolean
+          id?: string
+          payouts?: boolean
+          push_enabled?: boolean
+          sales?: boolean
+          security?: boolean
+          sound_enabled?: boolean
+          support?: boolean
+          system?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      admin_notifications: {
+        Row: {
+          body: string
+          created_at: string
+          dedup_key: string | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          link: string | null
+          metadata: Json
+          read: boolean
+          read_at: string | null
+          severity: string
+          title: string
+          type: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          dedup_key?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          link?: string | null
+          metadata?: Json
+          read?: boolean
+          read_at?: string | null
+          severity?: string
+          title: string
+          type?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          dedup_key?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          link?: string | null
+          metadata?: Json
+          read?: boolean
+          read_at?: string | null
+          severity?: string
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
       admin_permissions: {
         Row: {
           can_access: boolean | null
@@ -87,6 +180,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      admin_push_subscriptions: {
+        Row: {
+          active: boolean
+          auth: string
+          created_at: string
+          device_name: string | null
+          endpoint: string
+          id: string
+          last_seen_at: string
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          auth: string
+          created_at?: string
+          device_name?: string | null
+          endpoint: string
+          id?: string
+          last_seen_at?: string
+          p256dh: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          auth?: string
+          created_at?: string
+          device_name?: string | null
+          endpoint?: string
+          id?: string
+          last_seen_at?: string
+          p256dh?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       affiliate_custom_commissions: {
         Row: {
@@ -1783,6 +1912,47 @@ export type Database = {
           title?: string
         }
         Relationships: []
+      }
+      notification_logs: {
+        Row: {
+          created_at: string
+          delivered: boolean
+          delivered_at: string | null
+          delivery_method: string
+          error: string | null
+          id: string
+          notification_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          delivered?: boolean
+          delivered_at?: string | null
+          delivery_method: string
+          error?: string | null
+          id?: string
+          notification_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          delivered?: boolean
+          delivered_at?: string | null
+          delivery_method?: string
+          error?: string | null
+          id?: string
+          notification_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_logs_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "admin_notifications"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {

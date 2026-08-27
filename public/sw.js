@@ -1,4 +1,67 @@
-const RNV_SW_VERSION = "rnv-pwa-20260824-final";
+const RNV_SW_VERSION = "rnv-pwa-20260827-push";
+
+/* ============================================================
+   Push Notifications (Central de Notificações Administrativas)
+   ============================================================ */
+
+self.addEventListener("push", (event) => {
+  let data = {};
+
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: "Ronnei na Veia", body: event.data ? event.data.text() : "" };
+  }
+
+  const title = data.title || "Ronnei na Veia";
+  const severity = data.severity || "info";
+
+  const options = {
+    body: data.body || "",
+    icon: "/icons/icon-192x192.png",
+    badge: "/icons/icon-192x192.png",
+    tag: data.tag || data.notificationId || "rnv-admin",
+    renotify: true,
+    requireInteraction: severity === "critical",
+    vibrate: severity === "critical" ? [200, 100, 200, 100, 200] : [120, 60, 120],
+    data: {
+      url: data.link || "/admin/notificacoes",
+      notificationId: data.notificationId || null,
+      type: data.type || "system",
+      severity
+    }
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/admin/notificacoes";
+
+  event.waitUntil(
+    (async () => {
+      const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+
+      for (const client of clientsList) {
+        if (client.url.includes(self.location.origin)) {
+          await client.focus();
+          if ("navigate" in client) {
+            try {
+              await client.navigate(target);
+            } catch {
+              /* ignora falhas de navegação */
+            }
+          }
+          return;
+        }
+      }
+
+      await self.clients.openWindow(target);
+    })()
+  );
+});
+
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
