@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Lock, Loader2, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Lock, Loader2, ShieldCheck, ShieldAlert, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { validatePassword } from "@/lib/password-validation";
@@ -29,6 +29,34 @@ function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resendEmail, setResendEmail] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
+
+  const handleResend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (resending) return;
+    const email = resendEmail.trim();
+    if (!email || !email.includes("@")) {
+      toast.error("Informe um e-mail válido");
+      return;
+    }
+    setResending(true);
+    try {
+      const { publicOrigin } = await import("@/lib/auth-callback");
+      const { sendPasswordResetEmail } = await import("@/lib/auth-recovery.functions");
+      await sendPasswordResetEmail({ data: { email, origin: publicOrigin() } });
+      setResent(true);
+      toast.success("E-mail reenviado!", {
+        description: "Verifique sua caixa de entrada (e o spam). O link expira em 1 hora.",
+      });
+    } catch (err: any) {
+      toast.error("Não foi possível reenviar", { description: err?.message });
+    } finally {
+      setResending(false);
+    }
+  };
+
 
   useEffect(() => {
     let cancelled = false;
@@ -80,14 +108,56 @@ function ResetPasswordPage() {
     <main className="flex min-h-[100dvh] items-center justify-center px-6 safe-top safe-bottom">
       <section className="glass w-full max-w-md space-y-5 rounded-2xl border border-white/5 bg-white/[0.02] p-6">
         {error ? (
-          <div className="space-y-4 text-center">
-            <ShieldAlert className="mx-auto h-8 w-8 text-yellow-500" />
-            <h1 className="text-lg font-bold text-white">Link inválido ou expirado</h1>
-            <p className="text-xs leading-relaxed text-white/60">{error}</p>
-            <Link to="/login" className="btn-fire inline-flex min-h-[44px] w-full items-center justify-center rounded-xl font-bold">
+          <div className="space-y-4">
+            <div className="space-y-2 text-center">
+              <ShieldAlert className="mx-auto h-8 w-8 text-yellow-500" />
+              <h1 className="text-lg font-bold text-white">Link inválido ou expirado</h1>
+              <p className="text-xs leading-relaxed text-white/60">{error}</p>
+              <p className="text-xs leading-relaxed text-white/50">
+                Links de redefinição valem por 1 hora e só podem ser usados uma vez. Informe seu e-mail
+                abaixo para receber um novo link.
+              </p>
+            </div>
+
+            <form onSubmit={handleResend} className="space-y-3">
+              <label className="block">
+                <span className="mb-1.5 block text-sm">Seu e-mail</span>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="email"
+                    value={resendEmail}
+                    onChange={(e) => setResendEmail(e.target.value)}
+                    placeholder="voce@email.com"
+                    className="w-full rounded-xl border border-white/10 bg-secondary/50 px-10 py-3 outline-none focus:border-primary"
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+              </label>
+
+              <button type="submit" disabled={resending} className="btn-fire w-full">
+                {resending ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Enviando…</>
+                ) : resent ? (
+                  "Reenviar novamente"
+                ) : (
+                  "Reenviar e-mail de redefinição"
+                )}
+              </button>
+            </form>
+
+            {resent && (
+              <p className="text-center text-xs text-emerald-400">
+                Enviamos um novo link para {resendEmail}. Verifique também a pasta de spam.
+              </p>
+            )}
+
+            <Link to="/login" className="block text-center text-xs text-white/60 underline hover:text-white">
               Voltar ao login
             </Link>
           </div>
+
         ) : !ready ? (
           <div className="space-y-3 text-center">
             <Loader2 className="mx-auto h-8 w-8 animate-spin text-fire" />
@@ -136,6 +206,14 @@ function ResetPasswordPage() {
                 {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Salvando…</> : "Salvar nova senha"}
               </button>
             </form>
+
+            <button
+              type="button"
+              onClick={() => setError("Solicite um novo link de redefinição informando seu e-mail.")}
+              className="w-full text-center text-xs text-white/50 underline hover:text-white"
+            >
+              Problemas com este link? Reenviar e-mail
+            </button>
           </>
         )}
       </section>
