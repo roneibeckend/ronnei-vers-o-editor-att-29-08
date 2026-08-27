@@ -10,6 +10,7 @@ import {
   Mail,
   RefreshCw,
   ShieldAlert,
+  Trash2,
   Wallet,
 } from "lucide-react";
 import {
