@@ -36,19 +36,42 @@ type Msg = {
 export default function BrasaChat() {
   const getChatbot = useServerFn(getChatbotResponse);
   const sendFeedback = useServerFn(submitKnowledgeFeedback);
+  const fetchMenu = useServerFn(getKnowledgeMenu);
 
   const [messages, setMessages] = useState<Msg[]>([
     { role: "ai", text: "Olá! 👋 Eu sou a Brasa, sua assistente. Escolha uma pergunta ao lado ou escreva sua dúvida que eu te respondo na hora." },
   ]);
   const [typing, setTyping] = useState(false);
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
+  const [activeKnowledgeId, setActiveKnowledgeId] = useState<string | null>(null);
   const [input, setInput] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [menuData, setMenuData] = useState<KnowledgeMenuCategory[]>([]);
+  const [menuLoading, setMenuLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, typing]);
+
+  useEffect(() => {
+    if (!menuOpen || menuData.length > 0) return;
+    let cancelled = false;
+    setMenuLoading(true);
+    fetchMenu({ data: undefined })
+      .then((res) => {
+        if (!cancelled) setMenuData(res.categories);
+      })
+      .catch((err) => {
+        console.error("Erro ao carregar categorias:", err);
+      })
+      .finally(() => {
+        if (!cancelled) setMenuLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [menuOpen, menuData.length, fetchMenu]);
 
   const handleFeedback = async (msgIndex: number, knowledgeId: string, isPositive: boolean) => {
     try {
