@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-const PUBLISHED_ORIGIN = "https://sizzle-profit-hub.lovable.app";
+const PUBLISHED_ORIGIN = "https://ronneinv.lovable.app";
 
 /**
  * Origem pública usada nos links enviados por e-mail (confirmação, recuperação).
