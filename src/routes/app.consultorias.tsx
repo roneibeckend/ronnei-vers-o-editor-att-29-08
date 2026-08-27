@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { ConsultationBriefingForm } from "@/components/platform/ConsultationBriefingForm";
 import { ConsultationBriefingSummary } from "@/components/platform/ConsultationBriefingSummary";
 import type { ConsultationBriefing } from "@/lib/consultation-briefing";
+import { consultationCalendarUrl } from "@/lib/google-calendar-link";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar, Clock, Loader2, Video, FileText, History, ExternalLink, PlayCircle } from "lucide-react";
 
@@ -222,11 +223,11 @@ function ConsultationCard({ consultation, onChanged }: { consultation: any; onCh
             </a>
           </Button>
         )}
-        {consultation.calendar_html_link && (
+        {isUpcoming && (
           <Button asChild size="sm" variant="outline">
-            <a href={consultation.calendar_html_link} target="_blank" rel="noreferrer">
+            <a href={consultationCalendarUrl(consultation)} target="_blank" rel="noreferrer">
               <ExternalLink className="mr-2 h-4 w-4" />
-              Google Agenda
+              Adicionar ao Google Agenda
             </a>
           </Button>
         )}

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/platform/Shell";
 import { listMyConsultations } from "@/lib/consultations.functions";
 import { ConsultationBriefingSummary } from "@/components/platform/ConsultationBriefingSummary";
+import { consultationCalendarUrl } from "@/lib/google-calendar-link";
 import { VideoPlayer } from "@/components/platform/VideoPlayer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -125,13 +126,11 @@ function ConsultationCard({ row }: { row: any }) {
               <Video className="mr-2 h-4 w-4" /> Entrar na reunião
             </a>
           </Button>
-          {row.calendar_html_link ? (
-            <Button asChild variant="outline">
-              <a href={row.calendar_html_link} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-2 h-4 w-4" /> Ver na agenda
-              </a>
-            </Button>
-          ) : null}
+          <Button asChild variant="outline">
+            <a href={consultationCalendarUrl(row)} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="mr-2 h-4 w-4" /> Adicionar ao Google Agenda
+            </a>
+          </Button>
         </div>
       ) : null}
 
