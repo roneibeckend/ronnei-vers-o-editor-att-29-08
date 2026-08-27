@@ -206,6 +206,21 @@ export const importKiwifyStudents = createServerFn({ method: "POST" })
           }
         }
 
+        if (data.sendWelcomeEmail) {
+          try {
+            const { LINKS } = await import("@/emails/layout");
+            const { triggerEmailEvent } = await import("@/lib/resend.server");
+            await triggerEmailEvent({
+              event: "welcome",
+              to: email,
+              data: { name, dashboard_url: LINKS.dashboard, link: LINKS.dashboard },
+              idempotencyKey: `kiwify-import-welcome-${userId}`,
+            });
+          } catch {
+            /* falha de e-mail não invalida a importação */
+          }
+        }
+
         results.push({
           email,
           status: created ? "created" : "updated",
