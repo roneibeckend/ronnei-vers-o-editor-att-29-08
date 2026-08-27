@@ -87,6 +87,9 @@ export function VideoPlayer({
   const [needsUnmute, setNeedsUnmute] = useState(false);
   const [useLight, setUseLight] = useState(false);
   const [portraitThumb, setPortraitThumb] = useState(false);
+  // Capa horizontal dentro de um quadro vertical: precisamos "encaixar" a
+  // imagem (contain) com um fundo desfocado, em vez de recortar/esticar.
+  const [landscapeThumb, setLandscapeThumb] = useState(false);
   const embedIframeRef = useRef<HTMLIFrameElement>(null);
   const ytHostRef = useRef<HTMLDivElement>(null);
   const ytPlayerRef = useRef<any>(null);
