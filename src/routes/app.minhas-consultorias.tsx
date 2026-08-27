@@ -178,7 +178,7 @@ function ConsultationCard({ row }: { row: any }) {
         <details className="rounded-lg border border-border/60 p-3">
           <summary className="cursor-pointer text-sm font-medium">Briefing enviado</summary>
           <div className="mt-3">
-            <ConsultationBriefingSummary briefing={row.briefing_data as ConsultationBriefing} />
+            <ConsultationBriefingSummary data={row.briefing_data as ConsultationBriefing} fallback={row.briefing} />
           </div>
         </details>
       ) : row.briefing ? (
@@ -203,7 +203,7 @@ function MyConsultationsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Minhas consultorias"
-        description="Reuniões agendadas, gravações, observações e materiais liberados pelo Ronnei."
+        subtitle="Reuniões agendadas, gravações, observações e materiais liberados pelo Ronnei."
       />
 
       {isLoading ? (
