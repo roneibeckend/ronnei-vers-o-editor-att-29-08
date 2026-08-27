@@ -3053,6 +3053,12 @@ export type Database = {
         | "FINANCEIRO"
         | "SEGURANCA"
         | "PLATAFORMA"
+        | "DO ZERO AOS 10K"
+        | "CARNES"
+        | "PRODUCAO"
+        | "PRECO E LUCRO"
+        | "TEMPEROS"
+        | "DELIVERY"
       live_class_status: "scheduled" | "live" | "completed"
       payout_status:
         | "pending"
@@ -3209,6 +3215,12 @@ export const Constants = {
         "FINANCEIRO",
         "SEGURANCA",
         "PLATAFORMA",
+        "DO ZERO AOS 10K",
+        "CARNES",
+        "PRODUCAO",
+        "PRECO E LUCRO",
+        "TEMPEROS",
+        "DELIVERY",
       ],
       live_class_status: ["scheduled", "live", "completed"],
       payout_status: [
