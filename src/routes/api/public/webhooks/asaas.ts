@@ -263,6 +263,25 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
 
           console.log(`[Webhook Asaas] Acesso liberado: ${productType}/${productId} -> ${userId}`);
 
+          // Central de notificações: venda aprovada em tempo real
+          try {
+            const { notifyAdmin, formatMoney } = await import('@/lib/admin-notify.server');
+            const buyerName = verifiedPayment.customerEmail || 'Cliente';
+            await notifyAdmin({
+              type: 'sale',
+              severity: 'success',
+              title: `💰 Venda aprovada — ${formatMoney(Number(verifiedPayment.value || 0))}`,
+              body: `${(existingProduct as any)?.title || productId} · ${buyerName}`,
+              entityType: 'payment',
+              entityId: paymentId as string,
+              link: '/admin/financeiro',
+              dedupKey: `sale:${paymentId}`,
+              metadata: { productType, productId, userId, paymentId },
+            });
+          } catch (notifyErr) {
+            console.warn('[Webhook Asaas] Falha ao publicar notificação de venda:', notifyErr);
+          }
+
           // 9. Process Secondary Effects
           try {
             const customerEmail = verifiedPayment.customerEmail;
