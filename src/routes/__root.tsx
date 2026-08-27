@@ -147,7 +147,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
-      { rel: "manifest", href: "/manifest.json?v=20260824-final" },
+      { rel: "manifest", href: "/manifest.json?v=20260827-brand" },
       { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
       // Fontes self-hosted (subset latino, variáveis) com preload: sem round-trip
       // para o Google Fonts e sem CSS externo bloqueando a renderização.
