@@ -82,7 +82,9 @@ export function VideoPlayer({
   fit = 'cover',
   autoStart = false,
   onEnded,
+  preferPoster = false,
 }: VideoPlayerProps) {
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const [started, setStarted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
