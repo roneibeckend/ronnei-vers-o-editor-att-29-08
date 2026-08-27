@@ -2963,6 +2963,7 @@ export type Database = {
         Args: { p_amount: number; p_user_id: string }
         Returns: undefined
       }
+      is_privileged_writer: { Args: never; Returns: boolean }
       log_system_event: {
         Args: {
           _details?: Json
