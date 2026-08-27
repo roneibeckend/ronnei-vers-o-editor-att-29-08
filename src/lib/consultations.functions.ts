@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { briefingSchema, formatBriefingText } from "@/lib/consultation-briefing";
 
 /** Catálogo público de consultorias (publicadas e "em breve"). */
 export const listConsultationProducts = createServerFn({ method: "GET" }).handler(async () => {
@@ -95,6 +96,7 @@ export const bookConsultation = createServerFn({ method: "POST" })
         timezone: CONSULTATION_TZ,
         status: "scheduled",
         briefing: briefing || null,
+        briefing_data: (data.briefingData ?? null) as never,
         briefing_submitted_at: briefing ? new Date().toISOString() : null,
         amount: product.price,
       })
@@ -131,7 +133,7 @@ export const listMyConsultations = createServerFn({ method: "GET" })
     const { data } = await supabaseAdmin
       .from("consultations")
       .select(
-        "id, product_title, scheduled_at, ends_at, duration_minutes, status, briefing, meet_link, calendar_html_link, recording_url, amount",
+        "id, product_title, scheduled_at, ends_at, duration_minutes, status, briefing, briefing_data, meet_link, calendar_html_link, recording_url, amount",
       )
       .eq("user_id", context.userId)
       .order("scheduled_at", { ascending: false });
@@ -142,7 +144,7 @@ export const listMyConsultations = createServerFn({ method: "GET" })
 export const submitConsultationBriefing = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
-    z.object({ id: z.string().uuid(), briefing: z.string().trim().min(20).max(5000) }).parse(data),
+    z.object({ id: z.string().uuid(), briefingData: briefingSchema }).parse(data),
   )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -161,7 +163,11 @@ export const submitConsultationBriefing = createServerFn({ method: "POST" })
 
     const { error } = await supabaseAdmin
       .from("consultations")
-      .update({ briefing: data.briefing, briefing_submitted_at: new Date().toISOString() })
+      .update({
+        briefing: formatBriefingText(data.briefingData),
+        briefing_data: data.briefingData as never,
+        briefing_submitted_at: new Date().toISOString(),
+      })
       .eq("id", data.id);
     if (error) throw new Error(`Falha ao salvar briefing: ${error.message}`);
 
@@ -170,7 +176,7 @@ export const submitConsultationBriefing = createServerFn({ method: "POST" })
       actorId: context.userId,
       actorRole: "student",
       action: "briefing_submitted",
-      details: { length: data.briefing.length },
+      details: { structured: true },
     });
 
     return { saved: true };
