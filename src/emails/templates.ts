@@ -430,8 +430,96 @@ const supportReceived: Builder = (d) =>
     cta: { label: "Acompanhar atendimento", url: link(d, ["link", "ticket_url"], `${LINKS.dashboard}/suporte`) },
   });
 
+/* ========================= CONSULTORIAS ========================= */
+const consultationRows = (d: EmailData) => [
+  { label: "Consultoria", value: val(d, ["title"], "-") },
+  { label: "Data e horário", value: `${val(d, ["date", "data"], "-")} (horário de Brasília)` },
+  { label: "Duração", value: val(d, ["duration"], "-") },
+];
+
+const consultationConfirmed: Builder = (d) =>
+  build({
+    subject: `✅ Consultoria confirmada — ${val(d, ["date", "data"], "veja os detalhes")}`,
+    preview: "Sua consultoria está agendada. Guarde o link da reunião.",
+    heading: "✅ Consultoria confirmada",
+    subheading: "Sua conversa com o Ronnei está na agenda.",
+    greeting: `Fala, ${firstName(d)}!`,
+    blocks: [
+      { type: "text", text: "Recebemos seu agendamento e a reunião já está confirmada na agenda." },
+      { type: "details", title: "Detalhes da reunião", rows: consultationRows(d) },
+      {
+        type: "checklist",
+        title: "Para aproveitar ao máximo",
+        items: [
+          "Entre pelo link do Google Meet no horário marcado",
+          "Tenha seus números em mãos (custos, preços, volume de vendas)",
+          "Mantenha seu briefing atualizado na plataforma",
+          "Use fones de ouvido e um lugar silencioso",
+        ],
+      },
+    ],
+    cta: { label: "Entrar na reunião (Google Meet)", url: link(d, ["meet_link", "link"], LINKS.dashboard) },
+  });
+
+const consultationReminder8h: Builder = (d) =>
+  build({
+    subject: `⏰ Sua consultoria é hoje — ${val(d, ["date", "data"], "confira o horário")}`,
+    preview: "Faltam poucas horas para a sua consultoria.",
+    heading: "⏰ Falta pouco para a sua consultoria",
+    greeting: `Olá, ${firstName(d)}`,
+    blocks: [
+      { type: "text", text: "Sua consultoria acontece em <strong>menos de 8 horas</strong>. Já deixe tudo pronto." },
+      { type: "details", title: "Detalhes da reunião", rows: consultationRows(d) },
+      ...(d?.briefing_pending
+        ? ([
+            {
+              type: "text",
+              text: "⚠️ Seu <strong>briefing ainda não foi enviado</strong>. Preencha agora na plataforma para o Ronnei chegar preparado.",
+              highlight: true,
+            },
+          ] as EmailBlock[])
+        : []),
+    ],
+    cta: { label: "Entrar na reunião", url: link(d, ["meet_link", "link"], LINKS.dashboard) },
+  });
+
+const consultationReminder1h: Builder = (d) =>
+  build({
+    subject: "🔥 Sua consultoria começa em 1 hora",
+    preview: "Sua consultoria começa em 1 hora. Link da reunião aqui.",
+    heading: "🔥 Começa em 1 hora",
+    greeting: `Olá, ${firstName(d)}`,
+    blocks: [
+      { type: "text", text: "Sua consultoria começa em aproximadamente <strong>1 hora</strong>." },
+      { type: "details", rows: consultationRows(d) },
+      { type: "text", text: "Teste câmera e microfone antes de entrar para não perder tempo.", highlight: true },
+    ],
+    cta: { label: "Entrar na reunião", url: link(d, ["meet_link", "link"], LINKS.dashboard) },
+  });
+
+const consultationRecording: Builder = (d) =>
+  build({
+    subject: "🎬 A gravação da sua consultoria está disponível",
+    preview: "Assista quantas vezes quiser a gravação da sua consultoria.",
+    heading: "🎬 Gravação disponível",
+    greeting: `Olá, ${firstName(d)}`,
+    blocks: [
+      { type: "text", text: "A gravação da sua consultoria já está disponível para assistir quando quiser." },
+      { type: "details", rows: consultationRows(d) },
+      { type: "text", text: "Reveja os pontos combinados e coloque o plano de ação em prática.", highlight: true },
+    ],
+    cta: { label: "Assistir gravação", url: link(d, ["recording_url", "link"], LINKS.dashboard) },
+  });
+
 /** Nomes canônicos + aliases usados no código atual da plataforma. */
 export const EMAIL_TEMPLATES: Record<string, Builder> = {
+  consultoria_confirmada: consultationConfirmed,
+  consultation_confirmed: consultationConfirmed,
+  consultoria_lembrete_8h: consultationReminder8h,
+  consultoria_lembrete_1h: consultationReminder1h,
+  consultoria_gravacao: consultationRecording,
+  consultation_recording: consultationRecording,
+
   welcome,
   boas_vindas: welcome,
   access_granted: accessGranted,
