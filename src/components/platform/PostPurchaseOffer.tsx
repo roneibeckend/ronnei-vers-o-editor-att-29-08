@@ -195,12 +195,14 @@ export function PostPurchaseOffer({
               <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest">Oferta Exclusiva</span>
             </div>
             <DialogTitle className="font-display text-xl sm:text-3xl font-black text-white leading-tight break-words text-balance">
-              Turbine seu aprendizado!
+              {copy.headline}
             </DialogTitle>
             <p className="text-muted-foreground mt-2 text-sm sm:text-base leading-relaxed break-words text-balance">
-              Adicione estes itens complementares agora e ganhe <span className="text-gold font-bold">{discountPercentage}% de desconto</span> em cada um.
+              {copy.subheadline ? copy.subheadline : (
+                <>Adicione estes itens complementares agora e ganhe <span className="text-gold font-bold">{discountPercentage}% de desconto</span> em cada um.</>
+              )}
             </p>
-          </DialogHeader>
+
 
           {isLoading ? (
             <div className="flex h-40 items-center justify-center">
