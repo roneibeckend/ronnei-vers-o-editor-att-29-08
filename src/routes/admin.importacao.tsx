@@ -202,6 +202,8 @@ function KiwifyImportPage() {
   const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
   const [sendAccessEmail, setSendAccessEmail] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
   const [result, setResult] = useState<any>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
@@ -296,28 +298,52 @@ function KiwifyImportPage() {
       return;
     }
     const selected = products.find((p) => `${p.type}:${p.id}` === product);
+    const allRows = validRows.map((r) => ({
+      email: r.email,
+      name: r.name || null,
+      cpf: cpfDigits(r.cpf) || null,
+      phone: r.phone || null,
+    }));
+
+    // Processa em lotes para não estourar o tempo limite do servidor.
+    const BATCH_SIZE = 25;
+    const batches: typeof allRows[] = [];
+    for (let i = 0; i < allRows.length; i += BATCH_SIZE) batches.push(allRows.slice(i, i + BATCH_SIZE));
+
     try {
       setBusy(true);
-      const payload = {
-        rows: validRows.map((r) => ({
-          email: r.email,
-          name: r.name || null,
-          cpf: cpfDigits(r.cpf) || null,
-          phone: r.phone || null,
-        })),
-        productType: selected?.type ?? null,
-        productId: selected?.id ?? null,
-        sendPasswordEmail: dryRun ? false : sendPasswordEmail,
-        sendWelcomeEmail: dryRun ? false : sendWelcomeEmail,
-        sendAccessEmail: dryRun ? false : sendAccessEmail,
+      setResult(null);
+      const merged: any = {
+        summary: { total: 0, created: 0, updated: 0, errors: 0, cpfIgnored: 0, enrolled: 0 },
+        results: [] as any[],
         dryRun,
       };
-      const res = await importKiwifyStudents({ data: payload });
-      setResult(res);
+
+      for (let i = 0; i < batches.length; i++) {
+        setProgress({ done: i * BATCH_SIZE, total: allRows.length });
+        const res = await importKiwifyStudents({
+          data: {
+            rows: batches[i]!,
+            productType: selected?.type ?? null,
+            productId: selected?.id ?? null,
+            sendPasswordEmail: dryRun ? false : sendPasswordEmail,
+            sendWelcomeEmail: dryRun ? false : sendWelcomeEmail,
+            sendAccessEmail: dryRun ? false : sendAccessEmail,
+            dryRun,
+          },
+        });
+        for (const key of Object.keys(merged.summary) as (keyof typeof merged.summary)[]) {
+          merged.summary[key] += (res.summary as any)[key] ?? 0;
+        }
+        merged.results.push(...res.results);
+        setResult({ ...merged, results: [...merged.results], summary: { ...merged.summary } });
+      }
+
+      setProgress({ done: allRows.length, total: allRows.length });
       toast.success(
         dryRun
           ? "Simulação concluída — nada foi alterado."
-          : `Importação concluída: ${res.summary.created} criados, ${res.summary.updated} atualizados.`,
+          : `Importação concluída: ${merged.summary.created} criados, ${merged.summary.updated} atualizados.`,
       );
     } catch (err: any) {
       toast.error("Erro: " + (err?.message || "falha na importação"));
@@ -325,6 +351,7 @@ function KiwifyImportPage() {
       setBusy(false);
     }
   }
+
 
   return (
     <div className="space-y-6">
@@ -536,7 +563,22 @@ function KiwifyImportPage() {
                 {busy ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : <><Upload className="mr-2 inline h-4 w-4" />Importar alunos</>}
               </button>
             </div>
+
+            {busy && progress && (
+              <div className="space-y-2">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full bg-[#ff6a00] transition-all"
+                    style={{ width: `${Math.round((progress.done / Math.max(progress.total, 1)) * 100)}%` }}
+                  />
+                </div>
+                <p className="text-center text-[11px] text-white/50">
+                  Processando em lotes de 25 — {progress.done} de {progress.total} alunos
+                </p>
+              </div>
+            )}
           </div>
+
         )}
       </div>
 
