@@ -309,7 +309,7 @@ export function VideoPlayer({
         events: {
           onReady: (event: any) => {
             const player = event.target;
-            killCaptions(player);
+            disableCaptions(player);
             try {
               player.playVideo();
               player.unMute();
