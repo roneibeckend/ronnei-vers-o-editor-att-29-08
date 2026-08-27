@@ -87,6 +87,9 @@ export function VideoPlayer({
   const [needsUnmute, setNeedsUnmute] = useState(false);
   const [useLight, setUseLight] = useState(false);
   const [portraitThumb, setPortraitThumb] = useState(false);
+  // Capa horizontal dentro de um quadro vertical: precisamos "encaixar" a
+  // imagem (contain) com um fundo desfocado, em vez de recortar/esticar.
+  const [landscapeThumb, setLandscapeThumb] = useState(false);
   const embedIframeRef = useRef<HTMLIFrameElement>(null);
   const ytHostRef = useRef<HTMLDivElement>(null);
   const ytPlayerRef = useRef<any>(null);
@@ -130,6 +133,7 @@ export function VideoPlayer({
     setNeedsUnmute(false);
     recoveryAttempts.current = 0;
     setPortraitThumb(false);
+    setLandscapeThumb(false);
   }, [src]);
 
   // Progress persistence (native <video> only), throttled to avoid layout thrash
@@ -375,8 +379,10 @@ export function VideoPlayer({
     const embedUrl = isYouTube ? '' : getDrivePreviewUrl(baseSrc);
 
     // oar2 existe apenas em vídeos verticais; se falhar caímos na horizontal.
+    // Para YouTube priorizamos a miniatura do próprio vídeo (oar2 = vertical),
+    // pois a capa do e-book é horizontal e ficaria distorcida no quadro 9:16.
     const thumb = isYouTube
-      ? poster || (ytId ? `https://i.ytimg.com/vi/${ytId}/oar2.jpg` : undefined)
+      ? (ytId ? `https://i.ytimg.com/vi/${ytId}/oar2.jpg` : poster)
       : cleanPoster;
 
     const handleEmbedPlay = () => {
@@ -427,17 +433,38 @@ export function VideoPlayer({
         {!started && (
           <div className="absolute inset-0 z-10">
             {thumb && (
+              <>
+                {/* Fundo desfocado: evita bordas vazias quando a capa não é 9:16. */}
+                {landscapeThumb && (
+                  <img
+                    src={thumb}
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute inset-0 h-full w-full scale-125 object-cover object-center blur-2xl opacity-50"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                )}
               <img
                 src={thumb}
                 alt={title || 'Capa do vídeo'}
-                // A capa preenche o quadro (recorte central) para ficar centralizada.
-                className="h-full w-full bg-black object-cover object-center"
+                // Capa vertical preenche o quadro; capa horizontal é encaixada
+                // inteira e centralizada sobre o fundo desfocado (sem cortes).
+                className={cn(
+                  'relative h-full w-full object-center',
+                  landscapeThumb ? 'object-contain' : 'bg-black object-cover',
+                )}
                 loading="lazy"
                 decoding="async"
                 onLoad={(event) => {
                   const img = event.currentTarget;
                   // Capa vertical (ex.: vídeo de celular): o quadro vira 9:16.
-                  if (img.naturalHeight > img.naturalWidth) setPortraitThumb(true);
+                  if (img.naturalHeight > img.naturalWidth) {
+                    setPortraitThumb(true);
+                    setLandscapeThumb(false);
+                  } else {
+                    setLandscapeThumb(true);
+                  }
                 }}
                 onError={(event) => {
                   const img = event.currentTarget;
@@ -450,6 +477,7 @@ export function VideoPlayer({
                   }
                 }}
               />
+              </>
             )}
 
             <Button
