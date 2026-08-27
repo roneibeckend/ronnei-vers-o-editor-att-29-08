@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerificarCertificadoRouteImport } from './routes/verificar-certificado'
 import { Route as TermosDeUsoRouteImport } from './routes/termos-de-uso'
+import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
 import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-privacidade'
 import { Route as PerguntasFrequentesRouteImport } from './routes/perguntas-frequentes'
 import { Route as LoginRouteImport } from './routes/login'
@@ -82,6 +83,11 @@ const VerificarCertificadoRoute = VerificarCertificadoRouteImport.update({
 const TermosDeUsoRoute = TermosDeUsoRouteImport.update({
   id: '/termos-de-uso',
   path: '/termos-de-uso',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RedefinirSenhaRoute = RedefinirSenhaRouteImport.update({
+  id: '/redefinir-senha',
+  path: '/redefinir-senha',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PoliticaDePrivacidadeRoute = PoliticaDePrivacidadeRouteImport.update({
@@ -406,6 +412,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/perguntas-frequentes': typeof PerguntasFrequentesRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
+  '/redefinir-senha': typeof RedefinirSenhaRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/verificar-certificado': typeof VerificarCertificadoRoute
   '/admin/afiliados': typeof AdminAfiliadosRoute
@@ -470,6 +477,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/perguntas-frequentes': typeof PerguntasFrequentesRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
+  '/redefinir-senha': typeof RedefinirSenhaRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/verificar-certificado': typeof VerificarCertificadoRoute
   '/admin/afiliados': typeof AdminAfiliadosRoute
@@ -535,6 +543,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/perguntas-frequentes': typeof PerguntasFrequentesRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
+  '/redefinir-senha': typeof RedefinirSenhaRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/verificar-certificado': typeof VerificarCertificadoRoute
   '/admin/afiliados': typeof AdminAfiliadosRoute
@@ -603,6 +612,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/perguntas-frequentes'
     | '/politica-de-privacidade'
+    | '/redefinir-senha'
     | '/termos-de-uso'
     | '/verificar-certificado'
     | '/admin/afiliados'
@@ -667,6 +677,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/perguntas-frequentes'
     | '/politica-de-privacidade'
+    | '/redefinir-senha'
     | '/termos-de-uso'
     | '/verificar-certificado'
     | '/admin/afiliados'
@@ -731,6 +742,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/perguntas-frequentes'
     | '/politica-de-privacidade'
+    | '/redefinir-senha'
     | '/termos-de-uso'
     | '/verificar-certificado'
     | '/admin/afiliados'
@@ -798,6 +810,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PerguntasFrequentesRoute: typeof PerguntasFrequentesRoute
   PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
+  RedefinirSenhaRoute: typeof RedefinirSenhaRoute
   TermosDeUsoRoute: typeof TermosDeUsoRoute
   VerificarCertificadoRoute: typeof VerificarCertificadoRoute
   ApiMaterialDownloadRoute: typeof ApiMaterialDownloadRoute
@@ -824,6 +837,13 @@ declare module '@tanstack/react-router' {
       path: '/termos-de-uso'
       fullPath: '/termos-de-uso'
       preLoaderRoute: typeof TermosDeUsoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redefinir-senha': {
+      id: '/redefinir-senha'
+      path: '/redefinir-senha'
+      fullPath: '/redefinir-senha'
+      preLoaderRoute: typeof RedefinirSenhaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/politica-de-privacidade': {
@@ -1411,6 +1431,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PerguntasFrequentesRoute: PerguntasFrequentesRoute,
   PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
+  RedefinirSenhaRoute: RedefinirSenhaRoute,
   TermosDeUsoRoute: TermosDeUsoRoute,
   VerificarCertificadoRoute: VerificarCertificadoRoute,
   ApiMaterialDownloadRoute: ApiMaterialDownloadRoute,
