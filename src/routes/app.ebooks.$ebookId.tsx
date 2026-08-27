@@ -2,6 +2,8 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { Lock, ChevronLeft, ChevronRight, Loader2, ShoppingCart, BookOpen, CheckCircle2, X, Play, ArrowDown, Award, Download } from "lucide-react";
 import { VideoPlayer } from "@/components/platform/VideoPlayer";
+import ebookVideoCoverAsset from "@/assets/capa-video-ebook.png.asset.json";
+
 import { needsSignedUrl } from "@/lib/video-source";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/platform/Shell";
