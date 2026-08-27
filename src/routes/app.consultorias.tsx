@@ -15,7 +15,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
+import { ConsultationBriefingForm } from "@/components/platform/ConsultationBriefingForm";
+import { ConsultationBriefingSummary } from "@/components/platform/ConsultationBriefingSummary";
+import type { ConsultationBriefing } from "@/lib/consultation-briefing";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar, Clock, Loader2, Video, FileText, History, ExternalLink, PlayCircle } from "lucide-react";
 
@@ -163,13 +165,12 @@ function ConsultationsPage() {
 }
 
 function ConsultationCard({ consultation, onChanged }: { consultation: any; onChanged: () => void }) {
-  const [briefing, setBriefing] = useState(consultation.briefing ?? "");
   const [editing, setEditing] = useState(false);
   const saveBriefing = useServerFn(submitConsultationBriefing);
   const cancel = useServerFn(cancelMyConsultation);
 
   const save = useMutation({
-    mutationFn: () => saveBriefing({ data: { id: consultation.id, briefing } }),
+    mutationFn: (value: ConsultationBriefing) => saveBriefing({ data: { id: consultation.id, briefingData: value } }),
     onSuccess: () => {
       toast.success("Briefing salvo. O Ronnei vai chegar preparado.");
       setEditing(false);
@@ -255,24 +256,13 @@ function ConsultationCard({ consultation, onChanged }: { consultation: any; onCh
       )}
 
       {editing ? (
-        <div className="space-y-2">
-          <Textarea
-            rows={5}
-            value={briefing}
-            onChange={(e) => setBriefing(e.target.value)}
-            placeholder="Conte a situação atual do seu negócio, o que está travando e o que espera resolver na reunião."
-          />
-          <Button size="sm" disabled={save.isPending || briefing.trim().length < 20} onClick={() => save.mutate()}>
-            {save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Salvar briefing
-          </Button>
-        </div>
+        <ConsultationBriefingForm
+          initial={consultation.briefing_data}
+          submitting={save.isPending}
+          onSubmit={(value) => save.mutate(value)}
+        />
       ) : (
-        consultation.briefing && (
-          <p className="whitespace-pre-wrap rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">
-            {consultation.briefing}
-          </p>
-        )
+        <ConsultationBriefingSummary data={consultation.briefing_data} fallback={consultation.briefing} />
       )}
     </Card>
   );
@@ -288,7 +278,6 @@ function BookingDialog({
   onBooked: () => void;
 }) {
   const [slot, setSlot] = useState<string | null>(null);
-  const [briefing, setBriefing] = useState("");
   const book = useServerFn(bookConsultation);
 
   const { data: slots, isLoading } = useQuery({
@@ -308,8 +297,8 @@ function BookingDialog({
   }, [slots]);
 
   const submit = useMutation({
-    mutationFn: () =>
-      book({ data: { productId: product.id, startIso: slot!, briefing: briefing.trim() || undefined } }),
+    mutationFn: (value?: ConsultationBriefing) =>
+      book({ data: { productId: product.id, startIso: slot!, briefingData: value } }),
     onSuccess: (res: any) => {
       toast.success(
         res?.meetLink
@@ -317,14 +306,11 @@ function BookingDialog({
           : "Consultoria agendada! Você receberá o link da reunião por e-mail.",
       );
       setSlot(null);
-      setBriefing("");
       onBooked();
       onClose();
     },
     onError: (e: any) => toast.error(e?.message ?? "Falha ao agendar."),
   });
-
-  const briefingOk = !product?.briefing_required || briefing.trim().length >= 20;
 
   return (
     <Dialog open={Boolean(product)} onOpenChange={(o) => !o && onClose()}>
@@ -375,26 +361,22 @@ function BookingDialog({
           </div>
 
           <div>
-            <p className="mb-2 text-sm font-semibold">
-              2. Briefing {product?.briefing_required ? "(obrigatório)" : "(opcional)"}
+            <p className="mb-1 text-sm font-semibold">2. Briefing rápido (2 minutos)</p>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Responda em etapas curtas para o Ronnei chegar preparado na sua reunião.
             </p>
-            <Textarea
-              rows={5}
-              value={briefing}
-              onChange={(e) => setBriefing(e.target.value)}
-              placeholder="Ex.: vendo espetinhos há 6 meses, faturo R$ 8 mil/mês, não sei precificar e minha margem está apertada..."
-            />
-            <p className="mt-1 text-xs text-muted-foreground">Mínimo de 20 caracteres.</p>
+            {slot ? (
+              <ConsultationBriefingForm
+                submitting={submit.isPending}
+                submitLabel="Confirmar agendamento"
+                onSubmit={(value) => submit.mutate(value)}
+              />
+            ) : (
+              <p className="rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">
+                Escolha um horário acima para liberar o briefing.
+              </p>
+            )}
           </div>
-
-          <Button
-            className="w-full"
-            disabled={!slot || !briefingOk || submit.isPending}
-            onClick={() => submit.mutate()}
-          >
-            {submit.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Confirmar agendamento
-          </Button>
         </div>
       </DialogContent>
     </Dialog>

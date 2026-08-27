@@ -782,6 +782,7 @@ export type Database = {
           admin_notes: string | null
           amount: number | null
           briefing: string | null
+          briefing_data: Json | null
           briefing_submitted_at: string | null
           calendar_html_link: string | null
           cancel_reason: string | null
@@ -816,6 +817,7 @@ export type Database = {
           admin_notes?: string | null
           amount?: number | null
           briefing?: string | null
+          briefing_data?: Json | null
           briefing_submitted_at?: string | null
           calendar_html_link?: string | null
           cancel_reason?: string | null
@@ -850,6 +852,7 @@ export type Database = {
           admin_notes?: string | null
           amount?: number | null
           briefing?: string | null
+          briefing_data?: Json | null
           briefing_submitted_at?: string | null
           calendar_html_link?: string | null
           cancel_reason?: string | null
