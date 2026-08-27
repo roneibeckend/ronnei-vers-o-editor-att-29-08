@@ -284,6 +284,15 @@ function OpsRecoveryPage() {
                     >
                       Reenviar agora
                     </button>
+                    {!item.resolved_at && (
+                      <button
+                        onClick={() => actionMutation.mutate({ kind: "email-dismiss", id: item.id })}
+                        disabled={actionMutation.isPending}
+                        className="min-h-9 rounded-lg border border-white/15 px-3 text-xs text-white/70 disabled:opacity-60"
+                      >
+                        Remover
+                      </button>
+                    )}
                   </div>
                 </div>
               </article>
