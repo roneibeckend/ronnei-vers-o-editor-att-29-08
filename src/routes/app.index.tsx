@@ -448,8 +448,14 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
           <div className="mt-auto pt-4">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Acesso imediato</span>
-                <div className="font-display text-xl font-bold text-gold">R$ {item.price?.toString().replace(".", ",")}</div>
+                {comingSoon ? (
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Lançamento em breve</span>
+                ) : (
+                  <>
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Acesso imediato</span>
+                    <div className="font-display text-xl font-bold text-gold">R$ {item.price?.toString().replace(".", ",")}</div>
+                  </>
+                )}
               </div>
               {comingSoon ? (
                 <button
