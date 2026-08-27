@@ -1,3 +1,4 @@
+import { AdminNotificationBell } from "@/components/admin/AdminNotificationBell";
 import { createFileRoute, Outlet, Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { 
@@ -259,13 +260,7 @@ function AdminRootLayout() {
           <span className="min-w-0 truncate text-center text-[11px] font-bold uppercase tracking-widest">
             {role === "student" ? "Painel Central" : "Painel Admin"}
           </span>
-          <Link
-            to="/admin/notificacoes"
-            className="grid h-11 w-11 place-items-center rounded-lg border border-white/10 transition-colors hover:border-[#ff6a00]/50 hover:text-[#ff6a00]"
-            aria-label="Notificações"
-          >
-            <Bell className="h-5 w-5" />
-          </Link>
+          <AdminNotificationBell compact />
         </div>
 
         {/* Main Content */}
@@ -277,13 +272,7 @@ function AdminRootLayout() {
               )}
             </h1>
             <div className="flex items-center gap-3">
-              <Link
-                to="/admin/notificacoes"
-                className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 transition-colors hover:border-[#ff6a00]/50 hover:text-[#ff6a00]"
-                title="Notificações"
-              >
-                <Bell className="h-5 w-5" />
-              </Link>
+              <AdminNotificationBell />
             </div>
           </header>
           <div className="w-full min-w-0 overflow-x-hidden p-3 pb-safe-scroll sm:p-6 lg:p-8 3xl:mx-auto 3xl:max-w-[1800px]">
