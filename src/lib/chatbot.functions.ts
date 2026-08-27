@@ -133,7 +133,8 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
       return {
         answer: "Desculpe, tive um problema ao acessar minha base de conhecimento. Tente novamente mais tarde.",
         confidence: 0,
-        needsHuman: true
+        needsHuman: true,
+        suggestions: isLanding ? LANDING_SUGGESTIONS : [],
       };
     }
 
