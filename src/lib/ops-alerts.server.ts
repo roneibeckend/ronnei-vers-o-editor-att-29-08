@@ -85,6 +85,24 @@ export async function raiseOpsAlert(input: OpsAlertInput): Promise<boolean> {
     console.warn("[ops] Falha ao notificar admins no painel:", err);
   }
 
+  // Central de notificações administrativas (painel em tempo real + push)
+  try {
+    const { notifyAdmin } = await import("@/lib/admin-notify.server");
+    await notifyAdmin({
+      type: input.type.startsWith("email") ? "email" : "system",
+      severity: severity === "critical" ? "critical" : "warning",
+      title: input.title,
+      body: input.message,
+      link: "/admin/reconciliacao",
+      dedupKey: `ops:${input.dedupKey}`,
+      entityType: "ops_alert",
+      entityId: alert?.id ?? null,
+      metadata: { ops_type: input.type, ...details },
+    });
+  } catch (err) {
+    console.warn("[ops] Falha ao publicar na central de notificações:", err);
+  }
+
   // E-mail para os admins
   try {
     const admins = await getAdminRecipients();
