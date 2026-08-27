@@ -77,7 +77,7 @@ export async function notifyAdmins(
         severity: "warning",
         title,
         body: message,
-        link: "/admin/saques",
+        link: "/admin/financeiro",
         entityType: metadata["payout_id"] ? "payout" : null,
         entityId: metadata["payout_id"] ? String(metadata["payout_id"]) : null,
         dedupKey: metadata["payout_id"] ? `payout:${metadata["payout_id"]}:${title}` : null,
