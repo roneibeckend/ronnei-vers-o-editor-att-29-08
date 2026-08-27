@@ -48,6 +48,7 @@ function AdminRootLayout() {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
+    console.log("LOOPDBG admin effect", {isAdmin, role, isLoading, pathname});
     if (isLoading) return;
     const isStaff = isAdmin || ["manager", "agent"].includes(role || "");
     if (!isStaff && role !== "student") {
