@@ -77,13 +77,13 @@ export const importKiwifyStudents = createServerFn({ method: "POST" })
     if (shouldEnroll && data.sendAccessEmail && !data.dryRun) {
       const { LINKS } = await import("@/emails/layout");
       const table = data.productType === "course" ? "courses" : "ebooks";
-      const { data: product } = await db.from(table).select("title, slug").eq("id", data.productId).maybeSingle();
+      const { data: product } = await db.from(table).select("title").eq("id", data.productId).maybeSingle();
       productName = product?.title ?? (data.productType === "course" ? "Curso" : "E-book");
-      const base = LINKS.dashboard;
+      // As rotas do aluno usam o id do produto.
       productLink =
         data.productType === "course"
-          ? `${base}/cursos/${product?.slug ?? data.productId}`
-          : `${base}/ebooks/${product?.slug ?? data.productId}`;
+          ? `${LINKS.dashboard}/cursos/${data.productId}`
+          : `${LINKS.dashboard}/ebooks/${data.productId}`;
     }
 
     const results: RowResult[] = [];
