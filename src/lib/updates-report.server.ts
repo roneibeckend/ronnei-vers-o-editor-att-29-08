@@ -56,7 +56,11 @@ function escapeHtml(value: unknown) {
     .replaceAll("'", "&#039;");
 }
 
-/** Coleta as atualizações registradas no dia informado (padrão: hoje, fuso de Brasília). */
+/**
+ * Coleta as atualizações da janela do relatório: das 10:00 (Brasília) do dia
+ * anterior até o horário de envio do dia informado. Assim, atualizações
+ * registradas à noite entram no relatório da manhã seguinte.
+ */
 export async function collectUpdatesReport(date?: string): Promise<UpdatesReportData> {
   const reference = date ? new Date(`${date}T12:00:00-03:00`) : new Date();
   const dateStr = new Intl.DateTimeFormat("en-CA", {
@@ -66,9 +70,14 @@ export async function collectUpdatesReport(date?: string): Promise<UpdatesReport
     day: "2-digit",
   }).format(reference);
 
-  const start = new Date(`${dateStr}T00:00:00-03:00`).toISOString();
-  const end = new Date(`${dateStr}T23:59:59-03:00`).toISOString();
-  const sevenDaysAgo = new Date(new Date(start).getTime() - 6 * 86400000).toISOString();
+  const sendTime = new Date(`${dateStr}T10:00:00-03:00`);
+  const now = new Date();
+  const windowEnd = now > sendTime ? now : sendTime;
+  const windowStart = new Date(sendTime.getTime() - 24 * 60 * 60 * 1000);
+
+  const start = windowStart.toISOString();
+  const end = windowEnd.toISOString();
+  const sevenDaysAgo = new Date(windowEnd.getTime() - 7 * 86400000).toISOString();
 
   const [dayRes, weekRes] = await Promise.all([
     supabaseAdmin
@@ -83,6 +92,7 @@ export async function collectUpdatesReport(date?: string): Promise<UpdatesReport
       .gte("released_at", sevenDaysAgo)
       .lte("released_at", end),
   ]);
+
 
   const updates = (dayRes.data || []) as SystemUpdateRow[];
 
