@@ -304,11 +304,9 @@ function LoginPage() {
 
     setLoading(true);
     try {
-      const { authCallbackUrl } = await import("@/lib/auth-callback");
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${authCallbackUrl().replace("/auth/callback", "/redefinir-senha")}`,
-      });
-      if (error) throw error;
+      const { publicOrigin } = await import("@/lib/auth-callback");
+      const { sendPasswordResetEmail } = await import("@/lib/auth-recovery.functions");
+      await sendPasswordResetEmail({ data: { email: email.trim(), origin: publicOrigin() } });
       toast.success("E-mail enviado!", {
         description: "Verifique sua caixa de entrada (e o spam) para criar uma nova senha.",
       });
@@ -318,6 +316,7 @@ function LoginPage() {
       setLoading(false);
     }
   };
+
 
   const isSignup = mode === "signup";
 
