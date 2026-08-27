@@ -319,8 +319,7 @@ function SupportPage() {
         {/* Main Content Area */}
         <div className="min-h-[600px]">
           {activeTab === "chat" ? (
-            <section className="glass flex h-[650px] flex-col overflow-hidden rounded-2xl border border-white/5 bg-white/[0.02]">
-              {/* Chat Header */}
+            <section className="glass relative flex h-[650px] flex-col overflow-hidden rounded-2xl border border-white/5 bg-white/[0.02]">
               <div className="flex items-center justify-between border-b border-white/5 bg-white/[0.03] px-6 py-4">
                 <div className="flex items-center gap-4">
                   <div className="relative">
