@@ -361,26 +361,22 @@ function BookingDialog({
           </div>
 
           <div>
-            <p className="mb-2 text-sm font-semibold">
-              2. Briefing {product?.briefing_required ? "(obrigatório)" : "(opcional)"}
+            <p className="mb-1 text-sm font-semibold">2. Briefing rápido (2 minutos)</p>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Responda em etapas curtas para o Ronnei chegar preparado na sua reunião.
             </p>
-            <Textarea
-              rows={5}
-              value={briefing}
-              onChange={(e) => setBriefing(e.target.value)}
-              placeholder="Ex.: vendo espetinhos há 6 meses, faturo R$ 8 mil/mês, não sei precificar e minha margem está apertada..."
-            />
-            <p className="mt-1 text-xs text-muted-foreground">Mínimo de 20 caracteres.</p>
+            {slot ? (
+              <ConsultationBriefingForm
+                submitting={submit.isPending}
+                submitLabel="Confirmar agendamento"
+                onSubmit={(value) => submit.mutate(value)}
+              />
+            ) : (
+              <p className="rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">
+                Escolha um horário acima para liberar o briefing.
+              </p>
+            )}
           </div>
-
-          <Button
-            className="w-full"
-            disabled={!slot || !briefingOk || submit.isPending}
-            onClick={() => submit.mutate()}
-          >
-            {submit.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Confirmar agendamento
-          </Button>
         </div>
       </DialogContent>
     </Dialog>
