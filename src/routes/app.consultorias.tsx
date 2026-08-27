@@ -255,24 +255,13 @@ function ConsultationCard({ consultation, onChanged }: { consultation: any; onCh
       )}
 
       {editing ? (
-        <div className="space-y-2">
-          <Textarea
-            rows={5}
-            value={briefing}
-            onChange={(e) => setBriefing(e.target.value)}
-            placeholder="Conte a situação atual do seu negócio, o que está travando e o que espera resolver na reunião."
-          />
-          <Button size="sm" disabled={save.isPending || briefing.trim().length < 20} onClick={() => save.mutate()}>
-            {save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Salvar briefing
-          </Button>
-        </div>
+        <ConsultationBriefingForm
+          initial={consultation.briefing_data}
+          submitting={save.isPending}
+          onSubmit={(value) => save.mutate(value)}
+        />
       ) : (
-        consultation.briefing && (
-          <p className="whitespace-pre-wrap rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">
-            {consultation.briefing}
-          </p>
-        )
+        <ConsultationBriefingSummary data={consultation.briefing_data} fallback={consultation.briefing} />
       )}
     </Card>
   );
