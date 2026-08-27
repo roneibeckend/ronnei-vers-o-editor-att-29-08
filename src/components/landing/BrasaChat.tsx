@@ -153,6 +153,100 @@ export default function BrasaChat() {
             );
           })}
         </ul>
+
+        {/* Categorias da base de conhecimento */}
+        <div className="mt-4 border-t border-border/60 pt-3">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            disabled={typing}
+            className={`flex w-full items-center justify-between gap-2 rounded-xl border px-4 py-3 text-left text-sm transition disabled:opacity-70 ${
+              menuOpen
+                ? "border-[color:var(--gold)]/50 bg-[color:var(--gold)]/10 text-foreground"
+                : "border-border bg-background/40 hover:border-[color:var(--gold)]/40 hover:bg-background/70"
+            }`}
+          >
+            <span className="flex items-center gap-2 font-medium">
+              <Layers className="h-4 w-4 text-[color:var(--gold)]" />
+              Ver categorias de dúvidas
+            </span>
+            <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition ${menuOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {menuOpen && (
+            <div className="mt-2 space-y-2">
+              {menuLoading ? (
+                <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[color:var(--gold)] [animation-delay:-0.3s]" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[color:var(--gold)] [animation-delay:-0.15s]" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[color:var(--gold)]" />
+                  Carregando categorias…
+                </div>
+              ) : menuData.length === 0 ? (
+                <p className="py-3 text-center text-xs text-muted-foreground">Nenhuma categoria disponível no momento.</p>
+              ) : selectedCategory ? (
+                <div className="rounded-xl border border-border bg-background/40 p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[color:var(--gold)]">
+                      <FolderOpen className="h-3.5 w-3.5" />
+                      {selectedCategory}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategory(null)}
+                      className="grid h-6 w-6 place-items-center rounded-full text-muted-foreground transition hover:bg-background/60 hover:text-foreground"
+                      aria-label="Voltar às categorias"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <ul className="space-y-2">
+                    {menuData
+                      .find((c) => c.name === selectedCategory)
+                      ?.items.map((item) => {
+                        const active = activeKnowledgeId === item.id;
+                        return (
+                          <li key={item.id}>
+                            <button
+                              type="button"
+                              onClick={() => ask(item.title, undefined, item.id)}
+                              disabled={typing}
+                              className={`group flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition disabled:opacity-70 ${
+                                active
+                                  ? "border-[color:var(--gold)]/50 bg-[color:var(--gold)]/10 text-foreground"
+                                  : "border-border bg-background/60 hover:border-[color:var(--gold)]/40 hover:bg-background/80"
+                              }`}
+                            >
+                              <span className="line-clamp-2 font-medium">{item.title}</span>
+                              <ArrowRight className={`h-3.5 w-3.5 shrink-0 transition ${active ? "text-[color:var(--gold)]" : "text-muted-foreground group-hover:text-[color:var(--gold)]"}`} />
+                            </button>
+                          </li>
+                        );
+                      })}
+                  </ul>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {menuData.map((category) => (
+                    <button
+                      key={category.name}
+                      type="button"
+                      onClick={() => setSelectedCategory(category.name)}
+                      disabled={typing}
+                      className="flex items-center gap-1.5 rounded-lg border border-border bg-background/60 px-3 py-2 text-sm font-medium text-foreground transition hover:border-[color:var(--gold)]/40 hover:bg-background/80 disabled:opacity-70"
+                    >
+                      <FolderOpen className="h-3.5 w-3.5 text-[color:var(--gold)]" />
+                      {category.name}
+                      <span className="rounded-full bg-border/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                        {category.items.length}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Right: chat */}
