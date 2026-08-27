@@ -83,10 +83,11 @@ export default function BrasaChat() {
     }
   };
 
-  const ask = async (text: string, index?: number) => {
+  const ask = async (text: string, index?: number, knowledgeId?: string) => {
     if (typing || !text.trim()) return;
 
     if (index !== undefined) setActiveIdx(index);
+    if (knowledgeId) setActiveKnowledgeId(knowledgeId);
     setMessages((m) => [...m, { role: "user", text }]);
     setInput("");
     setTyping(true);
