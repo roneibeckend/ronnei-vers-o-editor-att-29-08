@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.guard_consultation_owner_update() FROM PUBLIC, anon, authenticated;
