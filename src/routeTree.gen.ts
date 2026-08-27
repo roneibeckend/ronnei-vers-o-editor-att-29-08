@@ -27,6 +27,7 @@ import { Route as AppReceitasRouteImport } from './routes/app.receitas'
 import { Route as AppProgressoRouteImport } from './routes/app.progresso'
 import { Route as AppPerfilRouteImport } from './routes/app.perfil'
 import { Route as AppNotificacoesRouteImport } from './routes/app.notificacoes'
+import { Route as AppMinhasConsultoriasRouteImport } from './routes/app.minhas-consultorias'
 import { Route as AppMateriaisRouteImport } from './routes/app.materiais'
 import { Route as AppFinanceiroRouteImport } from './routes/app.financeiro'
 import { Route as AppCursosRouteImport } from './routes/app.cursos'
@@ -167,6 +168,11 @@ const AppPerfilRoute = AppPerfilRouteImport.update({
 const AppNotificacoesRoute = AppNotificacoesRouteImport.update({
   id: '/notificacoes',
   path: '/notificacoes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMinhasConsultoriasRoute = AppMinhasConsultoriasRouteImport.update({
+  id: '/minhas-consultorias',
+  path: '/minhas-consultorias',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMateriaisRoute = AppMateriaisRouteImport.update({
@@ -472,6 +478,7 @@ export interface FileRoutesByFullPath {
   '/app/cursos': typeof AppCursosRouteWithChildren
   '/app/financeiro': typeof AppFinanceiroRoute
   '/app/materiais': typeof AppMateriaisRoute
+  '/app/minhas-consultorias': typeof AppMinhasConsultoriasRoute
   '/app/notificacoes': typeof AppNotificacoesRoute
   '/app/perfil': typeof AppPerfilRoute
   '/app/progresso': typeof AppProgressoRoute
@@ -539,6 +546,7 @@ export interface FileRoutesByTo {
   '/app/consultorias': typeof AppConsultoriasRoute
   '/app/financeiro': typeof AppFinanceiroRoute
   '/app/materiais': typeof AppMateriaisRoute
+  '/app/minhas-consultorias': typeof AppMinhasConsultoriasRoute
   '/app/notificacoes': typeof AppNotificacoesRoute
   '/app/perfil': typeof AppPerfilRoute
   '/app/progresso': typeof AppProgressoRoute
@@ -611,6 +619,7 @@ export interface FileRoutesById {
   '/app/cursos': typeof AppCursosRouteWithChildren
   '/app/financeiro': typeof AppFinanceiroRoute
   '/app/materiais': typeof AppMateriaisRoute
+  '/app/minhas-consultorias': typeof AppMinhasConsultoriasRoute
   '/app/notificacoes': typeof AppNotificacoesRoute
   '/app/perfil': typeof AppPerfilRoute
   '/app/progresso': typeof AppProgressoRoute
@@ -684,6 +693,7 @@ export interface FileRouteTypes {
     | '/app/cursos'
     | '/app/financeiro'
     | '/app/materiais'
+    | '/app/minhas-consultorias'
     | '/app/notificacoes'
     | '/app/perfil'
     | '/app/progresso'
@@ -751,6 +761,7 @@ export interface FileRouteTypes {
     | '/app/consultorias'
     | '/app/financeiro'
     | '/app/materiais'
+    | '/app/minhas-consultorias'
     | '/app/notificacoes'
     | '/app/perfil'
     | '/app/progresso'
@@ -822,6 +833,7 @@ export interface FileRouteTypes {
     | '/app/cursos'
     | '/app/financeiro'
     | '/app/materiais'
+    | '/app/minhas-consultorias'
     | '/app/notificacoes'
     | '/app/perfil'
     | '/app/progresso'
@@ -1001,6 +1013,13 @@ declare module '@tanstack/react-router' {
       path: '/notificacoes'
       fullPath: '/app/notificacoes'
       preLoaderRoute: typeof AppNotificacoesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/minhas-consultorias': {
+      id: '/app/minhas-consultorias'
+      path: '/minhas-consultorias'
+      fullPath: '/app/minhas-consultorias'
+      preLoaderRoute: typeof AppMinhasConsultoriasRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/materiais': {
@@ -1479,6 +1498,7 @@ interface AppRouteChildren {
   AppCursosRoute: typeof AppCursosRouteWithChildren
   AppFinanceiroRoute: typeof AppFinanceiroRoute
   AppMateriaisRoute: typeof AppMateriaisRoute
+  AppMinhasConsultoriasRoute: typeof AppMinhasConsultoriasRoute
   AppNotificacoesRoute: typeof AppNotificacoesRoute
   AppPerfilRoute: typeof AppPerfilRoute
   AppProgressoRoute: typeof AppProgressoRoute
@@ -1496,6 +1516,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCursosRoute: AppCursosRouteWithChildren,
   AppFinanceiroRoute: AppFinanceiroRoute,
   AppMateriaisRoute: AppMateriaisRoute,
+  AppMinhasConsultoriasRoute: AppMinhasConsultoriasRoute,
   AppNotificacoesRoute: AppNotificacoesRoute,
   AppPerfilRoute: AppPerfilRoute,
   AppProgressoRoute: AppProgressoRoute,
