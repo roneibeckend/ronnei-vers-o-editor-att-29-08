@@ -535,7 +535,7 @@ function LoginPage() {
             {!isSignup && (
               <button
                 type="button"
-                onClick={handleForgotPassword}
+                onClick={openResetModal}
                 disabled={loading}
                 className="w-full text-center text-xs text-muted-foreground hover:text-gold hover:underline"
               >
