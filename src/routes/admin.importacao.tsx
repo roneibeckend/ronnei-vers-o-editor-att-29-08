@@ -201,6 +201,8 @@ function KiwifyImportPage() {
   const [sendPasswordEmail, setSendPasswordEmail] = useState(true);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
+  const [readError, setReadError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
