@@ -176,24 +176,27 @@ export const resubmitPayoutDocument = createServerFn({ method: "POST" })
       throw new Error("Esta solicitação já foi finalizada.");
     }
 
-    const { error } = await context.supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { error } = await supabaseAdmin
       .from("payout_requests")
       .update({
         document_url: data.document_path,
         document_status: "pending",
         document_uploaded_at: new Date().toISOString(),
       } as any)
-      .eq("id", data.payoutId);
+      .eq("id", data.payoutId)
+      .eq("user_id", context.userId);
 
     if (error) throw new Error(error.message);
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("payout_audit_log").insert({
       payout_id: data.payoutId,
       actor_id: context.userId,
       action: "document_resubmitted",
       details: { path: data.document_path },
     });
+
 
     return { success: true };
   });
