@@ -76,7 +76,9 @@ async function managementRequest(method: 'GET' | 'PATCH', body?: unknown): Promi
       /* keep raw text */
     }
     if (res.status === 401 || res.status === 403) {
-      throw new Error(`Token de gerenciamento inválido ou sem permissão neste projeto (${res.status}).`);
+      throw new Error(
+        `Token de gerenciamento sem permissão para ${method === 'PATCH' ? 'alterar' : 'ler'} a configuração de Auth (${res.status}). ${detail}`.slice(0, 500),
+      );
     }
     throw new Error(`Supabase Management API respondeu ${res.status}: ${detail.slice(0, 300)}`);
   }
