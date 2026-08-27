@@ -25,6 +25,8 @@ const inputSchema = z.object({
   productId: z.string().min(1).optional().nullable(),
   sendPasswordEmail: z.boolean().default(false),
   sendWelcomeEmail: z.boolean().default(false),
+  /** Dispara o e-mail "Acesso liberado" do produto para quem foi matriculado. */
+  sendAccessEmail: z.boolean().default(false),
   dryRun: z.boolean().default(false),
 });
 
@@ -68,6 +70,21 @@ export const importKiwifyStudents = createServerFn({ method: "POST" })
     const enrollTable = data.productType === "course" ? "course_enrollments" : "ebook_enrollments";
     const enrollColumn = data.productType === "course" ? "course_id" : "ebook_id";
     const shouldEnroll = Boolean(data.productType && data.productId);
+
+    // Nome e link do produto para o e-mail "Acesso liberado".
+    let productName = "";
+    let productLink = "";
+    if (shouldEnroll && data.sendAccessEmail && !data.dryRun) {
+      const { LINKS } = await import("@/emails/layout");
+      const table = data.productType === "course" ? "courses" : "ebooks";
+      const { data: product } = await db.from(table).select("title").eq("id", data.productId).maybeSingle();
+      productName = product?.title ?? (data.productType === "course" ? "Curso" : "E-book");
+      // As rotas do aluno usam o id do produto.
+      productLink =
+        data.productType === "course"
+          ? `${LINKS.dashboard}/cursos/${data.productId}`
+          : `${LINKS.dashboard}/ebooks/${data.productId}`;
+    }
 
     const results: RowResult[] = [];
 
@@ -201,6 +218,28 @@ export const importKiwifyStudents = createServerFn({ method: "POST" })
                 idempotencyKey: `kiwify-import-${userId}`,
               });
             }
+          } catch {
+            /* falha de e-mail não invalida a importação */
+          }
+        }
+
+        // "Acesso liberado" do produto: enviado a quem realmente ganhou acesso agora.
+        if (data.sendAccessEmail && enrolled && productName) {
+          try {
+            const { triggerEmailEvent } = await import("@/lib/resend.server");
+            await triggerEmailEvent({
+              event: "access_granted",
+              to: email,
+              data: {
+                name,
+                product_name: productName,
+                amount: "—",
+                date: new Date().toLocaleDateString("pt-BR"),
+                access_link: productLink,
+                link: productLink,
+              },
+              idempotencyKey: `kiwify-import-access-${userId}-${data.productId}`,
+            });
           } catch {
             /* falha de e-mail não invalida a importação */
           }

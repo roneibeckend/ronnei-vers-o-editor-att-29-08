@@ -200,6 +200,7 @@ function KiwifyImportPage() {
   const [product, setProduct] = useState("");
   const [sendPasswordEmail, setSendPasswordEmail] = useState(true);
   const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
+  const [sendAccessEmail, setSendAccessEmail] = useState(true);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
@@ -308,6 +309,7 @@ function KiwifyImportPage() {
         productId: selected?.id ?? null,
         sendPasswordEmail: dryRun ? false : sendPasswordEmail,
         sendWelcomeEmail: dryRun ? false : sendWelcomeEmail,
+        sendAccessEmail: dryRun ? false : sendAccessEmail,
         dryRun,
       };
       const res = await importKiwifyStudents({ data: payload });
@@ -426,6 +428,17 @@ function KiwifyImportPage() {
                 className="h-4 w-4 accent-[#ff6a00]"
               />
               Enviar e-mail de boas-vindas com instruções
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={sendAccessEmail}
+                onChange={(e) => setSendAccessEmail(e.target.checked)}
+                disabled={!product}
+                className="h-4 w-4 accent-[#ff6a00] disabled:opacity-40"
+              />
+              Enviar e-mail "Acesso liberado" do produto
+              {!product && <span className="text-xs text-white/40">(selecione um produto)</span>}
             </label>
           </div>
         </div>
