@@ -30,6 +30,7 @@ import {
   saveGoogleSettings,
   testGoogleIntegration,
   listGoogleCalendars,
+  saveGoogleOAuthClient,
 } from "@/lib/google-integration.functions";
 
 const ORANGE = "#ff6a00";
@@ -55,7 +56,7 @@ const CHECKLIST = [
   },
   {
     title: "Credencial OAuth do tipo Aplicativo da Web",
-    detail: "Copie o Client ID e o Client Secret e salve nos secrets GOOGLE_OAUTH_CLIENT_ID e GOOGLE_OAUTH_CLIENT_SECRET.",
+    detail: "Copie o Client ID e o Client Secret e cadastre logo abaixo, no painel — o secret fica criptografado no banco.",
   },
   {
     title: "URIs de redirecionamento autorizados",
@@ -85,6 +86,7 @@ export function GoogleIntegrationPanel() {
   const saveSettings = useServerFn(saveGoogleSettings);
   const runTest = useServerFn(testGoogleIntegration);
   const fetchCalendars = useServerFn(listGoogleCalendars);
+  const saveClient = useServerFn(saveGoogleOAuthClient);
 
   const { data, isLoading } = useQuery({
     queryKey: ["google-integration"],
@@ -102,6 +104,7 @@ export function GoogleIntegrationPanel() {
   });
   const [calendars, setCalendars] = useState<{ id: string; summary: string; primary: boolean }[] | null>(null);
   const [testResult, setTestResult] = useState<any>(null);
+  const [clientForm, setClientForm] = useState({ clientId: "", clientSecret: "" });
 
   useEffect(() => {
     if (!data?.settings) return;
@@ -198,6 +201,22 @@ export function GoogleIntegrationPanel() {
     },
   });
 
+  const saveClientMutation = useMutation({
+    mutationFn: () =>
+      saveClient({
+        data: {
+          clientId: clientForm.clientId.trim(),
+          clientSecret: clientForm.clientSecret.trim(),
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Credenciais OAuth salvas.");
+      setClientForm({ clientId: "", clientSecret: "" });
+      queryClient.invalidateQueries({ queryKey: ["google-integration"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Falha ao salvar as credenciais."),
+  });
+
   const calendarsMutation = useMutation({
     mutationFn: () => fetchCalendars(),
     onSuccess: (result: any) => {
@@ -241,18 +260,68 @@ export function GoogleIntegrationPanel() {
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
-          {!status?.clientConfigured && (
-            <Alert className="border-amber-500/30 bg-amber-500/10">
-              <AlertTriangle className="h-4 w-4 text-amber-400" />
-              <AlertTitle className="text-amber-300 text-xs font-bold uppercase tracking-widest">
-                Faltam as credenciais OAuth
-              </AlertTitle>
-              <AlertDescription className="text-[11px] text-white/70">
-                Salve os secrets <code>GOOGLE_OAUTH_CLIENT_ID</code> e <code>GOOGLE_OAUTH_CLIENT_SECRET</code> gerados no
-                Google Cloud Console para liberar o botão de conexão.
-              </AlertDescription>
-            </Alert>
-          )}
+          {/* Cadastro das credenciais OAuth */}
+          <div className="rounded-sm border border-white/10 bg-black/40 p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">
+                Credenciais OAuth (Google Cloud)
+              </p>
+              {data?.client?.clientIdMasked && (
+                <span className="text-[10px] text-white/40">Atual: {data.client.clientIdMasked}</span>
+              )}
+            </div>
+            {!status?.clientConfigured && (
+              <Alert className="border-amber-500/30 bg-amber-500/10">
+                <AlertTriangle className="h-4 w-4 text-amber-400" />
+                <AlertTitle className="text-amber-300 text-xs font-bold uppercase tracking-widest">
+                  Faltam as credenciais OAuth
+                </AlertTitle>
+                <AlertDescription className="text-[11px] text-white/70">
+                  Cole abaixo o Client ID e o Client Secret gerados no Google Cloud Console para liberar o botão de
+                  conexão. O Client Secret é guardado criptografado e nunca é exibido novamente.
+                </AlertDescription>
+              </Alert>
+            )}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-[10px] uppercase tracking-widest text-white/50">Client ID</Label>
+                <Input
+                  value={clientForm.clientId}
+                  onChange={(e) => setClientForm((f) => ({ ...f, clientId: e.target.value }))}
+                  placeholder="1234567890-abc.apps.googleusercontent.com"
+                  className="mt-1 h-10 bg-black/60 border-white/10 text-sm text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase tracking-widest text-white/50">Client Secret</Label>
+                <Input
+                  type="password"
+                  autoComplete="new-password"
+                  value={clientForm.clientSecret}
+                  onChange={(e) => setClientForm((f) => ({ ...f, clientSecret: e.target.value }))}
+                  placeholder="GOCSPX-..."
+                  className="mt-1 h-10 bg-black/60 border-white/10 text-sm text-white"
+                />
+              </div>
+            </div>
+            <Button
+              onClick={() => saveClientMutation.mutate()}
+              disabled={
+                saveClientMutation.isPending ||
+                clientForm.clientId.trim().length < 10 ||
+                clientForm.clientSecret.trim().length < 6
+              }
+              className="h-10 bg-white/10 text-white text-[10px] font-bold uppercase tracking-widest hover:bg-white/20"
+            >
+              {saveClientMutation.isPending ? (
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <ShieldCheck className="mr-2 h-3.5 w-3.5" />
+              )}
+              Salvar credenciais
+            </Button>
+          </div>
+
 
           {status?.lastError && (
             <Alert className="border-red-500/30 bg-red-500/10">

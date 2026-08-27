@@ -16,13 +16,13 @@ export const getGoogleIntegration = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context);
 
-    const [{ getConnectionStatus }, { getGoogleSettings }] = await Promise.all([
+    const [{ getConnectionStatus, getGoogleClientSummary }, { getGoogleSettings }] = await Promise.all([
       import("@/lib/google-oauth.server"),
       import("@/lib/google-calendar.server"),
     ]);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [status, settings, logs] = await Promise.all([
+    const [status, settings, logs, client] = await Promise.all([
       getConnectionStatus(),
       getGoogleSettings(),
       supabaseAdmin
@@ -31,9 +31,28 @@ export const getGoogleIntegration = createServerFn({ method: "GET" })
         .order("created_at", { ascending: false })
         .limit(20)
         .then((r) => r.data ?? []),
+      getGoogleClientSummary(),
     ]);
 
-    return { status, settings, logs };
+    return { status, settings, logs, client };
+  });
+
+
+/** Cadastra/atualiza o Client ID e Client Secret do Google (secret criptografado). */
+export const saveGoogleOAuthClient = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        clientId: z.string().trim().min(10).max(300),
+        clientSecret: z.string().trim().min(6).max(300),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { saveGoogleClient } = await import("@/lib/google-oauth.server");
+    return saveGoogleClient({ ...data, userId: context.userId });
   });
 
 /** Gera a URL de consentimento do Google para conectar a conta oficial. */
@@ -43,13 +62,14 @@ export const startGoogleConnection = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { createConsentUrl, googleClientConfigured } = await import("@/lib/google-oauth.server");
-    if (!googleClientConfigured()) {
+    if (!(await googleClientConfigured())) {
       throw new Error(
-        "Credenciais OAuth do Google ausentes. Salve GOOGLE_OAUTH_CLIENT_ID e GOOGLE_OAUTH_CLIENT_SECRET antes de conectar.",
+        "Credenciais OAuth do Google ausentes. Cadastre o Client ID e o Client Secret antes de conectar.",
       );
     }
     return createConsentUrl(data.origin, context.userId);
   });
+
 
 export const disconnectGoogleAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
