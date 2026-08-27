@@ -922,6 +922,7 @@ export type Database = {
       }
       courses: {
         Row: {
+          affiliate_enabled: boolean
           badge: string | null
           checkpoints: Json | null
           content_url: string | null
@@ -946,6 +947,7 @@ export type Database = {
           workload_hours: number | null
         }
         Insert: {
+          affiliate_enabled?: boolean
           badge?: string | null
           checkpoints?: Json | null
           content_url?: string | null
@@ -970,6 +972,7 @@ export type Database = {
           workload_hours?: number | null
         }
         Update: {
+          affiliate_enabled?: boolean
           badge?: string | null
           checkpoints?: Json | null
           content_url?: string | null
@@ -1183,6 +1186,7 @@ export type Database = {
       }
       ebooks: {
         Row: {
+          affiliate_enabled: boolean
           badge: string | null
           category: string | null
           checkpoints: Json | null
@@ -1211,6 +1215,7 @@ export type Database = {
           workload_hours: number | null
         }
         Insert: {
+          affiliate_enabled?: boolean
           badge?: string | null
           category?: string | null
           checkpoints?: Json | null
@@ -1239,6 +1244,7 @@ export type Database = {
           workload_hours?: number | null
         }
         Update: {
+          affiliate_enabled?: boolean
           badge?: string | null
           category?: string | null
           checkpoints?: Json | null
