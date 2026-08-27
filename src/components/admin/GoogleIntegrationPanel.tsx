@@ -140,21 +140,19 @@ export function GoogleIntegrationPanel() {
 
   const callbackUrls = useMemo(() => {
     const path = "/api/public/google/oauth/callback";
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    return Array.from(
-      new Set(
-        [
-          "https://ronneinv.lovable.app",
-          "https://project--19870d22-c8ea-4f04-9619-f074c2594e7b.lovable.app",
-          "https://project--19870d22-c8ea-4f04-9619-f074c2594e7b-dev.lovable.app",
-          origin,
-        ].filter(Boolean),
-      ),
-    ).map((base) => `${base}${path}`);
+    return [
+      `https://ronneinv.lovable.app${path}`,
+      `https://id-preview--19870d22-c8ea-4f04-9619-f074c2594e7b.lovable.app${path}`,
+    ];
   }, []);
 
   const connectMutation = useMutation({
-    mutationFn: () => startConnection({ data: { origin: window.location.origin } }),
+    mutationFn: () => {
+      const origin = window.location.origin.endsWith(".lovableproject.com")
+        ? "https://id-preview--19870d22-c8ea-4f04-9619-f074c2594e7b.lovable.app"
+        : window.location.origin;
+      return startConnection({ data: { origin } });
+    },
     onSuccess: (result: any) => {
       window.location.href = result.url;
     },
