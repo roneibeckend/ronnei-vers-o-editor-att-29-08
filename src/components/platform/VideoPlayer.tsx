@@ -133,6 +133,7 @@ export function VideoPlayer({
     setNeedsUnmute(false);
     recoveryAttempts.current = 0;
     setPortraitThumb(false);
+    setLandscapeThumb(false);
   }, [src]);
 
   // Progress persistence (native <video> only), throttled to avoid layout thrash
