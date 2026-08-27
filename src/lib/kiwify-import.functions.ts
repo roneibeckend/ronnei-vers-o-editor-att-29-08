@@ -24,6 +24,7 @@ const inputSchema = z.object({
   productType: z.enum(["course", "ebook"]).optional().nullable(),
   productId: z.string().min(1).optional().nullable(),
   sendPasswordEmail: z.boolean().default(false),
+  sendWelcomeEmail: z.boolean().default(false),
   dryRun: z.boolean().default(false),
 });
 
