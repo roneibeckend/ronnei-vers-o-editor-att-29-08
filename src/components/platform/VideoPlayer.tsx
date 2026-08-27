@@ -20,7 +20,10 @@ interface VideoPlayerProps {
   autoStart?: boolean;
   /** Called when playback reaches the end (used to auto-close intro modals). */
   onEnded?: () => void;
+  /** Uses `poster` as the cover even for YouTube/Drive embeds (ignores the platform thumbnail). */
+  preferPoster?: boolean;
 }
+
 
 const isYouTubeUrl = (url: string) =>
   url.includes('youtube.com') || url.includes('youtu.be') || url.includes('youtube-nocookie.com');
