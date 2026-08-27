@@ -1780,6 +1780,33 @@ export type Database = {
         }
         Relationships: []
       }
+      google_oauth_client: {
+        Row: {
+          client_id: string
+          client_secret_ciphertext: string
+          created_at: string
+          id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          client_id: string
+          client_secret_ciphertext: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          client_secret_ciphertext?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       google_oauth_states: {
         Row: {
           created_at: string
