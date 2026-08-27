@@ -213,7 +213,7 @@ function Dashboard() {
   const visibleItems = (showcaseItems ?? [])
     .map((item: any) => ({
       ...item,
-      isEnrolled: isComingSoon(item.status)
+      isEnrolled: isComingSoon(item.status) || item.type === 'consultation'
         ? false
         : item.type === 'course'
           ? isEnrolledInCourse(item.id) || (item.price || 0) === 0
