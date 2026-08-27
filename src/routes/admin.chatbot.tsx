@@ -336,6 +336,18 @@ function AdminChatbotPage() {
                       <option value="PWA">Aplicativo (PWA)</option>
                       <option value="SUPORTE">Suporte Técnico</option>
                       <option value="PROBLEMAS">Erros & Problemas</option>
+                      <option value="COMPRAS">Compras & Pagamentos</option>
+                      <option value="CERTIFICADOS">Certificados</option>
+                      <option value="AFILIADOS">Afiliados</option>
+                      <option value="FINANCEIRO">Financeiro</option>
+                      <option value="SEGURANCA">Segurança</option>
+                      <option value="PLATAFORMA">Plataforma</option>
+                      <option value="DO ZERO AOS 10K">Do Zero aos 10K</option>
+                      <option value="CARNES">Carnes</option>
+                      <option value="PRODUCAO">Produção</option>
+                      <option value="PRECO E LUCRO">Preço & Lucro</option>
+                      <option value="TEMPEROS">Temperos</option>
+                      <option value="DELIVERY">Delivery</option>
                     </select>
                   </div>
                 </div>
