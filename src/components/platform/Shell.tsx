@@ -29,6 +29,7 @@ import {
   Settings,
   Wallet,
   Video,
+  CalendarClock,
 } from "lucide-react";
 import { student } from "@/lib/platform-data";
 import { supabase } from "@/integrations/supabase/client";
@@ -64,6 +65,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
     items: [
       { to: "/app/cursos", label: "Meus cursos", icon: GraduationCap },
       { to: "/app/ao-vivo", label: "Ao Vivo", icon: Video },
+      { to: "/app/consultorias", label: "Consultorias", icon: CalendarClock },
       { to: "/app/progresso", label: "Ranking", icon: TrendingUp },
     ],
   },

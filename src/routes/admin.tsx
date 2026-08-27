@@ -30,6 +30,7 @@ import {
   Upload,
   ChevronDown,
   HeartHandshake,
+  Video,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -133,6 +134,7 @@ function AdminRootLayout() {
       icon: HeartHandshake,
       items: [
         { to: "/admin/suporte", label: "Suporte", icon: HelpCircle },
+        { to: "/admin/consultorias", label: "Consultorias", icon: Video },
         { to: "/admin/feedbacks", label: "Feedbacks", icon: Star },
         { to: "/admin/ranking", label: "Ranking", icon: TrendingUp },
         { to: "/admin/chatbot", label: "Inteligência Brasa", icon: BrainCircuit },

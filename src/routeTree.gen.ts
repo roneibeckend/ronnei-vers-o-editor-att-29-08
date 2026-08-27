@@ -30,6 +30,7 @@ import { Route as AppNotificacoesRouteImport } from './routes/app.notificacoes'
 import { Route as AppMateriaisRouteImport } from './routes/app.materiais'
 import { Route as AppFinanceiroRouteImport } from './routes/app.financeiro'
 import { Route as AppCursosRouteImport } from './routes/app.cursos'
+import { Route as AppConsultoriasRouteImport } from './routes/app.consultorias'
 import { Route as AppCertificadosRouteImport } from './routes/app.certificados'
 import { Route as AppAoVivoRouteImport } from './routes/app.ao-vivo'
 import { Route as AppAfiliadosRouteImport } from './routes/app.afiliados'
@@ -51,6 +52,7 @@ import { Route as AdminFeedbacksRouteImport } from './routes/admin.feedbacks'
 import { Route as AdminEbooksRouteImport } from './routes/admin.ebooks'
 import { Route as AdminDownloadsRouteImport } from './routes/admin.downloads'
 import { Route as AdminCursosRouteImport } from './routes/admin.cursos'
+import { Route as AdminConsultoriasRouteImport } from './routes/admin.consultorias'
 import { Route as AdminChatbotRouteImport } from './routes/admin.chatbot'
 import { Route as AdminAssinaturasRouteImport } from './routes/admin.assinaturas'
 import { Route as AdminAoVivoRouteImport } from './routes/admin.ao-vivo'
@@ -70,6 +72,7 @@ import { Route as ApiPublicOpsRecoveryRouteImport } from './routes/api/public/op
 import { Route as ApiPublicDriveVideoRouteImport } from './routes/api/public/drive-video'
 import { Route as ApiPublicDailyUpdatesReportRouteImport } from './routes/api/public/daily-updates-report'
 import { Route as ApiPublicDailyFinancialReportRouteImport } from './routes/api/public/daily-financial-report'
+import { Route as ApiPublicConsultationRemindersRouteImport } from './routes/api/public/consultation-reminders'
 import { Route as AdminRankingCampanhasRouteImport } from './routes/admin.ranking.campanhas'
 import { Route as AdminAlunosStudentIdRouteImport } from './routes/admin.alunos_.$studentId'
 import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
@@ -181,6 +184,11 @@ const AppCursosRoute = AppCursosRouteImport.update({
   path: '/cursos',
   getParentRoute: () => AppRoute,
 } as any)
+const AppConsultoriasRoute = AppConsultoriasRouteImport.update({
+  id: '/consultorias',
+  path: '/consultorias',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCertificadosRoute = AppCertificadosRouteImport.update({
   id: '/certificados',
   path: '/certificados',
@@ -286,6 +294,11 @@ const AdminCursosRoute = AdminCursosRouteImport.update({
   path: '/cursos',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminConsultoriasRoute = AdminConsultoriasRouteImport.update({
+  id: '/consultorias',
+  path: '/consultorias',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminChatbotRoute = AdminChatbotRouteImport.update({
   id: '/chatbot',
   path: '/chatbot',
@@ -383,6 +396,12 @@ const ApiPublicDailyFinancialReportRoute =
     path: '/api/public/daily-financial-report',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicConsultationRemindersRoute =
+  ApiPublicConsultationRemindersRouteImport.update({
+    id: '/api/public/consultation-reminders',
+    path: '/api/public/consultation-reminders',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AdminRankingCampanhasRoute = AdminRankingCampanhasRouteImport.update({
   id: '/campanhas',
   path: '/campanhas',
@@ -427,6 +446,7 @@ export interface FileRoutesByFullPath {
   '/admin/ao-vivo': typeof AdminAoVivoRoute
   '/admin/assinaturas': typeof AdminAssinaturasRoute
   '/admin/chatbot': typeof AdminChatbotRoute
+  '/admin/consultorias': typeof AdminConsultoriasRoute
   '/admin/cursos': typeof AdminCursosRoute
   '/admin/downloads': typeof AdminDownloadsRoute
   '/admin/ebooks': typeof AdminEbooksRoute
@@ -448,6 +468,7 @@ export interface FileRoutesByFullPath {
   '/app/afiliados': typeof AppAfiliadosRouteWithChildren
   '/app/ao-vivo': typeof AppAoVivoRoute
   '/app/certificados': typeof AppCertificadosRoute
+  '/app/consultorias': typeof AppConsultoriasRoute
   '/app/cursos': typeof AppCursosRouteWithChildren
   '/app/financeiro': typeof AppFinanceiroRoute
   '/app/materiais': typeof AppMateriaisRoute
@@ -461,6 +482,7 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/admin/alunos/$studentId': typeof AdminAlunosStudentIdRoute
   '/admin/ranking/campanhas': typeof AdminRankingCampanhasRoute
+  '/api/public/consultation-reminders': typeof ApiPublicConsultationRemindersRoute
   '/api/public/daily-financial-report': typeof ApiPublicDailyFinancialReportRoute
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
@@ -493,6 +515,7 @@ export interface FileRoutesByTo {
   '/admin/ao-vivo': typeof AdminAoVivoRoute
   '/admin/assinaturas': typeof AdminAssinaturasRoute
   '/admin/chatbot': typeof AdminChatbotRoute
+  '/admin/consultorias': typeof AdminConsultoriasRoute
   '/admin/cursos': typeof AdminCursosRoute
   '/admin/downloads': typeof AdminDownloadsRoute
   '/admin/ebooks': typeof AdminEbooksRoute
@@ -513,6 +536,7 @@ export interface FileRoutesByTo {
   '/api/material-download': typeof ApiMaterialDownloadRoute
   '/app/ao-vivo': typeof AppAoVivoRoute
   '/app/certificados': typeof AppCertificadosRoute
+  '/app/consultorias': typeof AppConsultoriasRoute
   '/app/financeiro': typeof AppFinanceiroRoute
   '/app/materiais': typeof AppMateriaisRoute
   '/app/notificacoes': typeof AppNotificacoesRoute
@@ -525,6 +549,7 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/admin/alunos/$studentId': typeof AdminAlunosStudentIdRoute
   '/admin/ranking/campanhas': typeof AdminRankingCampanhasRoute
+  '/api/public/consultation-reminders': typeof ApiPublicConsultationRemindersRoute
   '/api/public/daily-financial-report': typeof ApiPublicDailyFinancialReportRoute
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
@@ -560,6 +585,7 @@ export interface FileRoutesById {
   '/admin/ao-vivo': typeof AdminAoVivoRoute
   '/admin/assinaturas': typeof AdminAssinaturasRoute
   '/admin/chatbot': typeof AdminChatbotRoute
+  '/admin/consultorias': typeof AdminConsultoriasRoute
   '/admin/cursos': typeof AdminCursosRoute
   '/admin/downloads': typeof AdminDownloadsRoute
   '/admin/ebooks': typeof AdminEbooksRoute
@@ -581,6 +607,7 @@ export interface FileRoutesById {
   '/app/afiliados': typeof AppAfiliadosRouteWithChildren
   '/app/ao-vivo': typeof AppAoVivoRoute
   '/app/certificados': typeof AppCertificadosRoute
+  '/app/consultorias': typeof AppConsultoriasRoute
   '/app/cursos': typeof AppCursosRouteWithChildren
   '/app/financeiro': typeof AppFinanceiroRoute
   '/app/materiais': typeof AppMateriaisRoute
@@ -594,6 +621,7 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/admin/alunos_/$studentId': typeof AdminAlunosStudentIdRoute
   '/admin/ranking/campanhas': typeof AdminRankingCampanhasRoute
+  '/api/public/consultation-reminders': typeof ApiPublicConsultationRemindersRoute
   '/api/public/daily-financial-report': typeof ApiPublicDailyFinancialReportRoute
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
@@ -630,6 +658,7 @@ export interface FileRouteTypes {
     | '/admin/ao-vivo'
     | '/admin/assinaturas'
     | '/admin/chatbot'
+    | '/admin/consultorias'
     | '/admin/cursos'
     | '/admin/downloads'
     | '/admin/ebooks'
@@ -651,6 +680,7 @@ export interface FileRouteTypes {
     | '/app/afiliados'
     | '/app/ao-vivo'
     | '/app/certificados'
+    | '/app/consultorias'
     | '/app/cursos'
     | '/app/financeiro'
     | '/app/materiais'
@@ -664,6 +694,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/admin/alunos/$studentId'
     | '/admin/ranking/campanhas'
+    | '/api/public/consultation-reminders'
     | '/api/public/daily-financial-report'
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
@@ -696,6 +727,7 @@ export interface FileRouteTypes {
     | '/admin/ao-vivo'
     | '/admin/assinaturas'
     | '/admin/chatbot'
+    | '/admin/consultorias'
     | '/admin/cursos'
     | '/admin/downloads'
     | '/admin/ebooks'
@@ -716,6 +748,7 @@ export interface FileRouteTypes {
     | '/api/material-download'
     | '/app/ao-vivo'
     | '/app/certificados'
+    | '/app/consultorias'
     | '/app/financeiro'
     | '/app/materiais'
     | '/app/notificacoes'
@@ -728,6 +761,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/admin/alunos/$studentId'
     | '/admin/ranking/campanhas'
+    | '/api/public/consultation-reminders'
     | '/api/public/daily-financial-report'
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
@@ -762,6 +796,7 @@ export interface FileRouteTypes {
     | '/admin/ao-vivo'
     | '/admin/assinaturas'
     | '/admin/chatbot'
+    | '/admin/consultorias'
     | '/admin/cursos'
     | '/admin/downloads'
     | '/admin/ebooks'
@@ -783,6 +818,7 @@ export interface FileRouteTypes {
     | '/app/afiliados'
     | '/app/ao-vivo'
     | '/app/certificados'
+    | '/app/consultorias'
     | '/app/cursos'
     | '/app/financeiro'
     | '/app/materiais'
@@ -796,6 +832,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/admin/alunos_/$studentId'
     | '/admin/ranking/campanhas'
+    | '/api/public/consultation-reminders'
     | '/api/public/daily-financial-report'
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
@@ -828,6 +865,7 @@ export interface RootRouteChildren {
   VerificarCertificadoRoute: typeof VerificarCertificadoRoute
   ApiMaterialDownloadRoute: typeof ApiMaterialDownloadRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  ApiPublicConsultationRemindersRoute: typeof ApiPublicConsultationRemindersRoute
   ApiPublicDailyFinancialReportRoute: typeof ApiPublicDailyFinancialReportRoute
   ApiPublicDailyUpdatesReportRoute: typeof ApiPublicDailyUpdatesReportRoute
   ApiPublicDriveVideoRoute: typeof ApiPublicDriveVideoRoute
@@ -986,6 +1024,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCursosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/consultorias': {
+      id: '/app/consultorias'
+      path: '/consultorias'
+      fullPath: '/app/consultorias'
+      preLoaderRoute: typeof AppConsultoriasRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/certificados': {
       id: '/app/certificados'
       path: '/certificados'
@@ -1133,6 +1178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCursosRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/consultorias': {
+      id: '/admin/consultorias'
+      path: '/consultorias'
+      fullPath: '/admin/consultorias'
+      preLoaderRoute: typeof AdminConsultoriasRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/chatbot': {
       id: '/admin/chatbot'
       path: '/chatbot'
@@ -1266,6 +1318,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicDailyFinancialReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/consultation-reminders': {
+      id: '/api/public/consultation-reminders'
+      path: '/api/public/consultation-reminders'
+      fullPath: '/api/public/consultation-reminders'
+      preLoaderRoute: typeof ApiPublicConsultationRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/ranking/campanhas': {
       id: '/admin/ranking/campanhas'
       path: '/campanhas'
@@ -1322,6 +1381,7 @@ interface AdminRouteChildren {
   AdminAoVivoRoute: typeof AdminAoVivoRoute
   AdminAssinaturasRoute: typeof AdminAssinaturasRoute
   AdminChatbotRoute: typeof AdminChatbotRoute
+  AdminConsultoriasRoute: typeof AdminConsultoriasRoute
   AdminCursosRoute: typeof AdminCursosRoute
   AdminDownloadsRoute: typeof AdminDownloadsRoute
   AdminEbooksRoute: typeof AdminEbooksRoute
@@ -1349,6 +1409,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAoVivoRoute: AdminAoVivoRoute,
   AdminAssinaturasRoute: AdminAssinaturasRoute,
   AdminChatbotRoute: AdminChatbotRoute,
+  AdminConsultoriasRoute: AdminConsultoriasRoute,
   AdminCursosRoute: AdminCursosRoute,
   AdminDownloadsRoute: AdminDownloadsRoute,
   AdminEbooksRoute: AdminEbooksRoute,
@@ -1414,6 +1475,7 @@ interface AppRouteChildren {
   AppAfiliadosRoute: typeof AppAfiliadosRouteWithChildren
   AppAoVivoRoute: typeof AppAoVivoRoute
   AppCertificadosRoute: typeof AppCertificadosRoute
+  AppConsultoriasRoute: typeof AppConsultoriasRoute
   AppCursosRoute: typeof AppCursosRouteWithChildren
   AppFinanceiroRoute: typeof AppFinanceiroRoute
   AppMateriaisRoute: typeof AppMateriaisRoute
@@ -1430,6 +1492,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAfiliadosRoute: AppAfiliadosRouteWithChildren,
   AppAoVivoRoute: AppAoVivoRoute,
   AppCertificadosRoute: AppCertificadosRoute,
+  AppConsultoriasRoute: AppConsultoriasRoute,
   AppCursosRoute: AppCursosRouteWithChildren,
   AppFinanceiroRoute: AppFinanceiroRoute,
   AppMateriaisRoute: AppMateriaisRoute,
@@ -1457,6 +1520,7 @@ const rootRouteChildren: RootRouteChildren = {
   VerificarCertificadoRoute: VerificarCertificadoRoute,
   ApiMaterialDownloadRoute: ApiMaterialDownloadRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  ApiPublicConsultationRemindersRoute: ApiPublicConsultationRemindersRoute,
   ApiPublicDailyFinancialReportRoute: ApiPublicDailyFinancialReportRoute,
   ApiPublicDailyUpdatesReportRoute: ApiPublicDailyUpdatesReportRoute,
   ApiPublicDriveVideoRoute: ApiPublicDriveVideoRoute,
