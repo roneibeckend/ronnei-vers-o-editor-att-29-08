@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { getChatbotResponse, getKnowledgeMenu, submitKnowledgeFeedback } from "@/lib/chatbot.functions";
-import type { KnowledgeMenuCategory } from "@/lib/chatbot.functions";
+import type { ChatSuggestion, KnowledgeMenuCategory } from "@/lib/chatbot.functions";
 import { landingFaqs } from "@/lib/landing-faq";
 
 type Msg = {
@@ -26,6 +26,7 @@ type Msg = {
   knowledgeId?: string | null;
   feedbackGiven?: boolean;
   needsHuman?: boolean;
+  suggestions?: ChatSuggestion[];
 };
 
 /**
@@ -39,7 +40,7 @@ export default function BrasaChat() {
   const fetchMenu = useServerFn(getKnowledgeMenu);
 
   const [messages, setMessages] = useState<Msg[]>([
-    { role: "ai", text: "Olá! 👋 Eu sou a Brasa, sua assistente. Escolha uma pergunta ao lado ou escreva sua dúvida que eu te respondo na hora." },
+    { role: "ai", text: "Olá! 👋 Eu sou a Brasa, especialista em espetinhos, precificação, produção, delivery e vendas. Pergunte o que quiser — carne, tempero, CMV, lucro ou como começar — que eu te respondo na hora." },
   ]);
   const [typing, setTyping] = useState(false);
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
@@ -60,7 +61,7 @@ export default function BrasaChat() {
     if (!menuOpen || menuData.length > 0) return;
     let cancelled = false;
     setMenuLoading(true);
-    fetchMenu({ data: undefined })
+    fetchMenu({ data: { surface: "landing" } })
       .then((res) => {
         if (!cancelled) setMenuData(res.categories);
       })
@@ -96,6 +97,7 @@ export default function BrasaChat() {
       const result = await getChatbot({
         data: {
           message: text,
+          surface: "landing",
           context: {
             url: window.location.href,
             path: window.location.pathname,
@@ -110,6 +112,7 @@ export default function BrasaChat() {
           text: result.answer,
           knowledgeId: result.knowledgeId,
           needsHuman: result.needsHuman,
+          suggestions: result.suggestions,
         },
       ]);
     } catch (error) {
@@ -277,7 +280,7 @@ export default function BrasaChat() {
                   <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-fire">
                     <Flame className="h-3.5 w-3.5 text-white" />
                   </div>
-                  <div className="max-w-[80%] rounded-2xl rounded-bl-sm border border-border bg-background/70 px-4 py-2.5 text-sm leading-relaxed text-foreground">
+                  <div className="max-w-[80%] rounded-2xl rounded-bl-sm border border-border bg-background/70 px-4 py-2.5 text-sm leading-relaxed text-foreground whitespace-pre-line">
                     {m.text}
                   </div>
                 </div>
@@ -286,6 +289,31 @@ export default function BrasaChat() {
                     <span className="text-[10px] text-muted-foreground">Ajudou?</span>
                     <button onClick={() => handleFeedback(i, m.knowledgeId!, true)} className="text-muted-foreground hover:text-emerald-500 transition-colors"><ThumbsUp className="h-3 w-3" /></button>
                     <button onClick={() => handleFeedback(i, m.knowledgeId!, false)} className="text-muted-foreground hover:text-fire transition-colors"><ThumbsDown className="h-3 w-3" /></button>
+                  </div>
+                )}
+                {m.suggestions && m.suggestions.length > 0 && (
+                  <div className="ml-9 mt-1.5 flex flex-wrap gap-1.5">
+                    {m.suggestions.map((s) =>
+                      s.to ? (
+                        <Link
+                          key={s.label}
+                          to={s.to}
+                          className="rounded-full border border-border bg-background/60 px-3 py-1.5 text-[11px] font-medium text-foreground transition hover:border-[color:var(--gold)]/50 hover:bg-background/80"
+                        >
+                          {s.label}
+                        </Link>
+                      ) : (
+                        <button
+                          key={s.label}
+                          type="button"
+                          disabled={typing}
+                          onClick={() => ask(s.ask || s.label)}
+                          className="rounded-full border border-border bg-background/60 px-3 py-1.5 text-[11px] font-medium text-foreground transition hover:border-[color:var(--gold)]/50 hover:bg-background/80 disabled:opacity-60"
+                        >
+                          {s.label}
+                        </button>
+                      )
+                    )}
                   </div>
                 )}
                 {m.needsHuman && (

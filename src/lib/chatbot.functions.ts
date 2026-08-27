@@ -17,10 +17,79 @@ export type KnowledgeMenuCategory = {
   items: { id: string; title: string }[];
 };
 
+export type ChatSuggestion = { label: string; to?: string; ask?: string };
+
+/**
+ * Categorias públicas: são as únicas usadas pelo chat da landing.
+ * Nenhuma delas depende de dados de alunos, matrículas, pagamentos,
+ * chamados, afiliados ou qualquer informação pessoal — apenas conteúdo
+ * público de conhecimento (espetinhos, negócio, produto e plataforma).
+ */
+const PUBLIC_CATEGORIES = new Set([
+  "DO ZERO AOS 10K",
+  "RONNEI NA VEIA",
+  "RECEITAS",
+  "CARNES",
+  "TEMPEROS",
+  "PRODUCAO",
+  "PRODUÇÃO",
+  "CMV E PRECIFICACAO",
+  "PRECO E LUCRO",
+  "EQUIPAMENTOS",
+  "CONSERVACAO",
+  "CONSERVAÇÃO",
+  "SEGURANCA ALIMENTAR",
+  "SEGURANÇA ALIMENTAR",
+  "DELIVERY",
+  "VENDAS",
+  "GESTAO",
+  "GESTAO DO NEGOCIO",
+  "GESTÃO DO NEGÓCIO",
+  "CURSOS",
+  "CURSO E CONTEUDO",
+  "EBOOKS",
+  "MATERIAIS",
+  "GARANTIA",
+  "COMPRAS",
+  "PAGAMENTOS",
+  "PLATAFORMA",
+  "CERTIFICADOS",
+  "PWA",
+  "CONTA",
+  "SUPORTE",
+  "AFILIADOS",
+]);
+
+const isPublicCategory = (category?: string | null) =>
+  PUBLIC_CATEGORIES.has((category || "").trim().toUpperCase());
+
+/** Chamadas comerciais naturais, escolhidas pelo tema da resposta. */
+const COMMERCIAL_HOOKS: { match: RegExp; line: string }[] = [
+  { match: /(preco|preço|cmv|lucro|margem|custo|calcul)/i, line: "Esse cálculo está detalhado dentro do treinamento Do Zero aos 10K — e você também recebe planilhas prontas para fazer essa conta." },
+  { match: /(vend|ifood|whatsapp|delivery|client|marketing|instagram)/i, line: "Essa estratégia é ensinada passo a passo dentro do método Ronnei na Veia." },
+  { match: /(carne|tempero|receita|marinada|corte|brasa|assar)/i, line: "As receitas, cortes e temperos completos estão dentro do treinamento — posso te mostrar tudo que está incluso." },
+  { match: /(equipamento|conserva|higien|producao|produção|estoque|gest)/i, line: "Tem um passo a passo completo disso no treinamento, com checklists e planilhas prontas." },
+];
+
+const commercialLineFor = (text: string): string | null => {
+  for (const hook of COMMERCIAL_HOOKS) {
+    if (hook.match.test(text)) return hook.line;
+  }
+  return null;
+};
+
+const LANDING_SUGGESTIONS: ChatSuggestion[] = [
+  { label: "Ver conteúdo do treinamento", ask: "O que vem no treinamento Do Zero aos 10K?" },
+  { label: "Ver receitas", ask: "Quais receitas de espetinho estão incluídas?" },
+  { label: "Ver garantia", ask: "Como funciona a garantia?" },
+  { label: "Ver formas de pagamento", ask: "Quais são as formas de pagamento?" },
+  { label: "Falar com suporte", to: "/login" },
+];
 
 export const getChatbotResponse = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ 
     message: z.string(),
+    surface: z.enum(["app", "landing"]).optional(),
     context: z.object({
       url: z.string().optional(),
       path: z.string().optional()
@@ -28,6 +97,7 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
   }).parse(data))
   .handler(async ({ data }) => {
     const { message, context: requestContext } = data;
+    const isLanding = data.surface === "landing";
     
     // Importação dinâmica do supabaseAdmin para evitar problemas de serialização e bundling
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -63,7 +133,8 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
       return {
         answer: "Desculpe, tive um problema ao acessar minha base de conhecimento. Tente novamente mais tarde.",
         confidence: 0,
-        needsHuman: true
+        needsHuman: true,
+        suggestions: isLanding ? LANDING_SUGGESTIONS : [],
       };
     }
 
@@ -71,7 +142,11 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
     let bestMatch: KnowledgeItem | null = null;
     let maxScore = 0;
 
-    for (const item of (knowledge as KnowledgeItem[])) {
+    const pool = isLanding
+      ? (knowledge as KnowledgeItem[]).filter((k) => isPublicCategory(k.category))
+      : (knowledge as KnowledgeItem[]);
+
+    for (const item of pool) {
       let score = 0;
       
       const titleNormalized = normalize(item.title);
@@ -119,11 +194,23 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
     // 3. Resposta Baseada em Confiança
     // Threshold ajustado para 0.25 para capturar intenções parciais
     if (bestMatch && maxScore >= 0.4) {
+      let answer = bestMatch.content;
+
+      // Camada comercial (somente landing, e só quando faz sentido pelo tema)
+      let commercial: string | null = null;
+      if (isLanding) {
+        commercial = commercialLineFor(`${bestMatch.title} ${bestMatch.category} ${message}`);
+        if (commercial && !normalize(answer).includes(normalize(commercial))) {
+          answer = `${answer}\n\n${commercial}`;
+        }
+      }
+
       return {
-        answer: bestMatch.content,
+        answer,
         confidence,
         knowledgeId: bestMatch.id,
-        needsHuman: maxScore < 0.7 // Precisa de ajuda se não houver match forte (> 0.7 real score)
+        needsHuman: maxScore < 0.7, // Precisa de ajuda se não houver match forte (> 0.7 real score)
+        suggestions: isLanding ? LANDING_SUGGESTIONS : [],
       };
     }
 
@@ -139,9 +226,12 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
     }
 
     return {
-      answer: "Ainda estou aprendendo sobre isso e não tenho uma resposta exata agora. Mas não se preocupe! Você pode abrir um chamado na aba 'Meus Chamados' ou tentar perguntar com outras palavras.",
+      answer: isLanding
+        ? "Ainda não tenho uma resposta exata pra essa. Posso te ajudar com carnes, temperos, precificação, CMV, produção, delivery e vendas — ou você pode escolher uma das sugestões abaixo. Tudo isso é ensinado passo a passo no treinamento Do Zero aos 10K."
+        : "Ainda estou aprendendo sobre isso e não tenho uma resposta exata agora. Mas não se preocupe! Você pode abrir um chamado na aba 'Meus Chamados' ou tentar perguntar com outras palavras.",
       confidence,
-      needsHuman: true
+      needsHuman: true,
+      suggestions: isLanding ? LANDING_SUGGESTIONS : []
     };
   });
 
@@ -167,8 +257,11 @@ export const submitKnowledgeFeedback = createServerFn({ method: "POST" })
   });
 
 export const getKnowledgeMenu = createServerFn({ method: "GET" })
-  .handler(async () => {
+  .inputValidator((data) => z.object({ surface: z.enum(["app", "landing"]).optional() }).optional().parse(data))
+  .handler(async ({ data: input }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const isLanding = input?.surface === "landing";
+
 
     const { data, error } = await supabaseAdmin
       .from("knowledge_base")
@@ -184,6 +277,7 @@ export const getKnowledgeMenu = createServerFn({ method: "GET" })
 
     const grouped = new Map<string, { id: string; title: string }[]>();
     for (const item of data as { id: string; title: string; category: string | null }[]) {
+      if (isLanding && !isPublicCategory(item.category)) continue;
       const category = item.category?.trim() || "Geral";
       if (!grouped.has(category)) grouped.set(category, []);
       grouped.get(category)!.push({ id: item.id, title: item.title });
