@@ -258,9 +258,9 @@ export const submitKnowledgeFeedback = createServerFn({ method: "POST" })
 
 export const getKnowledgeMenu = createServerFn({ method: "GET" })
   .inputValidator((data) => z.object({ surface: z.enum(["app", "landing"]).optional() }).optional().parse(data))
-  .handler(async ({ data }) => {
+  .handler(async ({ data: input }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const isLanding = data?.surface === "landing";
+    const isLanding = input?.surface === "landing";
 
 
     const { data, error } = await supabaseAdmin
