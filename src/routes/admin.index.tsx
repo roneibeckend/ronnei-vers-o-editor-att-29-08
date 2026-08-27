@@ -201,3 +201,50 @@ function AdminDashboard() {
 function Loader2({ className }: { className?: string }) {
   return <Activity className={`animate-spin ${className}`} />;
 }
+/** Resumo operacional das últimas 24h + atalho para a central de notificações. */
+function OperationalSummaryStrip() {
+  const { data } = useQuery({
+    queryKey: ["admin-operational-summary"],
+    queryFn: async () => {
+      const { getOperationalSummary } = await import("@/lib/admin-notifications.functions");
+      return getOperationalSummary();
+    },
+    refetchInterval: 60_000,
+  });
+
+  const brl = (value: number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
+
+  const items = [
+    { label: "Vendas 24h", value: data ? String(data.sales) : "—" },
+    { label: "Receita 24h", value: data ? brl(data.revenue) : "—" },
+    { label: "Novos alunos", value: data ? String(data.newStudents) : "—" },
+    { label: "Tickets", value: data ? String(data.tickets) : "—" },
+    { label: "Erros críticos", value: data ? String(data.criticalErrors) : "—" },
+    { label: "Alertas não lidos", value: data ? String(data.unread) : "—" },
+  ];
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">
+          Resumo operacional · 24 horas
+        </span>
+        <Link
+          to="/admin/notificacoes"
+          className="text-[11px] font-bold uppercase tracking-widest text-[#ff6a00] hover:underline"
+        >
+          Central de notificações
+        </Link>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {items.map((item) => (
+          <div key={item.label} className="rounded-xl border border-white/5 bg-black/30 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-white/35">{item.label}</p>
+            <p className="mt-1 truncate text-base font-extrabold">{item.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
