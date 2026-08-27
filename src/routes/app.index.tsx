@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Play, ShoppingCart, Sparkles, Lock, Loader2 } from "lucide-react";
+import { Play, ShoppingCart, Sparkles, Lock, Loader2, CalendarDays } from "lucide-react";
 import { usePaymentModal } from "@/hooks/use-payment-modal";
 import { createAsaasPaymentLink } from "@/lib/asaas.functions";
 import { savePendingCheckout, getPendingCheckout, completePendingCheckout } from "@/lib/checkout.functions";
