@@ -266,12 +266,26 @@ export function VideoPlayer({
     if (!isYouTube || !started || !ytId) return;
     let cancelled = false;
 
-    const killCaptions = (player: any) => {
+    const disableCaptions = (player: any) => {
       try {
+        // IFrame API documented way: unload the captions module.
         player.unloadModule('captions');
         player.unloadModule('cc');
       } catch {
         /* módulo pode não estar carregado */
+      }
+      try {
+        // Fallback: load captions module and select an empty track.
+        player.loadModule?.('captions');
+        player.setOption?.('captions', 'track', {});
+      } catch {
+        /* API pode não expor setOption */
+      }
+      try {
+        // Another fallback: set language to empty string.
+        player.setOption?.('captions', 'track', { languageCode: '' });
+      } catch {
+        /* ignora */
       }
     };
 
