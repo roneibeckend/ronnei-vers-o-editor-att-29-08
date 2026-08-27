@@ -54,8 +54,11 @@ export function useAdminNotifications(enabled: boolean, soundEnabled = true) {
   useEffect(() => {
     if (!enabled) return;
 
+    // Nome único por instância: o supabase-js reutiliza canais com o mesmo
+    // nome, e adicionar callbacks em um canal já inscrito dispara o erro
+    // "cannot add postgres_changes callbacks after subscribe()".
     const channel = supabase
-      .channel("admin-notifications-live")
+      .channel(`admin-notifications-live-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "admin_notifications" },
