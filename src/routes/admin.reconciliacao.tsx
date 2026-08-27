@@ -10,6 +10,7 @@ import {
   Mail,
   RefreshCw,
   ShieldAlert,
+  Trash2,
   Wallet,
 } from "lucide-react";
 import {
@@ -19,6 +20,8 @@ import {
   ignoreReconciliation,
   retryEmailQueueItem,
   resolveOpsAlert,
+  dismissEmailQueueItem,
+  clearEmailQueue,
 } from "@/lib/ops-recovery.functions";
 
 export const Route = createFileRoute("/admin/reconciliacao")({
@@ -65,6 +68,8 @@ function OpsRecoveryPage() {
   const ignoreItem = useServerFn(ignoreReconciliation);
   const retryEmail = useServerFn(retryEmailQueueItem);
   const resolveAlert = useServerFn(resolveOpsAlert);
+  const dismissEmail = useServerFn(dismissEmailQueueItem);
+  const clearQueue = useServerFn(clearEmailQueue);
 
   const { data, isLoading } = useQuery({
     queryKey: ["ops-recovery-overview"],
@@ -90,6 +95,7 @@ function OpsRecoveryPage() {
       if (args.kind === "fix") return await fixItem({ data: { id: args.id } });
       if (args.kind === "ignore") return await ignoreItem({ data: { id: args.id } });
       if (args.kind === "email") return await retryEmail({ data: { id: args.id } });
+      if (args.kind === "email-dismiss") return await dismissEmail({ data: { id: args.id } });
       return await resolveAlert({ data: { id: args.id } });
     },
     onSuccess: (res: any) => {
@@ -97,6 +103,15 @@ function OpsRecoveryPage() {
       invalidate();
     },
     onError: (err: any) => toast.error(err?.message || "Falha ao executar a ação."),
+  });
+
+  const clearQueueMutation = useMutation({
+    mutationFn: () => clearQueue(),
+    onSuccess: (res: any) => {
+      toast.success(res?.message || "Fila limpa.");
+      invalidate();
+    },
+    onError: (err: any) => toast.error(err?.message || "Falha ao limpar a fila."),
   });
 
   const reconciliations = (data?.reconciliations || []) as any[];
@@ -218,6 +233,29 @@ function OpsRecoveryPage() {
         </section>
       ) : tab === "emails" ? (
         <section className="space-y-3">
+          {emails.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+              <p className="text-xs text-white/50">
+                {emailPending} e-mail(is) pendente(s) na fila. Limpar arquiva todos sem reenviar.
+              </p>
+              <button
+                onClick={() => {
+                  if (window.confirm("Arquivar todos os e-mails pendentes da fila? Eles não serão reenviados.")) {
+                    clearQueueMutation.mutate();
+                  }
+                }}
+                disabled={clearQueueMutation.isPending || emailPending === 0}
+                className="flex min-h-9 items-center gap-2 rounded-lg border border-white/15 px-3 text-xs font-semibold text-white/70 disabled:opacity-50"
+              >
+                {clearQueueMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" />
+                )}
+                Limpar fila
+              </button>
+            </div>
+          )}
           {emails.length === 0 ? (
             <EmptyState message="Nenhum e-mail com falha. A fila de reenvio está vazia." />
           ) : (
@@ -247,6 +285,15 @@ function OpsRecoveryPage() {
                     >
                       Reenviar agora
                     </button>
+                    {!item.resolved_at && (
+                      <button
+                        onClick={() => actionMutation.mutate({ kind: "email-dismiss", id: item.id })}
+                        disabled={actionMutation.isPending}
+                        className="min-h-9 rounded-lg border border-white/15 px-3 text-xs text-white/70 disabled:opacity-60"
+                      >
+                        Remover
+                      </button>
+                    )}
                   </div>
                 </div>
               </article>

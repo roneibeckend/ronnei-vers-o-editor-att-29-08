@@ -85,6 +85,36 @@ export const retryEmailQueueItem = createServerFn({ method: "POST" })
     return await retryEmailNow(data.id);
   });
 
+export const dismissEmailQueueItem = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(idSchema)
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("email_logs")
+      .update({ status: "ignored", resolved_at: new Date().toISOString(), next_retry_at: null })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true, message: "E-mail removido da fila." };
+  });
+
+export const clearEmailQueue = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("email_logs")
+      .update({ status: "ignored", resolved_at: new Date().toISOString(), next_retry_at: null })
+      .in("status", ["failed", "failed_permanent", "error"])
+      .is("resolved_at", null)
+      .select("id");
+    if (error) throw new Error(error.message);
+    const count = data?.length ?? 0;
+    return { ok: true, message: `Fila limpa: ${count} e-mail(is) arquivado(s).` };
+  });
+
 export const resolveOpsAlert = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(idSchema)
