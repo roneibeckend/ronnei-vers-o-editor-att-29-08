@@ -72,23 +72,41 @@ function splitLine(line: string, delimiter: string): string[] {
   return out.map((v) => v.trim());
 }
 
-function parseCsv(text: string): ParsedRow[] {
-  const lines = text.replace(/\r/g, "").split("\n").filter((l) => l.trim().length > 0);
-  if (!lines.length) return [];
-  const delimiter = (lines[0].match(/;/g)?.length ?? 0) > (lines[0].match(/,/g)?.length ?? 0) ? ";" : ",";
-  const header = splitLine(lines[0], delimiter).map((h) => h.toLowerCase().replace(/^"|"$/g, ""));
+type Diagnostics = {
+  format: "CSV" | "XLSX";
+  delimiter?: string;
+  columnCount: number;
+  headers: string[];
+  mapping: Record<"name" | "email" | "cpf" | "phone" | "product", string | null>;
+  dataRows: number;
+};
 
-  const map = header.map((h) => HEADER_ALIASES[h] ?? null);
+function normalizeHeader(value: string) {
+  return value
+    .replace(/^"|"$/g, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildRows(headers: string[], dataRows: string[][]) {
+  const map = headers.map((h) => HEADER_ALIASES[normalizeHeader(h)] ?? null);
+  const mapping: Diagnostics["mapping"] = { name: null, email: null, cpf: null, phone: null, product: null };
+  map.forEach((field, i) => {
+    if (field && !mapping[field]) mapping[field] = headers[i];
+  });
+
   const rows: ParsedRow[] = [];
-
   const seen = new Set<string>();
 
-  for (const line of lines.slice(1)) {
-    const cells = splitLine(line, delimiter);
+  for (const cells of dataRows) {
+    if (!cells.some((c) => (c ?? "").trim().length > 0)) continue;
     const row: ParsedRow = { name: "", email: "", cpf: "", phone: "", product: "", valid: true };
     map.forEach((field, index) => {
       if (!field) return;
-      row[field] = (cells[index] ?? "").replace(/^"|"$/g, "");
+      row[field] = (cells[index] ?? "").replace(/^"|"$/g, "").trim();
     });
     row.email = row.email.trim().toLowerCase();
 
@@ -106,7 +124,63 @@ function parseCsv(text: string): ParsedRow[] {
     if (row.email) seen.add(row.email);
     rows.push(row);
   }
-  return rows;
+  return { rows, mapping };
+}
+
+function parseCsv(text: string): { rows: ParsedRow[]; diagnostics: Diagnostics } {
+  const lines = text.replace(/^\uFEFF/, "").replace(/\r/g, "").split("\n").filter((l) => l.trim().length > 0);
+  if (!lines.length) throw new Error("Arquivo CSV vazio.");
+  const semis = lines[0].match(/;/g)?.length ?? 0;
+  const commas = lines[0].match(/,/g)?.length ?? 0;
+  const tabs = lines[0].match(/\t/g)?.length ?? 0;
+  const delimiter = tabs > semis && tabs > commas ? "\t" : semis > commas ? ";" : ",";
+  const headers = splitLine(lines[0], delimiter).map((h) => h.replace(/^"|"$/g, "").trim());
+  const data = lines.slice(1).map((l) => splitLine(l, delimiter));
+  const { rows, mapping } = buildRows(headers, data);
+  return {
+    rows,
+    diagnostics: {
+      format: "CSV",
+      delimiter: delimiter === "\t" ? "TAB" : delimiter,
+      columnCount: headers.length,
+      headers,
+      mapping,
+      dataRows: rows.length,
+    },
+  };
+}
+
+async function parseXlsx(buffer: ArrayBuffer): Promise<{ rows: ParsedRow[]; diagnostics: Diagnostics }> {
+  const ExcelJS = (await import("exceljs")).default ?? (await import("exceljs"));
+  const wb = new (ExcelJS as any).Workbook();
+  await wb.xlsx.load(buffer);
+  const ws = wb.worksheets[0];
+  if (!ws) throw new Error("Nenhuma aba encontrada na planilha.");
+
+  const matrix: string[][] = [];
+  ws.eachRow({ includeEmpty: false }, (row: any) => {
+    const values: string[] = [];
+    const raw = row.values as any[];
+    for (let i = 1; i < raw.length; i++) {
+      const v = raw[i];
+      let cell = "";
+      if (v == null) cell = "";
+      else if (typeof v === "object") cell = String(v.text ?? v.result ?? v.hyperlink ?? v.richText?.map((t: any) => t.text).join("") ?? "");
+      else cell = String(v);
+      values.push(cell.trim());
+    }
+    matrix.push(values);
+  });
+
+  if (!matrix.length) throw new Error("Planilha vazia.");
+  const headerIndex = matrix.findIndex((r) => r.some((c) => HEADER_ALIASES[normalizeHeader(c)]));
+  const hi = headerIndex >= 0 ? headerIndex : 0;
+  const headers = matrix[hi];
+  const { rows, mapping } = buildRows(headers, matrix.slice(hi + 1));
+  return {
+    rows,
+    diagnostics: { format: "XLSX", columnCount: headers.length, headers, mapping, dataRows: rows.length },
+  };
 }
 
 function normalizeTitle(value: string) {
