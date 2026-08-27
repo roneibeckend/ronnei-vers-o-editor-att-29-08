@@ -133,10 +133,11 @@ export const listMyConsultations = createServerFn({ method: "GET" })
     const { data } = await supabaseAdmin
       .from("consultations")
       .select(
-        "id, product_title, scheduled_at, ends_at, duration_minutes, status, briefing, briefing_data, meet_link, calendar_html_link, recording_url, amount",
+        "id, product_id, product_title, scheduled_at, ends_at, duration_minutes, status, briefing, briefing_data, meet_link, calendar_html_link, recording_url, recording_file_id, student_notes, materials, materials_released_at, cancel_reason, completed_at, amount, created_at",
       )
       .eq("user_id", context.userId)
       .order("scheduled_at", { ascending: false });
+
     return data ?? [];
   });
 
