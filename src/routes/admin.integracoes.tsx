@@ -34,7 +34,9 @@ import {
   AlertCircle,
   Search,
   RefreshCw,
-  Eye
+  Eye,
+  ShoppingBag
+
 } from "lucide-react";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -1471,9 +1473,48 @@ function ResendConfigTab({ integration: initialIntegration }: { integration: Int
   );
 }
 
+type OfferForm = {
+  discountPercentage: number;
+  offerType: 'upsell' | 'cross_sell' | 'downsell';
+  maxItems: number;
+  trigger: 'buy_click' | 'min_amount';
+  minOrderAmount: number;
+  headline: string;
+  subheadline: string;
+  ctaLabel: string;
+  autoSelect: boolean;
+  allowCoupon: boolean;
+};
+
+const OFFER_DEFAULTS: OfferForm = {
+  discountPercentage: 15,
+  offerType: 'upsell',
+  maxItems: 3,
+  trigger: 'buy_click',
+  minOrderAmount: 0,
+  headline: 'Turbine seu aprendizado!',
+  subheadline: '',
+  ctaLabel: 'Adicionar Ofertas e Prosseguir',
+  autoSelect: false,
+  allowCoupon: true,
+};
+
+const OFFER_TYPE_LABELS: Record<OfferForm['offerType'], string> = {
+  upsell: 'Pós-venda (Upsell)',
+  cross_sell: 'Produtos relacionados (Cross-sell)',
+  downsell: 'Oferta acessível (Downsell)',
+};
+
+const OFFER_TRIGGER_LABELS: Record<OfferForm['trigger'], string> = {
+  buy_click: 'Ao clicar em comprar',
+  min_amount: 'Ao clicar em comprar (valor mínimo)',
+};
+
 function OffersIntegrationPanel() {
   const queryClient = useQueryClient();
-  
+  const [form, setForm] = useState<OfferForm>(OFFER_DEFAULTS);
+  const [isSaving, setIsSaving] = useState(false);
+
   const { data: offerSettings, isLoading } = useQuery({
     queryKey: ['offer_settings'],
     queryFn: async () => {
@@ -1488,46 +1529,97 @@ function OffersIntegrationPanel() {
     }
   });
 
-  const saveOfferSettings = async (updates: { status?: boolean, discount?: number }) => {
+  useEffect(() => {
+    const s = (offerSettings?.settings as Record<string, any>) || {};
+    setForm({
+      discountPercentage: Number(s.discountPercentage) || OFFER_DEFAULTS.discountPercentage,
+      offerType: (s.offerType as OfferForm['offerType']) || OFFER_DEFAULTS.offerType,
+      maxItems: Number(s.maxItems) || OFFER_DEFAULTS.maxItems,
+      trigger: (s.trigger as OfferForm['trigger']) || OFFER_DEFAULTS.trigger,
+      minOrderAmount: Number(s.minOrderAmount) || 0,
+      headline: s.headline || OFFER_DEFAULTS.headline,
+      subheadline: s.subheadline || '',
+      ctaLabel: s.ctaLabel || OFFER_DEFAULTS.ctaLabel,
+      autoSelect: s.autoSelect === true,
+      allowCoupon: s.allowCoupon !== false,
+    });
+  }, [offerSettings]);
+
+  const persist = async (settings: Partial<OfferForm>, status?: boolean) => {
+    const existingSettings = (offerSettings?.settings as Record<string, any>) || {};
+    const newSettings = { ...existingSettings, ...settings };
+
+    const { error } = await supabase
+      .from('integrations')
+      .upsert({
+        name: 'Configurações de Oferta',
+        type: 'payment',
+        category: 'offer_settings',
+        status: status !== undefined ? status : (offerSettings?.status ?? true),
+        credentials: offerSettings?.credentials || {},
+        settings: newSettings,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'category' });
+
+    if (error) throw error;
+
+    invalidateIntegrationConfig();
+
+    if (status !== undefined && typeof window !== 'undefined' && (window as any).togglePostPurchaseOfferPopup) {
+      (window as any).togglePostPurchaseOfferPopup(status);
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['offer_settings'] });
+  };
+
+  const handleToggle = async (next: boolean) => {
     try {
-      const existingSettings = offerSettings?.settings as Record<string, any> || {};
-      const newSettings = {
-        ...existingSettings,
-        discountPercentage: updates.discount !== undefined ? updates.discount : (existingSettings.discountPercentage || 15)
-      };
-
-      const { error } = await supabase
-        .from('integrations')
-        .upsert({
-          name: 'Configurações de Oferta',
-          type: 'payment',
-          category: 'offer_settings',
-          status: updates.status !== undefined ? updates.status : (offerSettings?.status ?? true),
-          credentials: offerSettings?.credentials || {},
-          settings: newSettings,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'category' });
-
-      if (error) throw error;
-
-      invalidateIntegrationConfig();
-
-      if (updates.status !== undefined && typeof window !== 'undefined' && (window as any).togglePostPurchaseOfferPopup) {
-        (window as any).togglePostPurchaseOfferPopup(updates.status);
-      }
-
-      toast.success("Configurações de oferta atualizadas!");
-      queryClient.invalidateQueries({ queryKey: ['offer_settings'] });
+      await persist({}, next);
+      toast.success(next ? "Ofertas ativadas!" : "Ofertas desativadas.");
     } catch (err: any) {
       toast.error("Erro ao salvar: " + err.message);
     }
   };
 
+  const handleSaveAll = async () => {
+    if (form.discountPercentage < 15 || form.discountPercentage > 100) {
+      toast.error("O desconto deve ficar entre 15% e 100%.");
+      return;
+    }
+    if (form.maxItems < 1 || form.maxItems > 5) {
+      toast.error("A quantidade de itens exibidos deve ficar entre 1 e 5.");
+      return;
+    }
+    if (!form.headline.trim() || !form.ctaLabel.trim()) {
+      toast.error("Título e texto do botão são obrigatórios.");
+      return;
+    }
+    if (form.trigger === 'min_amount' && form.minOrderAmount <= 0) {
+      toast.error("Defina o valor mínimo do pedido para este gatilho.");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      await persist({
+        ...form,
+        headline: form.headline.trim(),
+        subheadline: form.subheadline.trim(),
+        ctaLabel: form.ctaLabel.trim(),
+      });
+      toast.success("Configurações de oferta atualizadas!");
+    } catch (err: any) {
+      toast.error("Erro ao salvar: " + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (isLoading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#ff6a00]" /></div>;
 
-  const settings = offerSettings?.settings as Record<string, any> || {};
-  const currentDiscount = settings.discountPercentage || 15;
   const isEnabled = offerSettings?.status ?? true;
+  const selectClass = "w-full h-12 rounded-xl bg-black/60 border border-white/10 px-3 text-xs font-bold uppercase tracking-widest text-white focus:border-[#ff6a00] outline-none";
+  const labelClass = "text-[10px] font-black uppercase tracking-[0.2em] text-white/40 flex items-center gap-2";
 
   return (
     <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
@@ -1539,7 +1631,7 @@ function OffersIntegrationPanel() {
                 <Sparkles className="h-5 w-5 shrink-0 text-[#ff6a00]" /> <span className="min-w-0">Gestão de Ofertas (Upsell)</span>
               </CardTitle>
               <CardDescription className="text-xs text-white/40">
-                Configure o comportamento do popup de oferta pós-venda.
+                Configure o comportamento do popup de oferta exibido no momento da compra.
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -1547,7 +1639,7 @@ function OffersIntegrationPanel() {
                 variant="outline" 
                 size="sm"
                 onClick={() => {
-                  toast.info("Manual: Defina o percentual de desconto que será aplicado a todos os produtos sugeridos no popup de upsell que aparece após uma compra bem-sucedida.");
+                  toast.info("Manual: defina o tipo de oferta, quantos produtos aparecem, o gatilho, os textos do popup e o desconto aplicado aos produtos sugeridos.");
                 }}
                 className="h-9 text-[9px] uppercase tracking-widest bg-white/5 border-white/10 hover:bg-white/10"
               >
@@ -1560,7 +1652,7 @@ function OffersIntegrationPanel() {
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  onClick={() => saveOfferSettings({ status: !isEnabled })}
+                  onClick={() => handleToggle(!isEnabled)}
                   className={`h-7 w-12 shrink-0 rounded-full p-0 transition-all relative ${isEnabled ? 'bg-emerald-500/20' : 'bg-white/5'}`}
                 >
                   <div className={`absolute top-1 h-5 w-5 rounded-full transition-all duration-300 shadow-lg ${isEnabled ? 'right-1 bg-emerald-400 shadow-emerald-500/50' : 'left-1 bg-white/20'}`} />
@@ -1570,11 +1662,80 @@ function OffersIntegrationPanel() {
           </div>
         </CardHeader>
         <CardContent className="p-4 sm:p-8 space-y-6 sm:space-y-8">
-          <div className="grid gap-6 sm:gap-8 md:grid-cols-2">
+          <div className="grid gap-6 md:grid-cols-3">
+            <div className="space-y-3">
+              <Label className={labelClass}>
+                <Sparkles className="h-4 w-4 shrink-0 text-[#ff6a00]" /> Tipo de Oferta
+              </Label>
+              <select
+                value={form.offerType}
+                onChange={(e) => setForm(f => ({ ...f, offerType: e.target.value as OfferForm['offerType'] }))}
+                className={selectClass}
+              >
+                {Object.entries(OFFER_TYPE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+              <p className="text-[10px] text-white/30 italic">
+                Upsell prioriza produtos mais caros, downsell os mais acessíveis, cross-sell varia os sugeridos.
+              </p>
+            </div>
 
+            <div className="space-y-3">
+              <Label className={labelClass}>
+                <ShoppingBag className="h-4 w-4 shrink-0 text-[#ff6a00]" /> Itens exibidos
+              </Label>
+              <select
+                value={form.maxItems}
+                onChange={(e) => setForm(f => ({ ...f, maxItems: Number(e.target.value) }))}
+                className={selectClass}
+              >
+                {[1, 2, 3, 4, 5].map(n => (
+                  <option key={n} value={n}>{n} {n === 1 ? 'Produto' : 'Produtos'}</option>
+                ))}
+              </select>
+              <p className="text-[10px] text-white/30 italic">
+                Quantidade máxima de produtos sugeridos no popup.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Label className={labelClass}>
+                <Zap className="h-4 w-4 shrink-0 text-[#ff6a00]" /> Gatilho
+              </Label>
+              <select
+                value={form.trigger}
+                onChange={(e) => setForm(f => ({ ...f, trigger: e.target.value as OfferForm['trigger'] }))}
+                className={selectClass}
+              >
+                {Object.entries(OFFER_TRIGGER_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+              {form.trigger === 'min_amount' ? (
+                <div className="relative">
+                  <Input
+                    type="number"
+                    min={1}
+                    step="0.01"
+                    value={form.minOrderAmount}
+                    onChange={(e) => setForm(f => ({ ...f, minOrderAmount: Number(e.target.value) }))}
+                    className="bg-black/60 border-white/10 focus:border-[#ff6a00] h-12 pl-10 rounded-xl font-bold"
+                  />
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 text-xs font-bold">R$</span>
+                </div>
+              ) : (
+                <p className="text-[10px] text-white/30 italic">
+                  O popup aparece sempre que o aluno clica em comprar um produto pago.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-6 sm:gap-8 md:grid-cols-2 pt-6 border-t border-white/5">
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 flex items-center gap-2">
+                <Label className={labelClass}>
                   <Percent className="h-4 w-4 shrink-0 text-[#ff6a00]" /> Percentual de Desconto
                 </Label>
                 <Badge variant="outline" className="bg-[#ff6a00]/10 text-[#ff6a00] border-none font-black">
@@ -1587,57 +1748,101 @@ function OffersIntegrationPanel() {
                   type="number"
                   min={15}
                   max={100}
-                  defaultValue={currentDiscount}
-                  id="discount_input"
+                  value={form.discountPercentage}
+                  onChange={(e) => setForm(f => ({ ...f, discountPercentage: Number(e.target.value) }))}
                   className="bg-black/60 border-white/10 focus:border-[#ff6a00] h-14 text-xl font-bold pl-12 rounded-2xl transition-all"
                 />
                 <span className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 font-bold group-focus-within:text-[#ff6a00] transition-colors">%</span>
               </div>
               <p className="text-[10px] text-white/30 italic">
-                * Este desconto será aplicado automaticamente sobre o valor original dos produtos sugeridos no popup de upsell.
+                * Este desconto será aplicado automaticamente sobre o valor original dos produtos sugeridos no popup.
               </p>
             </div>
 
-            <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 sm:p-6 flex flex-col justify-center">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-10 w-10 shrink-0 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
-                  <Zap className="h-5 w-5 text-[#ff6a00]" />
-                </div>
-                <div className="min-w-0">
-                  <h4 className="text-xs font-bold text-white uppercase tracking-widest">Ação Imediata</h4>
-                  <p className="text-[10px] text-white/40">As mudanças refletem instantaneamente no checkout.</p>
-                </div>
-              </div>
-
-              <Button 
-                onClick={() => {
-                  const input = document.getElementById('discount_input') as HTMLInputElement;
-                  const val = parseInt(input.value);
-                  if (isNaN(val) || val < 15) {
-                    toast.error("O desconto mínimo permitido é de 15%");
-                    return;
-                  }
-                  saveOfferSettings({ discount: val });
-                }}
-                className="w-full bg-[#ff6a00] text-black hover:bg-[#ff6a00]/90 font-black uppercase tracking-[0.2em] text-[10px] h-12 rounded-xl shadow-lg shadow-orange-500/20"
-              >
-                <Save className="h-4 w-4 mr-2" /> Atualizar Regras de Oferta
-              </Button>
+            <div className="space-y-4">
+              <Label className={labelClass}>
+                <Terminal className="h-4 w-4 shrink-0 text-[#ff6a00]" /> Textos do Popup
+              </Label>
+              <Input
+                value={form.headline}
+                onChange={(e) => setForm(f => ({ ...f, headline: e.target.value }))}
+                placeholder="Título do popup"
+                className="bg-black/60 border-white/10 focus:border-[#ff6a00] h-12 rounded-xl"
+              />
+              <Input
+                value={form.subheadline}
+                onChange={(e) => setForm(f => ({ ...f, subheadline: e.target.value }))}
+                placeholder="Subtítulo (vazio = texto automático com o desconto)"
+                className="bg-black/60 border-white/10 focus:border-[#ff6a00] h-12 rounded-xl"
+              />
+              <Input
+                value={form.ctaLabel}
+                onChange={(e) => setForm(f => ({ ...f, ctaLabel: e.target.value }))}
+                placeholder="Texto do botão principal"
+                className="bg-black/60 border-white/10 focus:border-[#ff6a00] h-12 rounded-xl"
+              />
             </div>
+          </div>
+
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 pt-6 border-t border-white/5">
+            {([
+              { key: 'autoSelect' as const, title: 'Pré-selecionar ofertas', desc: 'Os produtos sugeridos já aparecem marcados.' },
+              { key: 'allowCoupon' as const, title: 'Permitir cupom no popup', desc: 'Exibe o campo de cupom dentro da oferta.' },
+            ]).map(opt => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setForm(f => ({ ...f, [opt.key]: !f[opt.key] }))}
+                className={`flex items-center justify-between gap-3 rounded-xl border p-4 text-left transition-all ${form[opt.key] ? 'border-[#ff6a00]/40 bg-[#ff6a00]/5' : 'border-white/5 bg-black/40 hover:bg-white/[0.03]'}`}
+              >
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-white uppercase tracking-widest">{opt.title}</p>
+                  <p className="text-[10px] text-white/40">{opt.desc}</p>
+                </div>
+                {form[opt.key]
+                  ? <ToggleRight className="h-6 w-6 shrink-0 text-[#ff6a00]" />
+                  : <ToggleLeft className="h-6 w-6 shrink-0 text-white/20" />}
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 sm:p-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 shrink-0 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
+                <Zap className="h-5 w-5 text-[#ff6a00]" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-xs font-bold text-white uppercase tracking-widest">Ação Imediata</h4>
+                <p className="text-[10px] text-white/40">As mudanças refletem instantaneamente no checkout.</p>
+              </div>
+            </div>
+
+            <Button 
+              onClick={handleSaveAll}
+              disabled={isSaving}
+              className="w-full sm:w-auto bg-[#ff6a00] text-black hover:bg-[#ff6a00]/90 font-black uppercase tracking-[0.2em] text-[10px] h-12 px-6 rounded-xl shadow-lg shadow-orange-500/20"
+            >
+              {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              Atualizar Regras de Oferta
+            </Button>
           </div>
 
           <div className="pt-6 sm:pt-8 border-t border-white/5 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
              <div className="p-4 bg-black/40 border border-white/5 rounded-xl space-y-1">
                 <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Tipo de Oferta</p>
-                <p className="text-xs font-bold text-white uppercase">Pós-venda (Upsell)</p>
+                <p className="text-xs font-bold text-white uppercase">{OFFER_TYPE_LABELS[form.offerType]}</p>
              </div>
              <div className="p-4 bg-black/40 border border-white/5 rounded-xl space-y-1">
                 <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Itens exibidos</p>
-                <p className="text-xs font-bold text-white uppercase">2-3 Produtos</p>
+                <p className="text-xs font-bold text-white uppercase">Até {form.maxItems} {form.maxItems === 1 ? 'Produto' : 'Produtos'}</p>
              </div>
              <div className="p-4 bg-black/40 border border-white/5 rounded-xl space-y-1">
                 <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Gatilho</p>
-                <p className="text-xs font-bold text-white uppercase">Ao clicar em comprar</p>
+                <p className="text-xs font-bold text-white uppercase">
+                  {form.trigger === 'min_amount'
+                    ? `Ao clicar em comprar (acima de R$ ${form.minOrderAmount.toFixed(2).replace('.', ',')})`
+                    : OFFER_TRIGGER_LABELS.buy_click}
+                </p>
              </div>
           </div>
         </CardContent>
@@ -1654,6 +1859,7 @@ function OffersIntegrationPanel() {
     </div>
   );
 }
+
 
 function EmailTemplatesTab() {
   const queryClient = useQueryClient();
