@@ -54,16 +54,15 @@ export const BRIEFING_LABELS: Record<keyof ConsultationBriefing, string> = {
 
 export function challengeLabel(b: Partial<ConsultationBriefing>) {
   const list = b.main_challenge ?? [];
-  const hasOther = Array.isArray(list) && list.includes("Outro");
-  const base = Array.isArray(list) && list.length > 0
-    ? list.filter((c) => c !== "Outro").join(", ")
-    : list || "-";
+  const challenges = Array.isArray(list) ? list : [list];
+  const hasOther = challenges.includes("Outro");
+  const baseList = challenges.filter((c) => c !== "Outro");
+  let base = baseList.length > 0 ? baseList.join(", ") : "";
   if (hasOther && b.main_challenge_other) {
-    return base && base !== "-"
-      ? `${base}, ${b.main_challenge_other}`
-      : b.main_challenge_other;
+    base = base ? `${base}, ${b.main_challenge_other}` : b.main_challenge_other;
+  } else if (hasOther) {
+    base = base || "Outro";
   }
-  if (hasOther) return base && base !== "-" ? base : "Outro";
   return base || "-";
 }
 
