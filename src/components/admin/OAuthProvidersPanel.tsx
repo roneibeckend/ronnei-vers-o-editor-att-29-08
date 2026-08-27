@@ -412,6 +412,25 @@ export function OAuthProvidersPanel() {
         </AlertDescription>
       </Alert>
 
+      <Alert className="bg-amber-500/5 border-amber-500/20">
+        <AlertTriangle className="h-4 w-4 text-amber-400" />
+        <AlertTitle className="text-xs uppercase tracking-widest text-amber-300">Erro de permissão ao salvar?</AlertTitle>
+        <AlertDescription className="text-xs text-white/60 space-y-1">
+          <p>
+            Alguns tokens de gerenciamento do Supabase permitem ler a configuração, mas não alterar provedores. Se o
+            botão <strong>Salvar</strong> retornar erro de privilégios, configure manualmente em:
+          </p>
+          <a
+            href="https://supabase.com/dashboard/project/llfgqeotxneprvomllru/auth/providers"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 font-mono text-[11px] text-[#ff6a00] hover:underline break-all"
+          >
+            Supabase Auth → Providers <ExternalLink className="h-3 w-3" />
+          </a>
+        </AlertDescription>
+      </Alert>
+
       <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/40">
         <ShieldCheck className="h-3.5 w-3.5 text-[#ff6a00]" /> Provedores principais
       </div>
