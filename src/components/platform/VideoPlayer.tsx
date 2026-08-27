@@ -310,6 +310,8 @@ export function VideoPlayer({
           cc_load_policy: 0,
           disablekb: 1,
           fs: 0,
+          showinfo: 0,
+          start: 2,
         },
         events: {
           onReady: (event: any) => {
