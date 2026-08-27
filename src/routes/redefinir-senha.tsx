@@ -1,10 +1,14 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Lock, Loader2, ShieldCheck, ShieldAlert, Mail } from "lucide-react";
+import { Lock, Loader2, ShieldCheck, ShieldAlert, Mail, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { validatePassword } from "@/lib/password-validation";
 import { completeAuthFromUrl } from "@/lib/auth-callback";
+
+const LAST_RESET_EMAIL_KEY = "last_reset_email";
+
+type ResendStatus = "idle" | "loading" | "success" | "error";
 
 export const Route = createFileRoute("/redefinir-senha")({
   ssr: false,
@@ -30,33 +34,69 @@ function ResetPasswordPage() {
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [resendEmail, setResendEmail] = useState("");
-  const [resending, setResending] = useState(false);
-  const [resent, setResent] = useState(false);
+  const [resendStatus, setResendStatus] = useState<ResendStatus>("idle");
+  const [resendError, setResendError] = useState<string | null>(null);
+  const [resendCount, setResendCount] = useState(0);
+
+  // Pré-preenche o e-mail usado no envio anterior (login ou outras telas).
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(LAST_RESET_EMAIL_KEY);
+      if (saved) setResendEmail(saved);
+    } catch {
+      /* localStorage pode estar indisível */
+    }
+  }, []);
+
+  const validateEmail = (value: string) => {
+    if (!value.trim()) return "Informe o e-mail da sua conta.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return "Informe um e-mail válido.";
+    return null;
+  };
 
   const handleResend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (resending) return;
-    const email = resendEmail.trim();
-    if (!email || !email.includes("@")) {
-      toast.error("Informe um e-mail válido");
+    if (resendStatus === "loading") return;
+
+    const validationError = validateEmail(resendEmail);
+    if (validationError) {
+      setResendStatus("error");
+      setResendError(validationError);
       return;
     }
-    setResending(true);
+
+    setResendStatus("loading");
+    setResendError(null);
+
     try {
+      const email = resendEmail.trim();
+      try {
+        localStorage.setItem(LAST_RESET_EMAIL_KEY, email);
+      } catch {
+        /* ignora */
+      }
+
       const { publicOrigin } = await import("@/lib/auth-callback");
       const { sendPasswordResetEmail } = await import("@/lib/auth-recovery.functions");
-      await sendPasswordResetEmail({ data: { email, origin: publicOrigin() } });
-      setResent(true);
-      toast.success("E-mail reenviado!", {
-        description: "Verifique sua caixa de entrada (e o spam). O link expira em 1 hora.",
-      });
+      const result = await sendPasswordResetEmail({ data: { email, origin: publicOrigin() } });
+
+      if (!result.ok) {
+        // Erros de Resend/Supabase: domínio não verificado, chave inválida, rate limit, etc.
+        setResendStatus("error");
+        setResendError(
+          result.error ||
+            "Não foi possível enviar o e-mail agora. Verifique se o e-mail está correto ou tente novamente em alguns instantes."
+        );
+        return;
+      }
+
+      setResendStatus("success");
+      setResendCount((c) => c + 1);
     } catch (err: any) {
-      toast.error("Não foi possível reenviar", { description: err?.message });
-    } finally {
-      setResending(false);
+      setResendStatus("error");
+      setResendError(err?.message || "Erro inesperado ao enviar o e-mail. Tente novamente.");
     }
   };
-
 
   useEffect(() => {
     let cancelled = false;
@@ -104,6 +144,48 @@ function ResetPasswordPage() {
     }
   };
 
+  const openResendFromForm = () => {
+    setResendError(null);
+    setResendStatus(resendEmail.trim() ? "idle" : "idle");
+    setError("Solicite um novo link de redefinição informando seu e-mail.");
+  };
+
+  const ResendSuccessBlock = () => (
+    <div className="space-y-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5 text-center">
+      <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-400" />
+      <div className="space-y-1">
+        <h2 className="font-display text-lg font-bold text-white">E-mail reenviado!</h2>
+        <p className="text-sm leading-relaxed text-white/80">
+          Enviamos um novo link de redefinição para <strong className="text-white">{resendEmail}</strong>.
+        </p>
+      </div>
+      <ul className="space-y-2 text-left text-xs text-white/70">
+        <li className="flex items-start gap-2">
+          <Mail className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+          Verifique sua caixa de entrada — o e-mail pode levar alguns minutos para chegar.
+        </li>
+        <li className="flex items-start gap-2">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+            Não esqueça de olhar a pasta <strong className="text-white">Spam/Lixo eletrônico</strong>; às vezes o e-mail é filtrado por engano.
+        </li>
+        <li className="flex items-start gap-2">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          O link é válido por <strong className="text-white">1 hora</strong> e só pode ser usado uma vez.
+        </li>
+      </ul>
+      <button
+        type="button"
+        onClick={() => {
+          setResendStatus("idle");
+          setResendError(null);
+        }}
+        className="text-xs text-white/60 underline hover:text-white"
+      >
+        Reenviar para outro e-mail
+      </button>
+    </div>
+  );
+
   return (
     <main className="flex min-h-[100dvh] items-center justify-center px-6 safe-top safe-bottom">
       <section className="glass w-full max-w-md space-y-5 rounded-2xl border border-white/5 bg-white/[0.02] p-6">
@@ -119,38 +201,55 @@ function ResetPasswordPage() {
               </p>
             </div>
 
-            <form onSubmit={handleResend} className="space-y-3">
-              <label className="block">
-                <span className="mb-1.5 block text-sm">Seu e-mail</span>
-                <div className="relative">
-                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    type="email"
-                    value={resendEmail}
-                    onChange={(e) => setResendEmail(e.target.value)}
-                    placeholder="voce@email.com"
-                    className="w-full rounded-xl border border-white/10 bg-secondary/50 px-10 py-3 outline-none focus:border-primary"
-                    required
-                    autoComplete="email"
-                  />
-                </div>
-              </label>
+            {resendStatus === "success" ? (
+              <ResendSuccessBlock />
+            ) : (
+              <form onSubmit={handleResend} className="space-y-3">
+                <label className="block">
+                  <span className="mb-1.5 block text-sm">Seu e-mail</span>
+                  <div className="relative">
+                    <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="email"
+                      value={resendEmail}
+                      onChange={(e) => {
+                        setResendEmail(e.target.value);
+                        if (resendStatus === "error") {
+                          setResendStatus("idle");
+                          setResendError(null);
+                        }
+                      }}
+                      placeholder="voce@email.com"
+                      className={`w-full rounded-xl border bg-secondary/50 px-10 py-3 outline-none focus:border-primary ${
+                        resendStatus === "error" && resendError?.includes("e-mail")
+                          ? "border-red-500/50 focus:border-red-500"
+                          : "border-white/10"
+                      }`}
+                      required
+                      autoComplete="email"
+                      disabled={resendStatus === "loading"}
+                    />
+                  </div>
+                  {resendStatus === "error" && resendError && (
+                    <p className="mt-1.5 flex items-start gap-1.5 text-xs text-red-400">
+                      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      {resendError}
+                    </p>
+                  )}
+                </label>
 
-              <button type="submit" disabled={resending} className="btn-fire w-full">
-                {resending ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Enviando…</>
-                ) : resent ? (
-                  "Reenviar novamente"
-                ) : (
-                  "Reenviar e-mail de redefinição"
-                )}
-              </button>
-            </form>
-
-            {resent && (
-              <p className="text-center text-xs text-emerald-400">
-                Enviamos um novo link para {resendEmail}. Verifique também a pasta de spam.
-              </p>
+                <button type="submit" disabled={resendStatus === "loading"} className="btn-fire w-full">
+                  {resendStatus === "loading" ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Enviando…
+                    </>
+                  ) : resendCount > 0 ? (
+                    "Reenviar novamente"
+                  ) : (
+                    "Reenviar e-mail de redefinição"
+                  )}
+                </button>
+              </form>
             )}
 
             <Link to="/login" className="block text-center text-xs text-white/60 underline hover:text-white">
@@ -209,7 +308,7 @@ function ResetPasswordPage() {
 
             <button
               type="button"
-              onClick={() => setError("Solicite um novo link de redefinição informando seu e-mail.")}
+              onClick={openResendFromForm}
               className="w-full text-center text-xs text-white/50 underline hover:text-white"
             >
               Problemas com este link? Reenviar e-mail
