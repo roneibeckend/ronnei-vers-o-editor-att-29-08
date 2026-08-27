@@ -8,6 +8,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { validatePassword } from "@/lib/password-validation";
 import { checkSession } from "@/lib/session-guard";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -40,6 +48,9 @@ function LoginPage() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetSent, setResetSent] = useState(false);
 
   // Se já estiver logado, manda direto para a página inicial
   useEffect(() => {
@@ -297,7 +308,7 @@ function LoginPage() {
 
   const handleForgotPassword = async () => {
     if (loading) return;
-    if (!email.trim()) {
+    if (!resetEmail.trim()) {
       toast.info("Informe seu e-mail", { description: "Digite o e-mail da sua conta para receber o link de recuperação." });
       return;
     }
@@ -306,15 +317,19 @@ function LoginPage() {
     try {
       const { publicOrigin } = await import("@/lib/auth-callback");
       const { sendPasswordResetEmail } = await import("@/lib/auth-recovery.functions");
-      await sendPasswordResetEmail({ data: { email: email.trim(), origin: publicOrigin() } });
-      toast.success("E-mail enviado!", {
-        description: "Verifique sua caixa de entrada (e o spam) para criar uma nova senha.",
-      });
+      await sendPasswordResetEmail({ data: { email: resetEmail.trim(), origin: publicOrigin() } });
+      setResetSent(true);
     } catch (err: any) {
       toast.error("Não foi possível enviar o e-mail", { description: err?.message });
     } finally {
       setLoading(false);
     }
+  };
+
+  const openResetModal = () => {
+    setResetEmail(email.trim());
+    setResetSent(false);
+    setResetOpen(true);
   };
 
 
@@ -520,7 +535,7 @@ function LoginPage() {
             {!isSignup && (
               <button
                 type="button"
-                onClick={handleForgotPassword}
+                onClick={openResetModal}
                 disabled={loading}
                 className="w-full text-center text-xs text-muted-foreground hover:text-gold hover:underline"
               >
@@ -528,6 +543,72 @@ function LoginPage() {
               </button>
             )}
           </form>
+
+          <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Recuperar senha</DialogTitle>
+                <DialogDescription>
+                  Digite o e-mail da sua conta e enviaremos um link seguro para criar uma nova senha.
+                </DialogDescription>
+              </DialogHeader>
+
+              {!resetSent ? (
+                <>
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm">E-mail</span>
+                    <div className="relative">
+                      <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="email"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        placeholder="seu@email.com"
+                        className="w-full rounded-xl border border-white/10 bg-secondary/50 px-10 py-3 outline-none focus:border-primary"
+                        required
+                        autoComplete="email"
+                      />
+                    </div>
+                  </label>
+
+                  <DialogFooter>
+                    <button
+                      type="button"
+                      onClick={() => setResetOpen(false)}
+                      disabled={loading}
+                      className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-secondary/50 px-4 py-2.5 text-sm font-semibold transition hover:bg-secondary disabled:opacity-60"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      disabled={loading || !resetEmail.trim()}
+                      className="btn-fire inline-flex items-center gap-2 px-4 py-2.5"
+                    >
+                      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                      Enviar link
+                    </button>
+                  </DialogFooter>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-green-500/20 bg-green-500/10 p-4 text-sm text-green-100">
+                    E-mail enviado com sucesso! Verifique sua caixa de entrada (e o spam) para criar uma nova senha.
+                  </div>
+                  <DialogFooter>
+                    <button
+                      type="button"
+                      onClick={() => setResetOpen(false)}
+                      className="btn-fire w-full"
+                    >
+                      Entendido
+                    </button>
+                  </DialogFooter>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             {isSignup ? (
