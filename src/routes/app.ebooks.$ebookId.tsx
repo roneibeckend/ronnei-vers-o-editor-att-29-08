@@ -784,8 +784,7 @@ function EbookReaderPage() {
               </div>
 
               <div
-                className="shrink-0 px-3 pb-0 pt-2 sm:mt-8 sm:flex sm:justify-center sm:px-0 sm:pb-0 sm:pt-0"
-                style={{ paddingBottom: "max(2px, calc(env(safe-area-inset-bottom, 0px) - 0.9rem))" }}
+                className="shrink-0 px-3 pb-safe pt-2 sm:mt-8 sm:flex sm:justify-center sm:px-0 sm:pb-0 sm:pt-0"
               >
                 <button 
                   onClick={() => {
