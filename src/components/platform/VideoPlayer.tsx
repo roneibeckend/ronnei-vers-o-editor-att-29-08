@@ -476,6 +476,7 @@ export function VideoPlayer({
                   }
                 }}
               />
+              </>
             )}
 
             <Button
