@@ -305,7 +305,6 @@ export function VideoPlayer({
           cc_load_policy: 0,
           disablekb: 1,
           fs: 0,
-          hl: 'pt-BR',
         },
         events: {
           onReady: (event: any) => {
