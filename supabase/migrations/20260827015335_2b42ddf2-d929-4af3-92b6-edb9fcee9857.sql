@@ -1,0 +1,6 @@
+ALTER TYPE public.knowledge_category ADD VALUE IF NOT EXISTS 'COMPRAS';
+ALTER TYPE public.knowledge_category ADD VALUE IF NOT EXISTS 'CERTIFICADOS';
+ALTER TYPE public.knowledge_category ADD VALUE IF NOT EXISTS 'AFILIADOS';
+ALTER TYPE public.knowledge_category ADD VALUE IF NOT EXISTS 'FINANCEIRO';
+ALTER TYPE public.knowledge_category ADD VALUE IF NOT EXISTS 'SEGURANCA';
+ALTER TYPE public.knowledge_category ADD VALUE IF NOT EXISTS 'PLATAFORMA';
