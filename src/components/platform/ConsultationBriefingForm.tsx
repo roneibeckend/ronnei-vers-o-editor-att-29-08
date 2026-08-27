@@ -18,28 +18,58 @@ function ChipGroup({
   options,
   value,
   onChange,
+  multi = false,
 }: {
   options: readonly string[];
-  value: string;
+  value: string | string[];
   onChange: (v: string) => void;
+  multi?: boolean;
 }) {
+  const selected = multi ? new Set(Array.isArray(value) ? value : []) : new Set([value]);
   return (
     <div className="flex flex-wrap gap-2">
-      {options.map((opt) => (
-        <button
-          key={opt}
-          type="button"
-          onClick={() => onChange(opt)}
-          className={`rounded-full border px-3 py-2 text-sm transition-colors active:scale-[0.98] ${
-            value === opt
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border bg-muted/30 text-muted-foreground hover:border-primary/50"
-          }`}
-        >
-          {opt}
-        </button>
-      ))}
+      {options.map((opt) => {
+        const isSelected = selected.has(opt);
+        return (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onChange(opt)}
+            className={`rounded-full border px-3 py-2 text-sm transition-colors active:scale-[0.98] ${
+              isSelected
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-muted/30 text-muted-foreground hover:border-primary/50"
+            }`}
+          >
+            {opt}
+          </button>
+        );
+      })}
     </div>
+  );
+}
+
+function MultiChipGroup({
+  options,
+  value,
+  onChange,
+}: {
+  options: readonly string[];
+  value: string[];
+  onChange: (v: string[]) => void;
+}) {
+  return (
+    <ChipGroup
+      options={options}
+      value={value}
+      multi
+      onChange={(opt) => {
+        const set = new Set(value);
+        if (set.has(opt)) set.delete(opt);
+        else set.add(opt);
+        onChange(Array.from(set));
+      }}
+    />
   );
 }
 
@@ -154,14 +184,17 @@ export function ConsultationBriefingForm({
         {step === 3 && (
           <>
             <div className="space-y-2">
-              <Label>Qual seu principal desafio hoje?</Label>
-              <ChipGroup
+              <Label>Quais seus principais desafios hoje?</Label>
+              <MultiChipGroup
                 options={CHALLENGE_OPTIONS}
                 value={value.main_challenge}
                 onChange={(v) => set("main_challenge", v as ConsultationBriefing["main_challenge"])}
               />
+              {value.main_challenge.length === 0 && (
+                <p className="text-xs text-muted-foreground">Selecione pelo menos uma opção.</p>
+              )}
             </div>
-            {value.main_challenge === "Outro" && (
+            {value.main_challenge.includes("Outro") && (
               <div className="space-y-1.5">
                 <Label htmlFor="br-other">Qual?</Label>
                 <Input
