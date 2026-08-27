@@ -251,16 +251,39 @@ function KiwifyImportPage() {
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const text = await file.text();
-    const parsed = parseCsv(text);
-    if (!parsed.length) {
-      toast.error("Nenhuma linha encontrada. Verifique o cabeçalho da planilha (nome, email, cpf, telefone).");
-      return;
-    }
-    setRows(parsed);
-    setFileName(file.name);
     setResult(null);
-    toast.success(`${parsed.length} linha(s) carregada(s).`);
+    setReadError(null);
+    setDiagnostics(null);
+    setRows([]);
+
+    const isXlsx = /\.xlsx$/i.test(file.name) || file.type.includes("spreadsheet");
+    const isXls = /\.xls$/i.test(file.name);
+
+    try {
+      if (isXls) throw new Error("Formato .xls antigo não suportado. Salve como .xlsx ou CSV.");
+      const parsed = isXlsx ? await parseXlsx(await file.arrayBuffer()) : parseCsv(await file.text());
+      setFileName(file.name);
+      setDiagnostics(parsed.diagnostics);
+
+      if (!parsed.diagnostics.mapping.email) {
+        setReadError(
+          `Nenhuma coluna de e-mail encontrada. Cabeçalhos lidos: ${parsed.diagnostics.headers.join(", ") || "(nenhum)"}. Renomeie a coluna para "email" ou "e-mail".`,
+        );
+        toast.error("Coluna de e-mail não encontrada na planilha.");
+        return;
+      }
+      if (!parsed.rows.length) {
+        setReadError("Cabeçalhos reconhecidos, mas nenhuma linha de dados foi encontrada.");
+        toast.error("Nenhuma linha de dados encontrada.");
+        return;
+      }
+      setRows(parsed.rows);
+      toast.success(`${parsed.rows.length} linha(s) carregada(s) (${parsed.diagnostics.format}).`);
+    } catch (err: any) {
+      setFileName(file.name);
+      setReadError(err?.message || "Falha ao ler o arquivo.");
+      toast.error("Falha ao ler o arquivo: " + (err?.message || "erro desconhecido"));
+    }
   }
 
   async function run(dryRun: boolean) {
