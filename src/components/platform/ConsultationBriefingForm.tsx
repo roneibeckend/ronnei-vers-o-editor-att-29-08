@@ -184,14 +184,17 @@ export function ConsultationBriefingForm({
         {step === 3 && (
           <>
             <div className="space-y-2">
-              <Label>Qual seu principal desafio hoje?</Label>
-              <ChipGroup
+              <Label>Quais seus principais desafios hoje?</Label>
+              <MultiChipGroup
                 options={CHALLENGE_OPTIONS}
                 value={value.main_challenge}
                 onChange={(v) => set("main_challenge", v as ConsultationBriefing["main_challenge"])}
               />
+              {value.main_challenge.length === 0 && (
+                <p className="text-xs text-muted-foreground">Selecione pelo menos uma opção.</p>
+              )}
             </div>
-            {value.main_challenge === "Outro" && (
+            {value.main_challenge.includes("Outro") && (
               <div className="space-y-1.5">
                 <Label htmlFor="br-other">Qual?</Label>
                 <Input
