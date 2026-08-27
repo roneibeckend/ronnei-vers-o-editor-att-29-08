@@ -277,6 +277,7 @@ export const getKnowledgeMenu = createServerFn({ method: "GET" })
 
     const grouped = new Map<string, { id: string; title: string }[]>();
     for (const item of data as { id: string; title: string; category: string | null }[]) {
+      if (isLanding && !isPublicCategory(item.category)) continue;
       const category = item.category?.trim() || "Geral";
       if (!grouped.has(category)) grouped.set(category, []);
       grouped.get(category)!.push({ id: item.id, title: item.title });
