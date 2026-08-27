@@ -348,6 +348,9 @@ function AdminChatbotPage() {
                       <option value="PRECO E LUCRO">Preço & Lucro</option>
                       <option value="TEMPEROS">Temperos</option>
                       <option value="DELIVERY">Delivery</option>
+                      <option value="NEGOCIO DE ESPETINHOS">Negócio de Espetinhos</option>
+                      <option value="CURSO E CONTEUDO">Curso e Conteúdo</option>
+                      <option value="PAGAMENTOS">Pagamentos</option>
                     </select>
                   </div>
                 </div>
