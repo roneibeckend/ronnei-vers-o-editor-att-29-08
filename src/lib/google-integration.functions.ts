@@ -16,13 +16,13 @@ export const getGoogleIntegration = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context);
 
-    const [{ getConnectionStatus }, { getGoogleSettings }] = await Promise.all([
+    const [{ getConnectionStatus, getGoogleClientSummary }, { getGoogleSettings }] = await Promise.all([
       import("@/lib/google-oauth.server"),
       import("@/lib/google-calendar.server"),
     ]);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [status, settings, logs] = await Promise.all([
+    const [status, settings, logs, client] = await Promise.all([
       getConnectionStatus(),
       getGoogleSettings(),
       supabaseAdmin
@@ -31,10 +31,12 @@ export const getGoogleIntegration = createServerFn({ method: "GET" })
         .order("created_at", { ascending: false })
         .limit(20)
         .then((r) => r.data ?? []),
+      getGoogleClientSummary(),
     ]);
 
-    return { status, settings, logs };
+    return { status, settings, logs, client };
   });
+
 
 /** Cadastra/atualiza o Client ID e Client Secret do Google (secret criptografado). */
 export const saveGoogleOAuthClient = createServerFn({ method: "POST" })
