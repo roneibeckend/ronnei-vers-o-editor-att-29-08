@@ -404,6 +404,23 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
                         if (creditError) {
                           console.error('[Webhook Asaas] Falha ao creditar comissão:', creditError.message);
                         }
+
+                        try {
+                          const { notifyAdmin, formatMoney } = await import('@/lib/admin-notify.server');
+                          await notifyAdmin({
+                            type: 'affiliate',
+                            severity: 'info',
+                            title: `🤝 Comissão de afiliado — ${formatMoney(commission)}`,
+                            body: `${(affProfile as any)?.name || 'Parceiro'} vendeu ${product?.title || 'produto'} (${formatMoney(amount)})`,
+                            entityType: 'affiliate',
+                            entityId: String((affiliate as any).id),
+                            link: '/admin/afiliados',
+                            dedupKey: `affiliate-sale:${paymentId}`,
+                            metadata: { affiliateCode, commission, amount, paymentId },
+                          });
+                        } catch (notifyErr) {
+                          console.warn('[Webhook Asaas] Falha ao notificar comissão:', notifyErr);
+                        }
                       }
                     }
 
