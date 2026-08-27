@@ -366,7 +366,10 @@ export const saveConsultationNotes = createServerFn({ method: "POST" })
       patch["materials_released_at"] = data.materials.length ? new Date().toISOString() : null;
     }
 
-    const { error } = await supabaseAdmin.from("consultations").update(patch).eq("id", data.id);
+    const { error } = await supabaseAdmin
+      .from("consultations")
+      .update(patch as never)
+      .eq("id", data.id);
     if (error) throw new Error(error.message);
 
     await auditConsultation({
