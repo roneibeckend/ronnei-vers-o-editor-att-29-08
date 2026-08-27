@@ -200,6 +200,7 @@ function KiwifyImportPage() {
   const [product, setProduct] = useState("");
   const [sendPasswordEmail, setSendPasswordEmail] = useState(true);
   const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
+  const [sendAccessEmail, setSendAccessEmail] = useState(true);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
