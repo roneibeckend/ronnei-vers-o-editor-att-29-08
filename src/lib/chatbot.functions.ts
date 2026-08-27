@@ -141,7 +141,11 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
     let bestMatch: KnowledgeItem | null = null;
     let maxScore = 0;
 
-    for (const item of (knowledge as KnowledgeItem[])) {
+    const pool = isLanding
+      ? (knowledge as KnowledgeItem[]).filter((k) => isPublicCategory(k.category))
+      : (knowledge as KnowledgeItem[]);
+
+    for (const item of pool) {
       let score = 0;
       
       const titleNormalized = normalize(item.title);
