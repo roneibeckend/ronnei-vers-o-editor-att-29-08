@@ -4,15 +4,20 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
   ArrowRight,
+  ChevronDown,
   Flame,
+  FolderOpen,
+  Layers,
   MessageCircle,
   Send,
   Sparkles,
   ThumbsDown,
   ThumbsUp,
   Ticket as TicketIcon,
+  X,
 } from "lucide-react";
-import { getChatbotResponse, submitKnowledgeFeedback } from "@/lib/chatbot.functions";
+import { getChatbotResponse, getKnowledgeMenu, submitKnowledgeFeedback } from "@/lib/chatbot.functions";
+import type { KnowledgeMenuCategory } from "@/lib/chatbot.functions";
 import { landingFaqs } from "@/lib/landing-faq";
 
 type Msg = {
