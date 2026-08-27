@@ -432,17 +432,38 @@ export function VideoPlayer({
         {!started && (
           <div className="absolute inset-0 z-10">
             {thumb && (
+              <>
+                {/* Fundo desfocado: evita bordas vazias quando a capa não é 9:16. */}
+                {landscapeThumb && (
+                  <img
+                    src={thumb}
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute inset-0 h-full w-full scale-125 object-cover object-center blur-2xl opacity-50"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                )}
               <img
                 src={thumb}
                 alt={title || 'Capa do vídeo'}
-                // A capa preenche o quadro (recorte central) para ficar centralizada.
-                className="h-full w-full bg-black object-cover object-center"
+                // Capa vertical preenche o quadro; capa horizontal é encaixada
+                // inteira e centralizada sobre o fundo desfocado (sem cortes).
+                className={cn(
+                  'relative h-full w-full object-center',
+                  landscapeThumb ? 'object-contain' : 'bg-black object-cover',
+                )}
                 loading="lazy"
                 decoding="async"
                 onLoad={(event) => {
                   const img = event.currentTarget;
                   // Capa vertical (ex.: vídeo de celular): o quadro vira 9:16.
-                  if (img.naturalHeight > img.naturalWidth) setPortraitThumb(true);
+                  if (img.naturalHeight > img.naturalWidth) {
+                    setPortraitThumb(true);
+                    setLandscapeThumb(false);
+                  } else {
+                    setLandscapeThumb(true);
+                  }
                 }}
                 onError={(event) => {
                   const img = event.currentTarget;
