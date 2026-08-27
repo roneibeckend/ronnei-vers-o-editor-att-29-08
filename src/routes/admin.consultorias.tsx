@@ -271,6 +271,12 @@ function MeetingsTab({ consultations, onChanged }: { consultations: any[]; onCha
         onClose={() => setRecordingFor(null)}
         onSaved={onChanged}
       />
+
+      <ConsultationManageDialog
+        consultation={managing}
+        onClose={() => setManaging(null)}
+        onSaved={onChanged}
+      />
     </div>
   );
 }
