@@ -79,7 +79,6 @@ function LoginPage() {
     // mas só encerra o login quando o servidor rejeita o token. Offline/rede
     // instável (comum no PWA instalado) mantém a sessão salva.
     checkSession().then(async (check) => {
-      console.log("LOOPDBG login check", check, "redirectTo", redirectTo);
       if (check === "invalid") {
         try {
           await supabase.auth.signOut({ scope: "local" });
