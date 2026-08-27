@@ -202,6 +202,9 @@ export function PostPurchaseOffer({
                 <>Adicione estes itens complementares agora e ganhe <span className="text-gold font-bold">{discountPercentage}% de desconto</span> em cada um.</>
               )}
             </p>
+          </DialogHeader>
+
+
 
 
           {isLoading ? (
