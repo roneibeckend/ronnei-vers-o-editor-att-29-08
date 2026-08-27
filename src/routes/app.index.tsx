@@ -104,7 +104,7 @@ function Dashboard() {
     staleTime: 1000 * 60 * 60, // 1 hour
     gcTime: 1000 * 60 * 60 * 24,
     queryFn: async () => {
-      const [coursesRes, ebooksRes] = await Promise.all([
+      const [coursesRes, ebooksRes, consultRes] = await Promise.all([
         supabase
           .from("courses")
           .select("id, title, description, price, cover_url, created_at, badge, status")
@@ -115,6 +115,10 @@ function Dashboard() {
           .select("id, title, description, price, cover_url, created_at, badge, status")
           .eq("is_locked", false)
           .in("status", VISIBLE_STATUSES),
+        supabase
+          .from("consultation_products")
+          .select("id, title, subtitle, description, price, cover_url, created_at, status")
+          .in("status", ["active", "coming_soon"]),
       ]);
 
       if (coursesRes.error) throw coursesRes.error;
@@ -128,6 +132,12 @@ function Dashboard() {
         ...(ebooksRes.data || []).map(e => ({ 
           ...e,
           type: 'ebook' as const 
+        })),
+        ...(consultRes.data || []).map((c: any) => ({
+          ...c,
+          description: c.description || c.subtitle,
+          badge: null,
+          type: 'consultation' as const,
         })),
       ];
 
