@@ -121,7 +121,8 @@ function LoginPage() {
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const redirectTo = urlParams.get('redirectTo');
-      const callback = `${window.location.origin}/login${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ''}`;
+      const { authCallbackUrl } = await import("@/lib/auth-callback");
+      const callback = authCallbackUrl(redirectTo ?? undefined);
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -152,7 +153,8 @@ function LoginPage() {
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const redirectTo = urlParams.get('redirectTo');
-      const callback = `${window.location.origin}/login${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ''}`;
+      const { authCallbackUrl } = await import("@/lib/auth-callback");
+      const callback = authCallbackUrl(redirectTo ?? undefined);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "apple",
         options: { redirectTo: callback },
@@ -175,7 +177,8 @@ function LoginPage() {
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const redirectTo = urlParams.get('redirectTo');
-      const callback = `${window.location.origin}/login${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ''}`;
+      const { authCallbackUrl } = await import("@/lib/auth-callback");
+      const callback = authCallbackUrl(redirectTo ?? undefined);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "facebook",
         options: { redirectTo: callback },
