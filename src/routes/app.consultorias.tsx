@@ -15,7 +15,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
+import { ConsultationBriefingForm } from "@/components/platform/ConsultationBriefingForm";
+import { ConsultationBriefingSummary } from "@/components/platform/ConsultationBriefingSummary";
+import type { ConsultationBriefing } from "@/lib/consultation-briefing";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar, Clock, Loader2, Video, FileText, History, ExternalLink, PlayCircle } from "lucide-react";
 
@@ -163,13 +165,12 @@ function ConsultationsPage() {
 }
 
 function ConsultationCard({ consultation, onChanged }: { consultation: any; onChanged: () => void }) {
-  const [briefing, setBriefing] = useState(consultation.briefing ?? "");
   const [editing, setEditing] = useState(false);
   const saveBriefing = useServerFn(submitConsultationBriefing);
   const cancel = useServerFn(cancelMyConsultation);
 
   const save = useMutation({
-    mutationFn: () => saveBriefing({ data: { id: consultation.id, briefing } }),
+    mutationFn: (value: ConsultationBriefing) => saveBriefing({ data: { id: consultation.id, briefingData: value } }),
     onSuccess: () => {
       toast.success("Briefing salvo. O Ronnei vai chegar preparado.");
       setEditing(false);
@@ -277,7 +278,6 @@ function BookingDialog({
   onBooked: () => void;
 }) {
   const [slot, setSlot] = useState<string | null>(null);
-  const [briefing, setBriefing] = useState("");
   const book = useServerFn(bookConsultation);
 
   const { data: slots, isLoading } = useQuery({
@@ -297,8 +297,8 @@ function BookingDialog({
   }, [slots]);
 
   const submit = useMutation({
-    mutationFn: () =>
-      book({ data: { productId: product.id, startIso: slot!, briefing: briefing.trim() || undefined } }),
+    mutationFn: (value?: ConsultationBriefing) =>
+      book({ data: { productId: product.id, startIso: slot!, briefingData: value } }),
     onSuccess: (res: any) => {
       toast.success(
         res?.meetLink
@@ -306,14 +306,11 @@ function BookingDialog({
           : "Consultoria agendada! Você receberá o link da reunião por e-mail.",
       );
       setSlot(null);
-      setBriefing("");
       onBooked();
       onClose();
     },
     onError: (e: any) => toast.error(e?.message ?? "Falha ao agendar."),
   });
-
-  const briefingOk = !product?.briefing_required || briefing.trim().length >= 20;
 
   return (
     <Dialog open={Boolean(product)} onOpenChange={(o) => !o && onClose()}>
