@@ -309,6 +309,7 @@ function KiwifyImportPage() {
         productId: selected?.id ?? null,
         sendPasswordEmail: dryRun ? false : sendPasswordEmail,
         sendWelcomeEmail: dryRun ? false : sendWelcomeEmail,
+        sendAccessEmail: dryRun ? false : sendAccessEmail,
         dryRun,
       };
       const res = await importKiwifyStudents({ data: payload });
