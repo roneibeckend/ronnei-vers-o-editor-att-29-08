@@ -45,6 +45,12 @@ export function PostPurchaseOffer({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [discountPercentage, setDiscountPercentage] = useState(15);
+  const [copy, setCopy] = useState({
+    headline: 'Turbine seu aprendizado!',
+    subheadline: '',
+    ctaLabel: 'Adicionar Ofertas e Prosseguir',
+    allowCoupon: true,
+  });
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
   const { isEnrolledInCourse, isEnrolledInEbook } = useEnrollments();
 
@@ -79,10 +85,29 @@ export function PostPurchaseOffer({
       
       // Fetch dynamic settings
       const config = await getIntegrationConfig('offer_settings');
-      
-      if (config?.settings && typeof config.settings === 'object') {
-        const s = config.settings as Record<string, any>;
-        if (s.discountPercentage) setDiscountPercentage(s.discountPercentage);
+      const s = (config?.settings && typeof config.settings === 'object'
+        ? (config.settings as Record<string, any>)
+        : {}) as Record<string, any>;
+
+      if (s.discountPercentage) setDiscountPercentage(s.discountPercentage);
+
+      const offerType: 'upsell' | 'cross_sell' | 'downsell' = s.offerType || 'upsell';
+      const maxItems = Math.min(Math.max(Number(s.maxItems) || 3, 1), 5);
+      const trigger: 'buy_click' | 'min_amount' = s.trigger || 'buy_click';
+      const minOrderAmount = Number(s.minOrderAmount) || 0;
+      const autoSelect = s.autoSelect === true;
+
+      setCopy({
+        headline: s.headline || 'Turbine seu aprendizado!',
+        subheadline: s.subheadline || '',
+        ctaLabel: s.ctaLabel || 'Adicionar Ofertas e Prosseguir',
+        allowCoupon: s.allowCoupon !== false,
+      });
+
+      // Gatilho: só exibe quando o pedido atinge o valor mínimo configurado.
+      if (trigger === 'min_amount' && (amount || 0) < minOrderAmount) {
+        setOffers([]);
+        return;
       }
 
       const [coursesRes, ebooksRes] = await Promise.all([
@@ -117,13 +142,20 @@ export function PostPurchaseOffer({
         }
       });
 
-      // Selection logic: Get up to 3 valid products
-      const selectedOffers = allPossibleOffers
-        .sort(() => 0.5 - Math.random())
-        .slice(0, 3);
+      // Ordenação conforme o tipo de oferta configurado
+      const ranked = [...allPossibleOffers];
+      if (offerType === 'upsell') {
+        ranked.sort((a, b) => (b.price || 0) - (a.price || 0));
+      } else if (offerType === 'downsell') {
+        ranked.sort((a, b) => (a.price || 0) - (b.price || 0));
+      } else {
+        ranked.sort(() => 0.5 - Math.random());
+      }
+
+      const selectedOffers = ranked.slice(0, maxItems);
 
       setOffers(selectedOffers);
-      // Por padrão, não selecionamos nada ou poderíamos selecionar todos
+      setSelectedIds(autoSelect ? selectedOffers.map(o => o.id) : []);
     } catch (error) {
       console.error('Erro ao buscar ofertas:', error);
       toast.error('Erro ao carregar ofertas complementares.');
@@ -131,6 +163,7 @@ export function PostPurchaseOffer({
       setIsLoading(false);
     }
   };
+
 
   const toggleSelection = (id: string) => {
     setSelectedIds(prev => 
