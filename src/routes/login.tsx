@@ -116,29 +116,36 @@ function LoginPage() {
 
 
 
+  // Google: OAuth nativo do Supabase (provedor configurado no projeto Supabase)
   const handleGoogle = async () => {
     setLoading(true);
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/inicio`,
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectTo = urlParams.get('redirectTo');
+      const callback = `${window.location.origin}/login${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ''}`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: callback,
+          queryParams: { prompt: "select_account" },
+          skipBrowserRedirect: true,
+        },
       });
-      if (result.error) {
-        toast.error("Não foi possível entrar com Google", { description: String(result.error?.message ?? result.error) });
+      if (error || !data?.url) {
+        toast.error("Não foi possível entrar com Google", { description: error?.message });
         setLoading(false);
         return;
       }
-      if (result.redirected) return;
-      // Tokens já setados; segue pra plataforma
-      const urlParams = new URLSearchParams(window.location.search);
-      const redirectTo = urlParams.get('redirectTo');
-      goTo(redirectTo || "/inicio");
+      // Em preview (iframe), navega a janela de topo para evitar bloqueio do Google
+      const target = window.top ?? window;
+      target.location.href = data.url;
     } catch (err) {
-
       toast.error("Erro ao conectar com Google");
       console.error(err);
       setLoading(false);
     }
   };
+
 
   // Apple: OAuth nativo do Supabase (broker não suporta Apple neste projeto)
   const handleApple = async () => {
