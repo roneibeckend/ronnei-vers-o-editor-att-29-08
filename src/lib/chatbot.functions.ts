@@ -225,9 +225,12 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
     }
 
     return {
-      answer: "Ainda estou aprendendo sobre isso e não tenho uma resposta exata agora. Mas não se preocupe! Você pode abrir um chamado na aba 'Meus Chamados' ou tentar perguntar com outras palavras.",
+      answer: isLanding
+        ? "Ainda não tenho uma resposta exata pra essa. Posso te ajudar com carnes, temperos, precificação, CMV, produção, delivery e vendas — ou você pode escolher uma das sugestões abaixo. Tudo isso é ensinado passo a passo no treinamento Do Zero aos 10K."
+        : "Ainda estou aprendendo sobre isso e não tenho uma resposta exata agora. Mas não se preocupe! Você pode abrir um chamado na aba 'Meus Chamados' ou tentar perguntar com outras palavras.",
       confidence,
-      needsHuman: true
+      needsHuman: true,
+      suggestions: isLanding ? LANDING_SUGGESTIONS : []
     };
   });
 
