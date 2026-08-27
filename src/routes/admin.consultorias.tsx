@@ -456,6 +456,12 @@ function ProductDialog({
             <Label>Descrição</Label>
             <Textarea rows={4} value={form.description ?? ""} onChange={(e) => set("description", e.target.value)} />
           </div>
+          <ImageUpload
+            value={form.cover_url ?? ""}
+            onChange={(url) => set("cover_url", url)}
+            label="Imagem de capa"
+            description="Mesmo padrão dos e-books. JPG ou PNG, até 5MB."
+          />
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Duração</Label>
