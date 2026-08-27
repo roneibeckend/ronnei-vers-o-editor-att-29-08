@@ -72,23 +72,41 @@ function splitLine(line: string, delimiter: string): string[] {
   return out.map((v) => v.trim());
 }
 
-function parseCsv(text: string): ParsedRow[] {
-  const lines = text.replace(/\r/g, "").split("\n").filter((l) => l.trim().length > 0);
-  if (!lines.length) return [];
-  const delimiter = (lines[0].match(/;/g)?.length ?? 0) > (lines[0].match(/,/g)?.length ?? 0) ? ";" : ",";
-  const header = splitLine(lines[0], delimiter).map((h) => h.toLowerCase().replace(/^"|"$/g, ""));
+type Diagnostics = {
+  format: "CSV" | "XLSX";
+  delimiter?: string;
+  columnCount: number;
+  headers: string[];
+  mapping: Record<"name" | "email" | "cpf" | "phone" | "product", string | null>;
+  dataRows: number;
+};
 
-  const map = header.map((h) => HEADER_ALIASES[h] ?? null);
+function normalizeHeader(value: string) {
+  return value
+    .replace(/^"|"$/g, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildRows(headers: string[], dataRows: string[][]) {
+  const map = headers.map((h) => HEADER_ALIASES[normalizeHeader(h)] ?? null);
+  const mapping: Diagnostics["mapping"] = { name: null, email: null, cpf: null, phone: null, product: null };
+  map.forEach((field, i) => {
+    if (field && !mapping[field]) mapping[field] = headers[i];
+  });
+
   const rows: ParsedRow[] = [];
-
   const seen = new Set<string>();
 
-  for (const line of lines.slice(1)) {
-    const cells = splitLine(line, delimiter);
+  for (const cells of dataRows) {
+    if (!cells.some((c) => (c ?? "").trim().length > 0)) continue;
     const row: ParsedRow = { name: "", email: "", cpf: "", phone: "", product: "", valid: true };
     map.forEach((field, index) => {
       if (!field) return;
-      row[field] = (cells[index] ?? "").replace(/^"|"$/g, "");
+      row[field] = (cells[index] ?? "").replace(/^"|"$/g, "").trim();
     });
     row.email = row.email.trim().toLowerCase();
 
@@ -106,7 +124,63 @@ function parseCsv(text: string): ParsedRow[] {
     if (row.email) seen.add(row.email);
     rows.push(row);
   }
-  return rows;
+  return { rows, mapping };
+}
+
+function parseCsv(text: string): { rows: ParsedRow[]; diagnostics: Diagnostics } {
+  const lines = text.replace(/^\uFEFF/, "").replace(/\r/g, "").split("\n").filter((l) => l.trim().length > 0);
+  if (!lines.length) throw new Error("Arquivo CSV vazio.");
+  const semis = lines[0].match(/;/g)?.length ?? 0;
+  const commas = lines[0].match(/,/g)?.length ?? 0;
+  const tabs = lines[0].match(/\t/g)?.length ?? 0;
+  const delimiter = tabs > semis && tabs > commas ? "\t" : semis > commas ? ";" : ",";
+  const headers = splitLine(lines[0], delimiter).map((h) => h.replace(/^"|"$/g, "").trim());
+  const data = lines.slice(1).map((l) => splitLine(l, delimiter));
+  const { rows, mapping } = buildRows(headers, data);
+  return {
+    rows,
+    diagnostics: {
+      format: "CSV",
+      delimiter: delimiter === "\t" ? "TAB" : delimiter,
+      columnCount: headers.length,
+      headers,
+      mapping,
+      dataRows: rows.length,
+    },
+  };
+}
+
+async function parseXlsx(buffer: ArrayBuffer): Promise<{ rows: ParsedRow[]; diagnostics: Diagnostics }> {
+  const ExcelJS = (await import("exceljs")).default ?? (await import("exceljs"));
+  const wb = new (ExcelJS as any).Workbook();
+  await wb.xlsx.load(buffer);
+  const ws = wb.worksheets[0];
+  if (!ws) throw new Error("Nenhuma aba encontrada na planilha.");
+
+  const matrix: string[][] = [];
+  ws.eachRow({ includeEmpty: false }, (row: any) => {
+    const values: string[] = [];
+    const raw = row.values as any[];
+    for (let i = 1; i < raw.length; i++) {
+      const v = raw[i];
+      let cell = "";
+      if (v == null) cell = "";
+      else if (typeof v === "object") cell = String(v.text ?? v.result ?? v.hyperlink ?? v.richText?.map((t: any) => t.text).join("") ?? "");
+      else cell = String(v);
+      values.push(cell.trim());
+    }
+    matrix.push(values);
+  });
+
+  if (!matrix.length) throw new Error("Planilha vazia.");
+  const headerIndex = matrix.findIndex((r) => r.some((c) => HEADER_ALIASES[normalizeHeader(c)]));
+  const hi = headerIndex >= 0 ? headerIndex : 0;
+  const headers = matrix[hi];
+  const { rows, mapping } = buildRows(headers, matrix.slice(hi + 1));
+  return {
+    rows,
+    diagnostics: { format: "XLSX", columnCount: headers.length, headers, mapping, dataRows: rows.length },
+  };
 }
 
 function normalizeTitle(value: string) {
@@ -127,6 +201,8 @@ function KiwifyImportPage() {
   const [sendPasswordEmail, setSendPasswordEmail] = useState(true);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
+  const [readError, setReadError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -177,16 +253,39 @@ function KiwifyImportPage() {
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const text = await file.text();
-    const parsed = parseCsv(text);
-    if (!parsed.length) {
-      toast.error("Nenhuma linha encontrada. Verifique o cabeçalho da planilha (nome, email, cpf, telefone).");
-      return;
-    }
-    setRows(parsed);
-    setFileName(file.name);
     setResult(null);
-    toast.success(`${parsed.length} linha(s) carregada(s).`);
+    setReadError(null);
+    setDiagnostics(null);
+    setRows([]);
+
+    const isXlsx = /\.xlsx$/i.test(file.name) || file.type.includes("spreadsheet");
+    const isXls = /\.xls$/i.test(file.name);
+
+    try {
+      if (isXls) throw new Error("Formato .xls antigo não suportado. Salve como .xlsx ou CSV.");
+      const parsed = isXlsx ? await parseXlsx(await file.arrayBuffer()) : parseCsv(await file.text());
+      setFileName(file.name);
+      setDiagnostics(parsed.diagnostics);
+
+      if (!parsed.diagnostics.mapping.email) {
+        setReadError(
+          `Nenhuma coluna de e-mail encontrada. Cabeçalhos lidos: ${parsed.diagnostics.headers.join(", ") || "(nenhum)"}. Renomeie a coluna para "email" ou "e-mail".`,
+        );
+        toast.error("Coluna de e-mail não encontrada na planilha.");
+        return;
+      }
+      if (!parsed.rows.length) {
+        setReadError("Cabeçalhos reconhecidos, mas nenhuma linha de dados foi encontrada.");
+        toast.error("Nenhuma linha de dados encontrada.");
+        return;
+      }
+      setRows(parsed.rows);
+      toast.success(`${parsed.rows.length} linha(s) carregada(s) (${parsed.diagnostics.format}).`);
+    } catch (err: any) {
+      setFileName(file.name);
+      setReadError(err?.message || "Falha ao ler o arquivo.");
+      toast.error("Falha ao ler o arquivo: " + (err?.message || "erro desconhecido"));
+    }
   }
 
   async function run(dryRun: boolean) {
@@ -228,17 +327,68 @@ function KiwifyImportPage() {
       <div>
         <h2 className="text-xl font-bold">Importação de Alunos (Kiwify)</h2>
         <p className="text-sm text-white/40">
-          Envie a planilha exportada da Kiwify em CSV. Colunas reconhecidas: nome, email, cpf e telefone. O CPF é opcional.
+          Envie a planilha exportada da Kiwify em CSV ou Excel (.xlsx). Colunas reconhecidas: nome, email, cpf, telefone e produto. O CPF é opcional.
         </p>
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 space-y-5">
         <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/15 bg-white/[0.02] p-8 text-center transition hover:border-[#ff6a00]/50">
           <FileSpreadsheet className="h-8 w-8 text-[#ff6a00]" />
-          <span className="text-sm font-medium">{fileName || "Selecionar arquivo CSV"}</span>
+          <span className="text-sm font-medium">{fileName || "Selecionar arquivo CSV ou XLSX"}</span>
           <span className="text-[11px] text-white/40">Máximo de 500 alunos por importação</span>
-          <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleFile} />
+          <input
+            type="file"
+            accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            className="hidden"
+            onChange={handleFile}
+          />
         </label>
+
+        {readError && (
+          <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-xs text-red-300">
+            <div className="mb-1 font-bold uppercase tracking-widest">Falha na leitura do arquivo</div>
+            {readError}
+          </div>
+        )}
+
+        {diagnostics && (
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-xs text-white/70 space-y-3">
+            <div className="font-bold uppercase tracking-widest text-white/40">Diagnóstico da leitura</div>
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-lg bg-white/5 px-2.5 py-1">Formato: {diagnostics.format}</span>
+              {diagnostics.delimiter && (
+                <span className="rounded-lg bg-white/5 px-2.5 py-1">Delimitador: “{diagnostics.delimiter}”</span>
+              )}
+              <span className="rounded-lg bg-white/5 px-2.5 py-1">Colunas: {diagnostics.columnCount}</span>
+              <span className="rounded-lg bg-white/5 px-2.5 py-1">Linhas de dados: {diagnostics.dataRows}</span>
+            </div>
+            <div>
+              <div className="mb-1 text-white/40">Cabeçalhos encontrados</div>
+              <div className="flex flex-wrap gap-1.5">
+                {diagnostics.headers.map((h, i) => (
+                  <span key={`${h}-${i}`} className="rounded bg-white/5 px-2 py-0.5">{h || "(vazio)"}</span>
+                ))}
+              </div>
+            </div>
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              {(["name", "email", "cpf", "phone", "product"] as const).map((field) => {
+                const labels = { name: "Nome", email: "E-mail", cpf: "CPF", phone: "Telefone", product: "Produto" };
+                const value = diagnostics.mapping[field];
+                return (
+                  <div key={field} className="flex items-center gap-2">
+                    <span className="text-white/40">{labels[field]}:</span>
+                    {value ? (
+                      <span className="text-emerald-400">{value}</span>
+                    ) : (
+                      <span className={field === "email" ? "text-red-400" : "text-white/30"}>não encontrada</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
