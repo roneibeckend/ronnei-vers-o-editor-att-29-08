@@ -434,11 +434,11 @@ function KiwifyImportPage() {
                 type="checkbox"
                 checked={sendAccessEmail}
                 onChange={(e) => setSendAccessEmail(e.target.checked)}
-                disabled={!selected}
+                disabled={!product}
                 className="h-4 w-4 accent-[#ff6a00] disabled:opacity-40"
               />
               Enviar e-mail "Acesso liberado" do produto
-              {!selected && <span className="text-xs text-white/40">(selecione um produto)</span>}
+              {!product && <span className="text-xs text-white/40">(selecione um produto)</span>}
             </label>
           </div>
         </div>
