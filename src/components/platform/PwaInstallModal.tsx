@@ -5,10 +5,8 @@ import {
 
 import {
   AlertCircle,
-  ArrowRight,
   Copy,
   Download,
-  ExternalLink,
   Globe,
   Loader2,
   PlusSquare,
