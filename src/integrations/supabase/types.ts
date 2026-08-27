@@ -3059,6 +3059,9 @@ export type Database = {
         | "PRECO E LUCRO"
         | "TEMPEROS"
         | "DELIVERY"
+        | "NEGOCIO DE ESPETINHOS"
+        | "CURSO E CONTEUDO"
+        | "PAGAMENTOS"
       live_class_status: "scheduled" | "live" | "completed"
       payout_status:
         | "pending"
@@ -3221,6 +3224,9 @@ export const Constants = {
         "PRECO E LUCRO",
         "TEMPEROS",
         "DELIVERY",
+        "NEGOCIO DE ESPETINHOS",
+        "CURSO E CONTEUDO",
+        "PAGAMENTOS",
       ],
       live_class_status: ["scheduled", "live", "completed"],
       payout_status: [
