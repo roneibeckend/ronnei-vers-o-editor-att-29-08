@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Lock, Loader2, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Lock, Loader2, ShieldCheck, ShieldAlert, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { validatePassword } from "@/lib/password-validation";
@@ -206,6 +206,14 @@ function ResetPasswordPage() {
                 {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Salvando…</> : "Salvar nova senha"}
               </button>
             </form>
+
+            <button
+              type="button"
+              onClick={() => setError("Solicite um novo link de redefinição informando seu e-mail.")}
+              className="w-full text-center text-xs text-white/50 underline hover:text-white"
+            >
+              Problemas com este link? Reenviar e-mail
+            </button>
           </>
         )}
       </section>
