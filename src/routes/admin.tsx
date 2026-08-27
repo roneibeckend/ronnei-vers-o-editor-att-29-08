@@ -42,14 +42,28 @@ const ORANGE = "#ff6a00";
 
 function AdminRootLayout() {
   const navigate = useNavigate();
-  const { isAdmin, role, isLoading } = useAuth();
+  const { isAdmin, role, isLoading, session } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    console.log("LOOPDBG admin effect", {isAdmin, role, isLoading, pathname});
     if (isLoading) return;
+    // O layout continua montado enquanto o router navega para fora de /admin.
+    // Sem esta checagem o efeito reagia a rotas externas (/app, /login) e criava
+    // um loop infinito de redirecionamentos.
+    if (!pathname.startsWith("/admin")) return;
+
+    // Sem sessão: manda para o login preservando o destino (ex.: retorno do OAuth Google).
+    if (!session) {
+      navigate({
+        to: "/login",
+        search: { redirectTo: pathname + (typeof window !== "undefined" ? window.location.search : "") },
+        replace: true,
+      });
+      return;
+    }
+
     const isStaff = isAdmin || ["manager", "agent"].includes(role || "");
     if (!isStaff && role !== "student") {
       navigate({ to: "/app", replace: true });
@@ -59,7 +73,8 @@ function AdminRootLayout() {
     if (!isStaff && role === "student" && pathname !== "/admin") {
       navigate({ to: "/admin", replace: true });
     }
-  }, [isAdmin, role, isLoading, navigate, pathname]);
+  }, [isAdmin, role, isLoading, navigate, pathname, session]);
+
 
 
   if (isLoading) {
