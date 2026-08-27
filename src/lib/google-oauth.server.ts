@@ -14,13 +14,13 @@ export const GOOGLE_SCOPES = [
 
 export const GOOGLE_CALLBACK_PATH = "/api/public/google/oauth/callback";
 
-const GOOGLE_ALLOWED_ORIGINS = new Set([
-  "https://ronneinv.lovable.app",
-  "https://id-preview--19870d22-c8ea-4f04-9619-f074c2594e7b.lovable.app",
-]);
+const GOOGLE_PROD_ORIGIN = "https://ronneinv.lovable.app";
 
 const GOOGLE_PREVIEW_ORIGIN =
   "https://id-preview--19870d22-c8ea-4f04-9619-f074c2594e7b.lovable.app";
+
+const GOOGLE_ALLOWED_ORIGINS = new Set([GOOGLE_PROD_ORIGIN, GOOGLE_PREVIEW_ORIGIN]);
+
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -177,16 +177,27 @@ export async function logGoogleCall(entry: {
 
 export function buildRedirectUri(origin: string): string {
   const normalizedOrigin = origin.replace(/\/$/, "");
-  const callbackOrigin = normalizedOrigin.endsWith(".lovableproject.com")
-    ? GOOGLE_PREVIEW_ORIGIN
-    : normalizedOrigin;
+
+  // Domínios internos do editor/preview (lovableproject.com, id-preview--..., sandbox)
+  // são todos redirecionados para a URL pública estável de preview, que é a que
+  // está cadastrada no Google Cloud.
+  const isLovableInternal =
+    /\.lovableproject\.com$/.test(normalizedOrigin) ||
+    /^https:\/\/id-preview--.*\.lovable\.app$/.test(normalizedOrigin) ||
+    /^https:\/\/preview--.*\.lovable\.app$/.test(normalizedOrigin);
+
+  const callbackOrigin = isLovableInternal ? GOOGLE_PREVIEW_ORIGIN : normalizedOrigin;
 
   if (!GOOGLE_ALLOWED_ORIGINS.has(callbackOrigin)) {
-    throw new Error("Origem não autorizada para conectar a conta Google.");
+    throw new Error(
+      `Origem não autorizada para conectar a conta Google (${callbackOrigin}). ` +
+        `Use ${GOOGLE_PROD_ORIGIN} ou ${GOOGLE_PREVIEW_ORIGIN}.`,
+    );
   }
 
   return `${callbackOrigin}${GOOGLE_CALLBACK_PATH}`;
 }
+
 
 /** Cria o state de uso único e devolve a URL de consentimento do Google. */
 export async function createConsentUrl(origin: string, userId: string) {
