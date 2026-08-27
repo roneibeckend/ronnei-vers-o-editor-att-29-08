@@ -178,8 +178,11 @@ export const saveOAuthProvider = createServerFn({ method: 'POST' })
     } catch (err: any) {
       const msg = err?.message ?? '';
       if (msg.includes('permissão') || msg.includes('privileges') || msg.includes('403')) {
+        const ref = (process.env['SUPABASE_PROJECT_ID'] ??
+          process.env['SUPABASE_URL']?.match(/https?:\/\/([a-z0-9]+)\.supabase\./i)?.[1] ??
+          '');
         throw new Error(
-          `${msg} Como alternativa, configure o provedor manualmente em: https://supabase.com/dashboard/project/${server.getProjectRef()}/auth/providers`,
+          `${msg} Como alternativa, configure o provedor manualmente em: https://supabase.com/dashboard/project/${ref}/auth/providers`,
         );
       }
       throw err;
