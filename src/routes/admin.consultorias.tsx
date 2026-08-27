@@ -128,6 +128,7 @@ function AdminConsultationsPage() {
       <Tabs defaultValue="reunioes">
         <TabsList className="flex-wrap">
           <TabsTrigger value="reunioes">Reuniões</TabsTrigger>
+          <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
           <TabsTrigger value="produtos">Produtos</TabsTrigger>
           <TabsTrigger value="agenda">Agenda</TabsTrigger>
           <TabsTrigger value="auditoria">Auditoria</TabsTrigger>
