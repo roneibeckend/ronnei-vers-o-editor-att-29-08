@@ -388,6 +388,8 @@ function ProfilePage() {
 
           <EmailVerificationCard />
 
+          <AdminPushCard />
+
 
 
           {canInstall && !isStandalone && (
