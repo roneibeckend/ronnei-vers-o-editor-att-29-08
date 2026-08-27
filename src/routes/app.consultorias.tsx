@@ -278,6 +278,9 @@ function BookingDialog({
   onBooked: () => void;
 }) {
   const [slot, setSlot] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [visibleDays, setVisibleDays] = useState(3);
+  const [expandedTimes, setExpandedTimes] = useState(false);
   const book = useServerFn(bookConsultation);
 
   const { data: slots, isLoading } = useQuery({
@@ -293,8 +296,20 @@ function BookingDialog({
       list.push(s);
       map.set(s.date, list);
     }
-    return Array.from(map.entries()).slice(0, 14);
+    // Oculta dias totalmente lotados (sem horários)
+    return Array.from(map.entries()).filter(([, list]) => list.length > 0);
   }, [slots]);
+
+  const dayList = grouped.slice(0, visibleDays);
+  const activeDay = grouped.find(([d]) => d === selectedDate);
+  const times = activeDay ? activeDay[1] : [];
+  const visibleTimes = expandedTimes ? times : times.slice(0, 5);
+  const suggested = grouped[0]?.[1]?.[0]?.startIso ?? null;
+
+  const fmtDay = (date: string, opts: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", ...opts }).format(
+      new Date(`${date}T12:00:00-03:00`),
+    );
 
   const submit = useMutation({
     mutationFn: (value?: ConsultationBriefing) =>
@@ -306,11 +321,14 @@ function BookingDialog({
           : "Consultoria agendada! Você receberá o link da reunião por e-mail.",
       );
       setSlot(null);
+      setSelectedDate(null);
       onBooked();
       onClose();
     },
     onError: (e: any) => toast.error(e?.message ?? "Falha ao agendar."),
   });
+
+  const step = slot ? 3 : selectedDate ? 2 : 1;
 
   return (
     <Dialog open={Boolean(product)} onOpenChange={(o) => !o && onClose()}>
@@ -320,63 +338,120 @@ function BookingDialog({
         </DialogHeader>
 
         <div className="space-y-5">
-          <div>
-            <p className="mb-2 text-sm font-semibold">1. Escolha o horário (horário de Brasília)</p>
-            {isLoading ? (
-              <div className="flex h-24 items-center justify-center">
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          {isLoading ? (
+            <div className="flex h-24 items-center justify-center">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            </div>
+          ) : grouped.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhum horário disponível no momento. Tente novamente em alguns dias.
+            </p>
+          ) : step === 1 ? (
+            <div>
+              <p className="mb-1 text-sm font-semibold">Escolha a data</p>
+              <p className="mb-3 text-xs text-muted-foreground">Horário de Brasília</p>
+              <div className="grid grid-cols-3 gap-2">
+                {dayList.map(([date, list]) => {
+                  const isSuggested = list[0]?.startIso === suggested;
+                  return (
+                    <button
+                      key={date}
+                      type="button"
+                      onClick={() => {
+                        setSelectedDate(date);
+                        setExpandedTimes(false);
+                      }}
+                      className={`flex min-h-20 flex-col items-center justify-center rounded-xl border p-3 text-center transition ${
+                        isSuggested
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-primary/60"
+                      }`}
+                    >
+                      <span className="text-[11px] uppercase text-muted-foreground">
+                        {fmtDay(date, { weekday: "short" })}
+                      </span>
+                      <span className="text-lg font-bold leading-tight">
+                        {fmtDay(date, { day: "2-digit" })}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {fmtDay(date, { month: "short" })}
+                      </span>
+                      <span className="mt-1 text-[10px] text-muted-foreground">
+                        {list.length} horário{list.length > 1 ? "s" : ""}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
-            ) : grouped.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Nenhum horário disponível no momento. Tente novamente em alguns dias.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {grouped.map(([date, list]) => (
-                  <div key={date}>
-                    <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
-                      {new Intl.DateTimeFormat("pt-BR", {
-                        timeZone: "America/Sao_Paulo",
-                        weekday: "short",
-                        day: "2-digit",
-                        month: "2-digit",
-                      }).format(new Date(`${date}T12:00:00-03:00`))}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {list.map((s) => (
-                        <Button
-                          key={s.startIso}
-                          size="sm"
-                          variant={slot === s.startIso ? "default" : "outline"}
-                          onClick={() => setSlot(s.startIso)}
-                        >
-                          {s.time}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
+              {visibleDays < grouped.length && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-3 w-full"
+                  onClick={() => setVisibleDays((v) => v + 3)}
+                >
+                  Ver mais datas
+                </Button>
+              )}
+            </div>
+          ) : step === 2 ? (
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="min-w-0 truncate text-sm font-semibold">
+                  {fmtDay(selectedDate!, { weekday: "long", day: "2-digit", month: "long" })}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => setSelectedDate(null)}
+                >
+                  Trocar data
+                </Button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {visibleTimes.map((s: any) => (
+                  <Button
+                    key={s.startIso}
+                    variant={s.startIso === suggested ? "default" : "outline"}
+                    onClick={() => setSlot(s.startIso)}
+                  >
+                    {s.time}
+                  </Button>
                 ))}
               </div>
-            )}
-          </div>
-
-          <div>
-            <p className="mb-1 text-sm font-semibold">2. Briefing rápido (2 minutos)</p>
-            <p className="mb-3 text-xs text-muted-foreground">
-              Responda em etapas curtas para o Ronnei chegar preparado na sua reunião.
-            </p>
-            {slot ? (
+              {!expandedTimes && times.length > 5 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-3 w-full"
+                  onClick={() => setExpandedTimes(true)}
+                >
+                  Ver mais horários
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="min-w-0 truncate text-sm font-semibold">
+                  {fmtDay(selectedDate!, { weekday: "short", day: "2-digit", month: "short" })} ·{" "}
+                  {times.find((s: any) => s.startIso === slot)?.time}
+                </p>
+                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setSlot(null)}>
+                  Trocar horário
+                </Button>
+              </div>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Responda em etapas curtas para o Ronnei chegar preparado na sua reunião.
+              </p>
               <ConsultationBriefingForm
                 submitting={submit.isPending}
                 submitLabel="Confirmar agendamento"
                 onSubmit={(value) => submit.mutate(value)}
               />
-            ) : (
-              <p className="rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">
-                Escolha um horário acima para liberar o briefing.
-              </p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
