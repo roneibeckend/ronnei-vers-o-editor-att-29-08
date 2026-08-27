@@ -108,12 +108,12 @@ function Dashboard() {
           .from("courses")
           .select("id, title, description, price, cover_url, created_at, badge, status")
           .eq("is_locked", false)
-          .eq("status", "active"),
+          .in("status", VISIBLE_STATUSES),
         supabase
           .from("ebooks")
           .select("id, title, description, price, cover_url, created_at, badge, status")
           .eq("is_locked", false)
-          .eq("status", "active"),
+          .in("status", VISIBLE_STATUSES),
       ]);
 
       if (coursesRes.error) throw coursesRes.error;

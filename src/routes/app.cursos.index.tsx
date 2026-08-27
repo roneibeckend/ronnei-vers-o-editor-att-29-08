@@ -220,7 +220,7 @@ function CoursesPage() {
       const { data, error } = await supabase
         .from("courses")
         .select("id, title, description, price, cover_url, badge, status, is_locked")
-        .eq("status", "active");
+        .in("status", VISIBLE_STATUSES);
       if (error) throw error;
       return data;
     },
@@ -233,7 +233,7 @@ function CoursesPage() {
       const { data, error } = await supabase
         .from("ebooks")
         .select("id, title, description, price, cover_url, cover, badge, status, is_locked")
-        .eq("status", "active");
+        .in("status", VISIBLE_STATUSES);
       if (error) throw error;
       return data;
     },
