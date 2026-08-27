@@ -351,6 +351,11 @@ function AdminChatbotPage() {
                       <option value="NEGOCIO DE ESPETINHOS">Negócio de Espetinhos</option>
                       <option value="CURSO E CONTEUDO">Curso e Conteúdo</option>
                       <option value="PAGAMENTOS">Pagamentos</option>
+                      <option value="CMV E PRECIFICACAO">CMV e Precificação</option>
+                      <option value="EQUIPAMENTOS">Equipamentos</option>
+                      <option value="CONSERVACAO E SEGURANCA ALIMENTAR">Conservação e Segurança Alimentar</option>
+                      <option value="DELIVERY E VENDAS">Delivery e Vendas</option>
+                      <option value="GESTAO DO NEGOCIO">Gestão do Negócio</option>
                     </select>
                   </div>
                 </div>
