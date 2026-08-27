@@ -30,6 +30,7 @@ import {
   Upload,
   ChevronDown,
   HeartHandshake,
+  Video,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
