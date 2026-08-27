@@ -173,7 +173,18 @@ export const saveOAuthProvider = createServerFn({ method: 'POST' })
 
     if (typeof data.enabled === 'boolean') patch[`external_${data.provider}_enabled`] = data.enabled;
 
-    await server.patchAuthConfig(patch);
+    try {
+      await server.patchAuthConfig(patch);
+    } catch (err: any) {
+      const msg = err?.message ?? '';
+      if (msg.includes('permissão') || msg.includes('privileges') || msg.includes('403')) {
+        throw new Error(
+          `${msg} Como alternativa, configure o provedor manualmente em: https://supabase.com/dashboard/project/${server.getProjectRef()}/auth/providers`,
+        );
+      }
+      throw err;
+    }
+
     await saveMeta(data.provider, { ...metaPatch, last_saved_at: new Date().toISOString() });
 
     return { success: true };

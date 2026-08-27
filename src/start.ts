@@ -23,7 +23,7 @@ function shouldLogError(error: unknown): boolean {
   return true;
 }
 
-const errorMiddleware = createMiddleware().server(async ({ next }) => {
+const errorMiddleware = createMiddleware().server(async ({ next, request }) => {
   try {
     return await next();
   } catch (error) {
@@ -39,6 +39,19 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
         /* logging nunca quebra a resposta */
       }
     }
+
+    const acceptsJson = request.headers.get("accept")?.includes("application/json");
+    const isServerFn = request.headers.get("x-tsr-server-fn") ||
+                       (request.url.includes("/__server") || request.url.includes("/_server"));
+
+    if (acceptsJson || isServerFn) {
+      const message = (error as { message?: string })?.message ?? "Erro no servidor";
+      return new Response(JSON.stringify({ error: message, stack: undefined }), {
+        status: 500,
+        headers: { "content-type": "application/json" },
+      });
+    }
+
     return new Response(renderErrorPage(), {
       status: 500,
       headers: { "content-type": "text/html; charset=utf-8" },
