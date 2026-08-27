@@ -6,7 +6,7 @@ export const Route = createFileRoute('/api/public/manifest/webmanifest')({
       GET: async () => {
         const manifest = {
           name: "Ronnei na Veia",
-          short_name: "Ronnei NV",
+          short_name: "Ronnei na Veia",
           description: "Cursos, e-books e conteúdos exclusivos da plataforma Ronnei na Veia.",
           start_url: "/app",
           display: "standalone",
