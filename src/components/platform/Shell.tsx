@@ -29,6 +29,7 @@ import {
   Settings,
   Wallet,
   Video,
+  CalendarClock,
 } from "lucide-react";
 import { student } from "@/lib/platform-data";
 import { supabase } from "@/integrations/supabase/client";
