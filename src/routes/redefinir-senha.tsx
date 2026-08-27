@@ -29,6 +29,34 @@ function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resendEmail, setResendEmail] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
+
+  const handleResend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (resending) return;
+    const email = resendEmail.trim();
+    if (!email || !email.includes("@")) {
+      toast.error("Informe um e-mail válido");
+      return;
+    }
+    setResending(true);
+    try {
+      const { publicOrigin } = await import("@/lib/auth-callback");
+      const { sendPasswordResetEmail } = await import("@/lib/auth-recovery.functions");
+      await sendPasswordResetEmail({ data: { email, origin: publicOrigin() } });
+      setResent(true);
+      toast.success("E-mail reenviado!", {
+        description: "Verifique sua caixa de entrada (e o spam). O link expira em 1 hora.",
+      });
+    } catch (err: any) {
+      toast.error("Não foi possível reenviar", { description: err?.message });
+    } finally {
+      setResending(false);
+    }
+  };
+
 
   useEffect(() => {
     let cancelled = false;
