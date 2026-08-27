@@ -30,6 +30,7 @@ import { Route as AppNotificacoesRouteImport } from './routes/app.notificacoes'
 import { Route as AppMateriaisRouteImport } from './routes/app.materiais'
 import { Route as AppFinanceiroRouteImport } from './routes/app.financeiro'
 import { Route as AppCursosRouteImport } from './routes/app.cursos'
+import { Route as AppConsultoriasRouteImport } from './routes/app.consultorias'
 import { Route as AppCertificadosRouteImport } from './routes/app.certificados'
 import { Route as AppAoVivoRouteImport } from './routes/app.ao-vivo'
 import { Route as AppAfiliadosRouteImport } from './routes/app.afiliados'
@@ -180,6 +181,11 @@ const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
 const AppCursosRoute = AppCursosRouteImport.update({
   id: '/cursos',
   path: '/cursos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConsultoriasRoute = AppConsultoriasRouteImport.update({
+  id: '/consultorias',
+  path: '/consultorias',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCertificadosRoute = AppCertificadosRouteImport.update({
@@ -455,6 +461,7 @@ export interface FileRoutesByFullPath {
   '/app/afiliados': typeof AppAfiliadosRouteWithChildren
   '/app/ao-vivo': typeof AppAoVivoRoute
   '/app/certificados': typeof AppCertificadosRoute
+  '/app/consultorias': typeof AppConsultoriasRoute
   '/app/cursos': typeof AppCursosRouteWithChildren
   '/app/financeiro': typeof AppFinanceiroRoute
   '/app/materiais': typeof AppMateriaisRoute
@@ -521,6 +528,7 @@ export interface FileRoutesByTo {
   '/api/material-download': typeof ApiMaterialDownloadRoute
   '/app/ao-vivo': typeof AppAoVivoRoute
   '/app/certificados': typeof AppCertificadosRoute
+  '/app/consultorias': typeof AppConsultoriasRoute
   '/app/financeiro': typeof AppFinanceiroRoute
   '/app/materiais': typeof AppMateriaisRoute
   '/app/notificacoes': typeof AppNotificacoesRoute
@@ -590,6 +598,7 @@ export interface FileRoutesById {
   '/app/afiliados': typeof AppAfiliadosRouteWithChildren
   '/app/ao-vivo': typeof AppAoVivoRoute
   '/app/certificados': typeof AppCertificadosRoute
+  '/app/consultorias': typeof AppConsultoriasRoute
   '/app/cursos': typeof AppCursosRouteWithChildren
   '/app/financeiro': typeof AppFinanceiroRoute
   '/app/materiais': typeof AppMateriaisRoute
@@ -661,6 +670,7 @@ export interface FileRouteTypes {
     | '/app/afiliados'
     | '/app/ao-vivo'
     | '/app/certificados'
+    | '/app/consultorias'
     | '/app/cursos'
     | '/app/financeiro'
     | '/app/materiais'
@@ -727,6 +737,7 @@ export interface FileRouteTypes {
     | '/api/material-download'
     | '/app/ao-vivo'
     | '/app/certificados'
+    | '/app/consultorias'
     | '/app/financeiro'
     | '/app/materiais'
     | '/app/notificacoes'
@@ -795,6 +806,7 @@ export interface FileRouteTypes {
     | '/app/afiliados'
     | '/app/ao-vivo'
     | '/app/certificados'
+    | '/app/consultorias'
     | '/app/cursos'
     | '/app/financeiro'
     | '/app/materiais'
@@ -998,6 +1010,13 @@ declare module '@tanstack/react-router' {
       path: '/cursos'
       fullPath: '/app/cursos'
       preLoaderRoute: typeof AppCursosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/consultorias': {
+      id: '/app/consultorias'
+      path: '/consultorias'
+      fullPath: '/app/consultorias'
+      preLoaderRoute: typeof AppConsultoriasRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/certificados': {
@@ -1435,6 +1454,7 @@ interface AppRouteChildren {
   AppAfiliadosRoute: typeof AppAfiliadosRouteWithChildren
   AppAoVivoRoute: typeof AppAoVivoRoute
   AppCertificadosRoute: typeof AppCertificadosRoute
+  AppConsultoriasRoute: typeof AppConsultoriasRoute
   AppCursosRoute: typeof AppCursosRouteWithChildren
   AppFinanceiroRoute: typeof AppFinanceiroRoute
   AppMateriaisRoute: typeof AppMateriaisRoute
@@ -1451,6 +1471,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAfiliadosRoute: AppAfiliadosRouteWithChildren,
   AppAoVivoRoute: AppAoVivoRoute,
   AppCertificadosRoute: AppCertificadosRoute,
+  AppConsultoriasRoute: AppConsultoriasRoute,
   AppCursosRoute: AppCursosRouteWithChildren,
   AppFinanceiroRoute: AppFinanceiroRoute,
   AppMateriaisRoute: AppMateriaisRoute,
