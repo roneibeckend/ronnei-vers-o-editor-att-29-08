@@ -313,6 +313,7 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
 
   
   const comingSoon = isComingSoon(item.status);
+  const isConsultation = item.type === 'consultation';
 
   const handlePurchase = async (e: React.MouseEvent) => {
     e.preventDefault();
