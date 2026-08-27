@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bell, Zap } from "lucide-react";
+import { AlertTriangle, Bell, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { disablePush, enablePush, getPushStatus } from "@/lib/push-client";
 import { sendTestNotification } from "@/lib/admin-notifications.functions";
