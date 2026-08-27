@@ -429,6 +429,17 @@ function KiwifyImportPage() {
               />
               Enviar e-mail de boas-vindas com instruções
             </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={sendAccessEmail}
+                onChange={(e) => setSendAccessEmail(e.target.checked)}
+                disabled={!selected}
+                className="h-4 w-4 accent-[#ff6a00] disabled:opacity-40"
+              />
+              Enviar e-mail "Acesso liberado" do produto
+              {!selected && <span className="text-xs text-white/40">(selecione um produto)</span>}
+            </label>
           </div>
         </div>
 
