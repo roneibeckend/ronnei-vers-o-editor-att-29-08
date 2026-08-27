@@ -163,7 +163,7 @@ export function PwaInstallModal() {
       <Step number={1} icon={<Copy className="h-4 w-4" />}>
         Copie o link atual para colar no Safari.
       </Step>
-      <Step number={2} icon={<Safari className="h-4 w-4" />}>
+      <Step number={2} icon={<Globe className="h-4 w-4" />}>
         Abra o <strong>Safari</strong>, cole o link na barra de endereços e abra esta página.
       </Step>
       <Step number={3} icon={<Share className="h-4 w-4" />}>
