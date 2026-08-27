@@ -202,6 +202,8 @@ function KiwifyImportPage() {
   const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
   const [sendAccessEmail, setSendAccessEmail] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
   const [result, setResult] = useState<any>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
