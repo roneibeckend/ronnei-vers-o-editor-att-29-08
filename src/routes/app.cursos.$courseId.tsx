@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/platform/Shell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { needsSignedUrl } from "@/lib/video-source";
+import { VISIBLE_STATUSES, isComingSoon, COMING_SOON_NOTICE } from "@/lib/product-status";
 import { useEnrollments } from "@/hooks/use-enrollments";
 import { createAsaasPaymentLink } from "@/lib/asaas.functions";
 import { CouponInput, type AppliedCoupon } from "@/components/platform/CouponInput";
@@ -56,7 +57,7 @@ export const Route = createFileRoute("/app/cursos/$courseId")({
         )
       `)
       .eq("id", params.courseId)
-      .eq("status", "active")
+      .in("status", VISIBLE_STATUSES)
       .single();
 
 
@@ -101,6 +102,10 @@ function CoursePage() {
 
 
   const handlePurchase = async () => {
+    if (isComingSoon(course?.status)) {
+      toast.info(COMING_SOON_NOTICE);
+      return;
+    }
     if (isOfferEnabled) {
       // Check for available offers before showing modal
       const { data: otherCourses } = await supabase.from('courses').select('id').eq('status', 'active').eq('is_locked', false).neq('id', course.id).limit(1);
@@ -180,9 +185,10 @@ function CoursePage() {
     }
   };
 
-  const isFree = course ? (course.price || 0) === 0 : false;
+  const comingSoon = isComingSoon(course?.status);
+  const isFree = course ? (course.price || 0) === 0 && !comingSoon : false;
   const isEnrolled = course ? isEnrolledInCourse(course.id) : false;
-  const hasAccess = isFree || isEnrolled;
+  const hasAccess = !comingSoon && (isFree || isEnrolled);
 
   const flat = course?.modules
     ?.sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
@@ -299,9 +305,20 @@ function CoursePage() {
           <Lock className="h-16 w-16" />
         </div>
         <h2 className="font-display text-3xl font-black">{course.title}</h2>
-        <p className="mt-4 max-w-md text-muted-foreground">
-          Este conteúdo é exclusivo para alunos deste treinamento. Adquira agora para liberar o acesso imediato.
-        </p>
+        {comingSoon ? (
+          <>
+            <div className="mt-4 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Em breve
+            </div>
+            <p className="mt-4 max-w-md text-muted-foreground">{COMING_SOON_NOTICE}</p>
+            {course.description && (
+              <p className="mt-2 max-w-md text-sm text-muted-foreground/80">{course.description}</p>
+            )}
+            <Link to="/app/cursos" className="btn-ghost-fire mt-8 px-8 py-3 font-bold active:scale-[0.98] touch-action-manipulation">
+              Voltar aos cursos
+            </Link>
+          </>
+        ) : (
         <div className="mt-8 w-full max-w-md space-y-4">
           <CouponInput
             productId={course.id}
@@ -339,6 +356,7 @@ function CoursePage() {
             </p>
           )}
         </div>
+        )}
       </div>
     );
   }
