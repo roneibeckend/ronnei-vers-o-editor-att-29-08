@@ -768,7 +768,8 @@ function EbookReaderPage() {
                     key={signedIntroUrl || ebook.opening_video_url}
                     videoId={`intro-${ebook.id}`}
                     src={signedIntroUrl || ebook.opening_video_url}
-                    poster={ebook.cover_url || undefined}
+                    poster={ebookVideoCoverAsset.url}
+                    preferPoster
                     isIntro={false}
                     aspect="portrait"
                     fit="contain"
@@ -829,7 +830,8 @@ function EbookReaderPage() {
                         <VideoPlayer
                           videoId={`chapter-${activeChapter.id}`}
                           src={signedChapterUrl || activeChapter.video_url}
-                          poster={ebook.cover_url || undefined}
+                          poster={ebookVideoCoverAsset.url}
+                          preferPoster
                           aspect="portrait"
                           className="w-full h-full"
                         />
