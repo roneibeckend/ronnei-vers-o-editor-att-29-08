@@ -264,7 +264,10 @@ export const regenerateConsultationMeeting = createServerFn({ method: "POST" })
     if (!row) throw new Error("Consultoria não encontrada.");
     if (row.google_event_id) await cancelGoogleMeeting(row as never);
 
-    const result = await attachGoogleMeeting({ ...(row as never), google_event_id: null } as never);
+    const result = await attachGoogleMeeting({
+      ...(row as Record<string, unknown>),
+      google_event_id: null,
+    } as never);
     if (!result.ok) throw new Error(result.error);
     return { meetLink: result.meetLink };
   });
