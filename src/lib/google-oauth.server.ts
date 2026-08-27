@@ -184,8 +184,9 @@ export async function createConsentUrl(origin: string, userId: string) {
   });
   if (error) throw new Error(`Falha ao preparar a conexão: ${error.message}`);
 
+  const client = await requireClient();
   const params = new URLSearchParams({
-    client_id: clientId(),
+    client_id: client.clientId,
     redirect_uri: redirectUri,
     response_type: "code",
     access_type: "offline",
@@ -224,13 +225,14 @@ export async function consumeState(state: string) {
 /** Troca o código de autorização pelo refresh token e salva as credenciais. */
 export async function exchangeCodeAndStore(code: string, redirectUri: string, userId: string | null) {
   const started = Date.now();
+  const client = await requireClient();
   const res = await fetch(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       code,
-      client_id: clientId(),
-      client_secret: clientSecret(),
+      client_id: client.clientId,
+      client_secret: client.clientSecret,
       redirect_uri: redirectUri,
       grant_type: "authorization_code",
     }),
@@ -344,12 +346,13 @@ export async function getGoogleAccessToken(): Promise<string> {
   if (!creds) throw new Error("Nenhuma conta Google conectada.");
 
   const started = Date.now();
+  const client = await requireClient();
   const res = await fetch(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_id: clientId(),
-      client_secret: clientSecret(),
+      client_id: client.clientId,
+      client_secret: client.clientSecret,
       refresh_token: decryptToken(creds.refresh_token_ciphertext),
       grant_type: "refresh_token",
     }),
@@ -460,7 +463,7 @@ export async function getConnectionStatus(): Promise<GoogleConnectionStatus> {
   const creds = await loadCredentials();
   const scopes = (creds?.scopes ?? []) as string[];
   return {
-    clientConfigured: googleClientConfigured(),
+    clientConfigured: await googleClientConfigured(),
     connected: Boolean(creds),
     accountEmail: creds?.account_email ?? null,
     accountName: creds?.account_name ?? null,
