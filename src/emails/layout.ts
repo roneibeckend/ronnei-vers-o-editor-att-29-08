@@ -10,7 +10,7 @@
 const BRAND_SITE = "https://ronneinaveia.com.br";
 
 /** Host publicado e ativo — usado apenas para as IMAGENS dos e-mails (precisa responder 200). */
-const ACTIVE_ASSET_HOST = "https://skewer-success-engine.lovable.app";
+const ACTIVE_ASSET_HOST = "https://ronneinv.lovable.app";
 
 function resolveSite(): string {
   const raw = process.env["SITE_URL"] || process.env["PUBLIC_SITE_URL"] || BRAND_SITE;
