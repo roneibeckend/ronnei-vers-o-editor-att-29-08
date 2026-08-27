@@ -47,6 +47,7 @@ export const Route = createFileRoute("/app/suporte")({
 function SupportPage() {
   const getChatbot = useServerFn(getChatbotResponse);
   const sendFeedback = useServerFn(submitKnowledgeFeedback);
+  const fetchMenu = useServerFn(getKnowledgeMenu);
 
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -64,6 +65,27 @@ function SupportPage() {
   const [isOpeningTicket, setIsOpeningTicket] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [isSendingReply, setIsSendingReply] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuLoading, setMenuLoading] = useState(false);
+  const [menuData, setMenuData] = useState<KnowledgeMenuCategory[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen || menuData.length > 0) return;
+    let cancelled = false;
+    setMenuLoading(true);
+    fetchMenu({ data: { surface: "app" } })
+      .then((res) => {
+        if (!cancelled) setMenuData(res.categories);
+      })
+      .catch((err) => console.error("Erro ao carregar categorias:", err))
+      .finally(() => {
+        if (!cancelled) setMenuLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [menuOpen, menuData.length, fetchMenu]);
 
   // Buscar tickets do banco
   const { data: myTickets = [], isLoading: isLoadingTickets } = useQuery({
