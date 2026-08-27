@@ -239,8 +239,9 @@ function AdminCursosPage() {
             className="bg-white/5 border border-white/10 px-4 py-2 rounded-lg text-sm outline-none focus:border-[#ff6a00] appearance-none cursor-pointer"
           >
             <option value="all">Todos</option>
-            <option value="active">Ativos</option>
-            <option value="draft">Inativos</option>
+            <option value="active">Publicados</option>
+            <option value="coming_soon">Em breve</option>
+            <option value="draft">Rascunho</option>
           </select>
         </div>
       </div>
@@ -302,16 +303,16 @@ function AdminCursosPage() {
                   <td className="px-4 sm:px-6 py-4">
                     <span className={cn(
                       "px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-bold uppercase tracking-wider",
-                      course.status === 'active' ? "bg-green-500/10 text-green-500" : "bg-yellow-500/10 text-yellow-500"
+                      course.status === 'active' ? "bg-green-500/10 text-green-500" : course.status === 'coming_soon' ? "bg-sky-500/10 text-sky-400" : "bg-yellow-500/10 text-yellow-500"
                     )}>
-                      {course.status === 'active' ? 'ATIVO' : 'INATIVO'}
+                      {course.status === 'active' ? 'PUBLICADO' : course.status === 'coming_soon' ? 'EM BREVE' : 'RASCUNHO'}
                     </span>
                   </td>
                   <td className="px-4 sm:px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-0.5 sm:gap-1">
                       <button 
                         onClick={() => handleStatusChange(course.id, course.status === 'active' ? 'draft' : 'active')}
-                        title={course.status === 'active' ? 'Desativar' : 'Ativar'}
+                        title={course.status === 'active' ? 'Tornar rascunho' : 'Publicar'}
                         className="p-1.5 sm:p-2 text-white/40 hover:text-white transition-colors"
                       >
                         {course.status === 'active' ? <Eye className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
@@ -519,10 +520,10 @@ function AdminCursosPage() {
                   <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/5">
                     <div className="space-y-0.5">
                       <div className="text-sm font-bold">Status do Conteúdo</div>
-                      <div className="text-[10px] text-white/40 uppercase tracking-widest">Conteúdos ativos aparecem para compra e acesso dos alunos</div>
+                      <div className="text-[10px] text-white/40 uppercase tracking-widest">Publicado: compra liberada. Em breve: aparece na vitrine sem compra.</div>
                     </div>
-                    <div className="flex gap-2">
-                      <button 
+                    <div className="flex flex-wrap gap-2">
+                      <button
                         type="button"
                         onClick={() => setEditingItem({...editingItem, status: 'draft'})}
                         className={cn(
@@ -530,9 +531,19 @@ function AdminCursosPage() {
                           editingItem?.status === 'draft' ? "bg-yellow-500/20 text-yellow-500 border border-yellow-500/50" : "bg-white/5 text-white/40 border border-transparent"
                         )}
                       >
-                        Inativo
+                        Rascunho
                       </button>
-                      <button 
+                      <button
+                        type="button"
+                        onClick={() => setEditingItem({...editingItem, status: 'coming_soon'})}
+                        className={cn(
+                          "px-4 py-2 rounded-lg text-xs font-bold transition-all",
+                          editingItem?.status === 'coming_soon' ? "bg-sky-500/20 text-sky-400 border border-sky-500/50" : "bg-white/5 text-white/40 border border-transparent"
+                        )}
+                      >
+                        Em breve
+                      </button>
+                      <button
                         type="button"
                         onClick={() => setEditingItem({...editingItem, status: 'active'})}
                         className={cn(
@@ -540,7 +551,7 @@ function AdminCursosPage() {
                           editingItem?.status === 'active' ? "bg-green-500/20 text-green-500 border border-green-500/50" : "bg-white/5 text-white/40 border border-transparent"
                         )}
                       >
-                        Ativo
+                        Publicado
                       </button>
                     </div>
                   </div>
