@@ -631,6 +631,265 @@ export type Database = {
           },
         ]
       }
+      consultation_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_role: string | null
+          consultation_id: string | null
+          created_at: string
+          details: Json
+          id: string
+          status: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_role?: string | null
+          consultation_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          status?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_role?: string | null
+          consultation_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultation_audit_log_consultation_id_fkey"
+            columns: ["consultation_id"]
+            isOneToOne: false
+            referencedRelation: "consultations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consultation_availability: {
+        Row: {
+          active: boolean
+          created_at: string
+          end_time: string
+          id: string
+          slot_interval_minutes: number
+          start_time: string
+          updated_at: string
+          weekday: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          end_time: string
+          id?: string
+          slot_interval_minutes?: number
+          start_time: string
+          updated_at?: string
+          weekday: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          end_time?: string
+          id?: string
+          slot_interval_minutes?: number
+          start_time?: string
+          updated_at?: string
+          weekday?: number
+        }
+        Relationships: []
+      }
+      consultation_blocks: {
+        Row: {
+          created_at: string
+          ends_at: string
+          id: string
+          reason: string | null
+          starts_at: string
+        }
+        Insert: {
+          created_at?: string
+          ends_at: string
+          id?: string
+          reason?: string | null
+          starts_at: string
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string
+          id?: string
+          reason?: string | null
+          starts_at?: string
+        }
+        Relationships: []
+      }
+      consultation_products: {
+        Row: {
+          affiliate_enabled: boolean
+          briefing_required: boolean
+          cover_url: string | null
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          id: string
+          price: number
+          sort_order: number
+          status: string
+          subtitle: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          affiliate_enabled?: boolean
+          briefing_required?: boolean
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id: string
+          price?: number
+          sort_order?: number
+          status?: string
+          subtitle?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          affiliate_enabled?: boolean
+          briefing_required?: boolean
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          price?: number
+          sort_order?: number
+          status?: string
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      consultations: {
+        Row: {
+          admin_notes: string | null
+          amount: number | null
+          briefing: string | null
+          briefing_submitted_at: string | null
+          calendar_html_link: string | null
+          cancel_reason: string | null
+          client_email: string | null
+          client_name: string | null
+          client_phone: string | null
+          completed_at: string | null
+          confirmation_sent_at: string | null
+          created_at: string
+          drive_folder_id: string | null
+          duration_minutes: number
+          ends_at: string
+          google_calendar_id: string | null
+          google_event_id: string | null
+          id: string
+          meet_link: string | null
+          payment_id: string | null
+          product_id: string | null
+          product_title: string
+          recording_file_id: string | null
+          recording_sent_at: string | null
+          recording_url: string | null
+          reminder_1h_sent_at: string | null
+          reminder_8h_sent_at: string | null
+          scheduled_at: string
+          status: Database["public"]["Enums"]["consultation_status"]
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          amount?: number | null
+          briefing?: string | null
+          briefing_submitted_at?: string | null
+          calendar_html_link?: string | null
+          cancel_reason?: string | null
+          client_email?: string | null
+          client_name?: string | null
+          client_phone?: string | null
+          completed_at?: string | null
+          confirmation_sent_at?: string | null
+          created_at?: string
+          drive_folder_id?: string | null
+          duration_minutes?: number
+          ends_at: string
+          google_calendar_id?: string | null
+          google_event_id?: string | null
+          id?: string
+          meet_link?: string | null
+          payment_id?: string | null
+          product_id?: string | null
+          product_title?: string
+          recording_file_id?: string | null
+          recording_sent_at?: string | null
+          recording_url?: string | null
+          reminder_1h_sent_at?: string | null
+          reminder_8h_sent_at?: string | null
+          scheduled_at: string
+          status?: Database["public"]["Enums"]["consultation_status"]
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          amount?: number | null
+          briefing?: string | null
+          briefing_submitted_at?: string | null
+          calendar_html_link?: string | null
+          cancel_reason?: string | null
+          client_email?: string | null
+          client_name?: string | null
+          client_phone?: string | null
+          completed_at?: string | null
+          confirmation_sent_at?: string | null
+          created_at?: string
+          drive_folder_id?: string | null
+          duration_minutes?: number
+          ends_at?: string
+          google_calendar_id?: string | null
+          google_event_id?: string | null
+          id?: string
+          meet_link?: string | null
+          payment_id?: string | null
+          product_id?: string | null
+          product_title?: string
+          recording_file_id?: string | null
+          recording_sent_at?: string | null
+          recording_url?: string | null
+          reminder_1h_sent_at?: string | null
+          reminder_8h_sent_at?: string | null
+          scheduled_at?: string
+          status?: Database["public"]["Enums"]["consultation_status"]
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "consultation_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_certificates: {
         Row: {
           city_of_issue: string | null
@@ -3381,6 +3640,12 @@ export type Database = {
       affiliate_sale_status: "pending" | "paid" | "cancelled"
       affiliate_status: "pending" | "active" | "blocked"
       app_role: "admin" | "student" | "manager" | "agent"
+      consultation_status:
+        | "pending_payment"
+        | "scheduled"
+        | "completed"
+        | "cancelled"
+        | "no_show"
       difficulty_level: "Fácil" | "Médio" | "Avançado"
       integration_type: "ia" | "payment" | "oauth"
       knowledge_category:
@@ -3551,6 +3816,13 @@ export const Constants = {
       affiliate_sale_status: ["pending", "paid", "cancelled"],
       affiliate_status: ["pending", "active", "blocked"],
       app_role: ["admin", "student", "manager", "agent"],
+      consultation_status: [
+        "pending_payment",
+        "scheduled",
+        "completed",
+        "cancelled",
+        "no_show",
+      ],
       difficulty_level: ["Fácil", "Médio", "Avançado"],
       integration_type: ["ia", "payment", "oauth"],
       knowledge_category: [
