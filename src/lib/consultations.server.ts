@@ -234,6 +234,45 @@ export async function cancelGoogleMeeting(consultation: ConsultationRow) {
   }
 }
 
+/** Move o evento do Google para o novo horário (reagendamento). */
+export async function rescheduleGoogleMeeting(
+  consultation: ConsultationRow,
+  startIso: string,
+  endIso: string,
+) {
+  if (!consultation.google_event_id) {
+    return attachGoogleMeeting({ ...consultation, scheduled_at: startIso, ends_at: endIso });
+  }
+  try {
+    const { updateCalendarEvent } = await import("@/lib/google-calendar.server");
+    const event = await updateCalendarEvent(consultation.google_event_id, { startIso, endIso });
+    await supabaseAdmin
+      .from("consultations")
+      .update({
+        meet_link: event.meetLink || consultation.meet_link,
+        calendar_html_link: event.htmlLink,
+      })
+      .eq("id", consultation.id);
+    await auditConsultation({
+      consultationId: consultation.id,
+      action: "google_event_rescheduled",
+      details: { startIso, endIso },
+    });
+    return { ok: true as const, meetLink: event.meetLink || consultation.meet_link };
+  } catch (err) {
+    const message = (err as Error)?.message ?? "Falha ao reagendar no Google";
+    await auditConsultation({
+      consultationId: consultation.id,
+      action: "google_event_rescheduled",
+      status: "error",
+      details: { error: message },
+    });
+    return { ok: false as const, error: message };
+  }
+}
+
+
+
 /* ------------------------------ E-mails ------------------------------ */
 
 const DASH = "https://ronneinaveia.com.br/app/consultorias";
