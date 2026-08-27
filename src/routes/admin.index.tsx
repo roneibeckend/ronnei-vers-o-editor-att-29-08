@@ -103,6 +103,8 @@ function AdminDashboard() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
+      {isAdmin && <OperationalSummaryStrip />}
+
       <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-4">
         {cards.map((card, i) => (
           <div key={i} className="p-4 sm:p-6 rounded-xl border border-white/5 bg-[#111] group hover:border-white/10 transition active:scale-[0.98] touch-action-manipulation">
