@@ -14,13 +14,13 @@ export const GOOGLE_SCOPES = [
 
 export const GOOGLE_CALLBACK_PATH = "/api/public/google/oauth/callback";
 
-const GOOGLE_ALLOWED_ORIGINS = new Set([
-  "https://ronneinv.lovable.app",
-  "https://id-preview--19870d22-c8ea-4f04-9619-f074c2594e7b.lovable.app",
-]);
+const GOOGLE_PROD_ORIGIN = "https://ronneinv.lovable.app";
 
 const GOOGLE_PREVIEW_ORIGIN =
   "https://id-preview--19870d22-c8ea-4f04-9619-f074c2594e7b.lovable.app";
+
+const GOOGLE_ALLOWED_ORIGINS = new Set([GOOGLE_PROD_ORIGIN, GOOGLE_PREVIEW_ORIGIN]);
+
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
