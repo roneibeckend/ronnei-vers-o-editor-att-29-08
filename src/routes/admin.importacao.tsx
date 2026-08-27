@@ -199,6 +199,7 @@ function KiwifyImportPage() {
   const [products, setProducts] = useState<{ id: string; title: string; type: "course" | "ebook" }[]>([]);
   const [product, setProduct] = useState("");
   const [sendPasswordEmail, setSendPasswordEmail] = useState(true);
+  const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
