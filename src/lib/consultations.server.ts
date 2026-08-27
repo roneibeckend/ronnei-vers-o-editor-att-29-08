@@ -234,6 +234,45 @@ export async function cancelGoogleMeeting(consultation: ConsultationRow) {
   }
 }
 
+/** Move o evento do Google para o novo horário (reagendamento). */
+export async function rescheduleGoogleMeeting(
+  consultation: ConsultationRow,
+  startIso: string,
+  endIso: string,
+) {
+  if (!consultation.google_event_id) {
+    return attachGoogleMeeting({ ...consultation, scheduled_at: startIso, ends_at: endIso });
+  }
+  try {
+    const { updateCalendarEvent } = await import("@/lib/google-calendar.server");
+    const event = await updateCalendarEvent(consultation.google_event_id, { startIso, endIso });
+    await supabaseAdmin
+      .from("consultations")
+      .update({
+        meet_link: event.meetLink || consultation.meet_link,
+        calendar_html_link: event.htmlLink,
+      })
+      .eq("id", consultation.id);
+    await auditConsultation({
+      consultationId: consultation.id,
+      action: "google_event_rescheduled",
+      details: { startIso, endIso },
+    });
+    return { ok: true as const, meetLink: event.meetLink || consultation.meet_link };
+  } catch (err) {
+    const message = (err as Error)?.message ?? "Falha ao reagendar no Google";
+    await auditConsultation({
+      consultationId: consultation.id,
+      action: "google_event_rescheduled",
+      status: "error",
+      details: { error: message },
+    });
+    return { ok: false as const, error: message };
+  }
+}
+
+
+
 /* ------------------------------ E-mails ------------------------------ */
 
 const DASH = "https://ronneinaveia.com.br/app/consultorias";
@@ -292,19 +331,33 @@ export async function sendConsultationConfirmation(consultation: ConsultationRow
   return res;
 }
 
-export async function sendConsultationReminder(consultation: ConsultationRow, window: "8h" | "1h") {
+export async function sendConsultationReminder(
+  consultation: ConsultationRow,
+  window: "24h" | "8h" | "1h",
+) {
+  const event =
+    window === "1h"
+      ? "consultoria_lembrete_1h"
+      : window === "24h"
+        ? "consultoria_lembrete_24h"
+        : "consultoria_lembrete_8h";
+
   const res = await sendConsultationEmail(
     consultation,
-    window === "8h" ? "consultoria_lembrete_8h" : "consultoria_lembrete_1h",
+    event,
     { briefing_pending: !consultation.briefing },
     `consult-${window}-${consultation.id}`,
   );
+
+  const stamp = new Date().toISOString();
   await supabaseAdmin
     .from("consultations")
     .update(
-      window === "8h"
-        ? { reminder_8h_sent_at: new Date().toISOString() }
-        : { reminder_1h_sent_at: new Date().toISOString() },
+      window === "1h"
+        ? { reminder_1h_sent_at: stamp }
+        : window === "24h"
+          ? { reminder_24h_sent_at: stamp }
+          : { reminder_8h_sent_at: stamp },
     )
     .eq("id", consultation.id);
   return res;
@@ -324,6 +377,79 @@ export async function sendConsultationRecording(consultation: ConsultationRow) {
   return res;
 }
 
+export async function sendConsultationCompleted(consultation: ConsultationRow) {
+  return sendConsultationEmail(
+    consultation,
+    "consultoria_concluida",
+    {
+      recording_url: consultation.recording_url,
+      link: DASH,
+      has_recording: Boolean(consultation.recording_url),
+    },
+    `consult-done-${consultation.id}`,
+  );
+}
+
+/* ------------------------- Conclusão + automações ------------------------- */
+
+export type ConsultationMaterial = { title: string; url: string };
+
+/**
+ * Marca a reunião como concluída, libera os materiais complementares do produto,
+ * avisa o aluno por e-mail e registra a auditoria.
+ */
+export async function completeConsultation(
+  consultationId: string,
+  options: { actorId?: string | null; actorRole?: string; notify?: boolean } = {},
+) {
+  const { data: row } = await supabaseAdmin
+    .from("consultations")
+    .select("*")
+    .eq("id", consultationId)
+    .maybeSingle();
+  if (!row) throw new Error("Consultoria não encontrada.");
+
+  const existing = Array.isArray((row as any).materials) ? ((row as any).materials as ConsultationMaterial[]) : [];
+  let materials = existing;
+
+  if (!existing.length && row.product_id) {
+    const { data: product } = await supabaseAdmin
+      .from("consultation_products")
+      .select("materials")
+      .eq("id", row.product_id)
+      .maybeSingle();
+    const fromProduct = Array.isArray((product as any)?.materials)
+      ? ((product as any).materials as ConsultationMaterial[])
+      : [];
+    if (fromProduct.length) materials = fromProduct;
+  }
+
+  const now = new Date().toISOString();
+  await supabaseAdmin
+    .from("consultations")
+    .update({
+      status: "completed",
+      completed_at: row.completed_at ?? now,
+      materials: materials as never,
+      materials_released_at: materials.length ? ((row as any).materials_released_at ?? now) : null,
+    })
+    .eq("id", consultationId);
+
+  await auditConsultation({
+    consultationId,
+    actorId: options.actorId ?? null,
+    actorRole: options.actorRole ?? "system",
+    action: "completed",
+    details: { materials: materials.length, notified: options.notify !== false },
+  });
+
+  if (options.notify !== false) {
+    await sendConsultationCompleted({ ...(row as any), materials } as never);
+  }
+
+  return { completed: true, materials };
+}
+
 /* --------------------------- Lembretes (cron) --------------------------- */
 
 export async function runConsultationReminders() {
@@ -333,14 +459,19 @@ export async function runConsultationReminders() {
     .select("*")
     .eq("status", "scheduled")
     .gte("scheduled_at", new Date(now).toISOString())
-    .lte("scheduled_at", new Date(now + 9 * 3600_000).toISOString());
+    .lte("scheduled_at", new Date(now + 26 * 3600_000).toISOString());
 
+  let sent24h = 0;
   let sent8h = 0;
   let sent1h = 0;
 
   for (const row of (upcoming ?? []) as ConsultationRow[]) {
     const minutesAhead = (+new Date(row.scheduled_at) - now) / 60_000;
 
+    if (!(row as any).reminder_24h_sent_at && minutesAhead <= 24 * 60 && minutesAhead > 8 * 60) {
+      await sendConsultationReminder(row, "24h");
+      sent24h++;
+    }
     if (!row.reminder_8h_sent_at && minutesAhead <= 8 * 60 && minutesAhead > 60) {
       await sendConsultationReminder(row, "8h");
       sent8h++;
@@ -351,25 +482,33 @@ export async function runConsultationReminders() {
     }
   }
 
-  // Marca como concluídas as reuniões que já passaram.
+  // Reuniões que já passaram entram no fluxo completo de conclusão
+  // (materiais liberados + e-mail + auditoria).
   const { data: finished } = await supabaseAdmin
     .from("consultations")
     .select("id")
     .eq("status", "scheduled")
     .lt("ends_at", new Date(now - 15 * 60_000).toISOString());
 
-  if (finished?.length) {
-    await supabaseAdmin
-      .from("consultations")
-      .update({ status: "completed", completed_at: new Date().toISOString() })
-      .in(
-        "id",
-        finished.map((f) => f.id),
-      );
-    for (const f of finished) {
-      await auditConsultation({ consultationId: f.id, action: "auto_completed" });
+  for (const f of finished ?? []) {
+    try {
+      await completeConsultation(f.id, { actorRole: "system" });
+    } catch (err) {
+      await auditConsultation({
+        consultationId: f.id,
+        action: "auto_completed",
+        status: "error",
+        details: { error: (err as Error)?.message },
+      });
     }
   }
 
-  return { checked: upcoming?.length ?? 0, sent8h, sent1h, completed: finished?.length ?? 0 };
+  return {
+    checked: upcoming?.length ?? 0,
+    sent24h,
+    sent8h,
+    sent1h,
+    completed: finished?.length ?? 0,
+  };
 }
+

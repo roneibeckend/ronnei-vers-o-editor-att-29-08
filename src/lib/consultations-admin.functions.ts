@@ -62,6 +62,10 @@ const productSchema = z.object({
   status: z.enum(["draft", "coming_soon", "active"]),
   briefing_required: z.boolean(),
   affiliate_enabled: z.boolean(),
+  materials: z
+    .array(z.object({ title: z.string().trim().min(1).max(160), url: z.string().trim().url().max(600) }))
+    .max(20)
+    .optional(),
   sort_order: z.number().int().min(0).max(999),
 });
 
@@ -221,10 +225,25 @@ export const setConsultationStatus = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { auditConsultation, cancelGoogleMeeting } = await import("@/lib/consultations.server");
+    const { auditConsultation, cancelGoogleMeeting, completeConsultation } = await import(
+      "@/lib/consultations.server"
+    );
 
     const { data: row } = await supabaseAdmin.from("consultations").select("*").eq("id", data.id).maybeSingle();
     if (!row) throw new Error("Consultoria não encontrada.");
+
+    if (data.notes) {
+      await supabaseAdmin.from("consultations").update({ admin_notes: data.notes }).eq("id", data.id);
+    }
+
+    // Concluir dispara as automações completas (materiais + e-mail + auditoria).
+    if (data.status === "completed") {
+      const result = await completeConsultation(data.id, {
+        actorId: context.userId,
+        actorRole: "admin",
+      });
+      return { saved: true, materials: result.materials.length };
+    }
 
     if (data.status === "cancelled" && row.google_event_id) {
       await cancelGoogleMeeting(row as never);
@@ -234,8 +253,6 @@ export const setConsultationStatus = createServerFn({ method: "POST" })
       .from("consultations")
       .update({
         status: data.status,
-        admin_notes: data.notes ?? row.admin_notes,
-        completed_at: data.status === "completed" ? new Date().toISOString() : row.completed_at,
         cancel_reason: data.status === "cancelled" ? data.notes || "Cancelado pelo admin" : row.cancel_reason,
       })
       .eq("id", data.id);
@@ -250,6 +267,231 @@ export const setConsultationStatus = createServerFn({ method: "POST" })
     });
     return { saved: true };
   });
+
+/** Reagenda a reunião (move o evento do Google e avisa o aluno). */
+export const rescheduleConsultation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        scheduledAt: z.string().datetime(),
+        durationMinutes: z.number().int().min(15).max(240).optional(),
+        notify: z.boolean().default(true),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { auditConsultation, rescheduleGoogleMeeting, sendConsultationConfirmation } = await import(
+      "@/lib/consultations.server"
+    );
+
+    const { data: row } = await supabaseAdmin.from("consultations").select("*").eq("id", data.id).maybeSingle();
+    if (!row) throw new Error("Consultoria não encontrada.");
+
+    const duration = data.durationMinutes ?? row.duration_minutes ?? 60;
+    const start = new Date(data.scheduledAt);
+    if (Number.isNaN(+start)) throw new Error("Data inválida.");
+    if (+start < Date.now()) throw new Error("Escolha uma data futura.");
+    const endIso = new Date(+start + duration * 60_000).toISOString();
+
+    const google = await rescheduleGoogleMeeting(row as never, start.toISOString(), endIso);
+
+    const { data: updated, error } = await supabaseAdmin
+      .from("consultations")
+      .update({
+        scheduled_at: start.toISOString(),
+        ends_at: endIso,
+        duration_minutes: duration,
+        status: "scheduled",
+        rescheduled_from: row.scheduled_at,
+        reschedule_count: ((row as any).reschedule_count ?? 0) + 1,
+        // Novos lembretes para o novo horário
+        reminder_24h_sent_at: null,
+        reminder_8h_sent_at: null,
+        reminder_1h_sent_at: null,
+        confirmation_sent_at: null,
+        meet_link: google.ok ? (google.meetLink ?? row.meet_link) : row.meet_link,
+      })
+      .eq("id", data.id)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+
+    await auditConsultation({
+      consultationId: data.id,
+      actorId: context.userId,
+      actorRole: "admin",
+      action: "rescheduled",
+      details: { from: row.scheduled_at, to: start.toISOString(), google: google.ok },
+    });
+
+    if (data.notify) await sendConsultationConfirmation(updated as never);
+    return { saved: true, meetLink: updated.meet_link, googleError: google.ok ? null : google.error };
+  });
+
+/** Observações internas, observações para o aluno e materiais complementares. */
+export const saveConsultationNotes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        adminNotes: z.string().trim().max(5000).nullable().optional(),
+        studentNotes: z.string().trim().max(5000).nullable().optional(),
+        materials: z
+          .array(
+            z.object({
+              title: z.string().trim().min(1).max(160),
+              url: z.string().trim().url().max(600),
+            }),
+          )
+          .max(20)
+          .optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { auditConsultation } = await import("@/lib/consultations.server");
+
+    const patch: Record<string, unknown> = {};
+    if (data.adminNotes !== undefined) patch["admin_notes"] = data.adminNotes || null;
+    if (data.studentNotes !== undefined) patch["student_notes"] = data.studentNotes || null;
+    if (data.materials !== undefined) {
+      patch["materials"] = data.materials;
+      patch["materials_released_at"] = data.materials.length ? new Date().toISOString() : null;
+    }
+
+    const { error } = await supabaseAdmin
+      .from("consultations")
+      .update(patch as never)
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+
+    await auditConsultation({
+      consultationId: data.id,
+      actorId: context.userId,
+      actorRole: "admin",
+      action: "notes_saved",
+      details: { fields: Object.keys(patch) },
+    });
+    return { saved: true };
+  });
+
+/** Define um link de reunião personalizado (Zoom, Meet manual, etc). */
+export const setConsultationMeetLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        meetLink: z.string().trim().url().max(600),
+        notify: z.boolean().default(false),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { auditConsultation, sendConsultationConfirmation } = await import("@/lib/consultations.server");
+
+    const { data: updated, error } = await supabaseAdmin
+      .from("consultations")
+      .update({ meet_link: data.meetLink })
+      .eq("id", data.id)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+
+    await auditConsultation({
+      consultationId: data.id,
+      actorId: context.userId,
+      actorRole: "admin",
+      action: "meet_link_updated",
+      details: { link: data.meetLink },
+    });
+
+    if (data.notify) await sendConsultationConfirmation(updated as never);
+    return { saved: true };
+  });
+
+/** Histórico completo de uma reunião específica. */
+export const getConsultationHistory = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [log, emails] = await Promise.all([
+      supabaseAdmin
+        .from("consultation_audit_log")
+        .select("id, action, status, actor_role, details, created_at")
+        .eq("consultation_id", data.id)
+        .order("created_at", { ascending: false })
+        .limit(100)
+        .then((r) => r.data ?? []),
+      supabaseAdmin
+        .from("email_logs")
+        .select("id, template_name, status, recipient_email, created_at")
+        .ilike("idempotency_key", `%${data.id}%`)
+        .order("created_at", { ascending: false })
+        .limit(30)
+        .then((r) => r.data ?? []),
+    ]);
+    return { log, emails };
+  });
+
+/** Relatórios do módulo: vendas, realizadas, receita, comparecimento. */
+export const getConsultationStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ days: z.number().int().min(7).max(365).default(30) }).parse(data ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const since = new Date(Date.now() - data.days * 86_400_000).toISOString();
+    const { data: rows } = await supabaseAdmin
+      .from("consultations")
+      .select("id, status, amount, scheduled_at, created_at, client_name, product_title, meet_link")
+      .order("scheduled_at", { ascending: true });
+
+    const all = rows ?? [];
+    const paidStatuses = new Set(["scheduled", "completed", "no_show"]);
+    const inPeriod = all.filter((r) => (r.created_at ?? "") >= since);
+
+    const revenue = (list: typeof all) =>
+      list.filter((r) => paidStatuses.has(r.status)).reduce((sum, r) => sum + Number(r.amount ?? 0), 0);
+
+    const completed = all.filter((r) => r.status === "completed").length;
+    const noShow = all.filter((r) => r.status === "no_show").length;
+    const attendance = completed + noShow > 0 ? Math.round((completed / (completed + noShow)) * 100) : null;
+
+    const nowIso = new Date().toISOString();
+    const upcoming = all
+      .filter((r) => r.status === "scheduled" && (r.scheduled_at ?? "") >= nowIso)
+      .slice(0, 8);
+
+    return {
+      sold: all.filter((r) => paidStatuses.has(r.status)).length,
+      soldInPeriod: inPeriod.filter((r) => paidStatuses.has(r.status)).length,
+      completed,
+      cancelled: all.filter((r) => r.status === "cancelled").length,
+      noShow,
+      pendingPayment: all.filter((r) => r.status === "pending_payment").length,
+      revenueTotal: revenue(all),
+      revenuePeriod: revenue(inPeriod),
+      attendanceRate: attendance,
+      upcoming,
+      days: data.days,
+    };
+  });
+
 
 /** Recria o evento no Google Calendar/Meet (útil quando a integração estava fora). */
 export const regenerateConsultationMeeting = createServerFn({ method: "POST" })

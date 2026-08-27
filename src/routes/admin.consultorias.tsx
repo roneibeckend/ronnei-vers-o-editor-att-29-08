@@ -25,6 +25,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageUpload } from "@/components/admin/ImageUpload";
 import { ConsultationBriefingSummary } from "@/components/platform/ConsultationBriefingSummary";
+import { ConsultationManageDialog } from "@/components/admin/ConsultationManageDialog";
+import { ConsultationReports } from "@/components/admin/ConsultationReports";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -128,6 +130,7 @@ function AdminConsultationsPage() {
       <Tabs defaultValue="reunioes">
         <TabsList className="flex-wrap">
           <TabsTrigger value="reunioes">Reuniões</TabsTrigger>
+          <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
           <TabsTrigger value="produtos">Produtos</TabsTrigger>
           <TabsTrigger value="agenda">Agenda</TabsTrigger>
           <TabsTrigger value="auditoria">Auditoria</TabsTrigger>
@@ -135,6 +138,9 @@ function AdminConsultationsPage() {
 
         <TabsContent value="reunioes" className="mt-4">
           <MeetingsTab consultations={data?.consultations ?? []} onChanged={refresh} />
+        </TabsContent>
+        <TabsContent value="relatorios" className="mt-4">
+          <ConsultationReports />
         </TabsContent>
         <TabsContent value="produtos" className="mt-4">
           <ProductsTab products={data?.products ?? []} onChanged={refresh} />
@@ -158,6 +164,7 @@ function AdminConsultationsPage() {
 
 function MeetingsTab({ consultations, onChanged }: { consultations: any[]; onChanged: () => void }) {
   const [recordingFor, setRecordingFor] = useState<any | null>(null);
+  const [managing, setManaging] = useState<any | null>(null);
   const setStatus = useServerFn(setConsultationStatus);
   const regen = useServerFn(regenerateConsultationMeeting);
 
@@ -230,6 +237,9 @@ function MeetingsTab({ consultations, onChanged }: { consultations: any[]; onCha
             <Button size="sm" variant="outline" onClick={() => setRecordingFor(c)}>
               Gravação
             </Button>
+            <Button size="sm" onClick={() => setManaging(c)}>
+              Gerenciar
+            </Button>
             <Select value={c.status} onValueChange={(v) => status.mutate({ id: c.id, status: v })}>
               <SelectTrigger className="h-9 w-[190px]">
                 <SelectValue />
@@ -259,6 +269,12 @@ function MeetingsTab({ consultations, onChanged }: { consultations: any[]; onCha
       <RecordingDialog
         consultation={recordingFor}
         onClose={() => setRecordingFor(null)}
+        onSaved={onChanged}
+      />
+
+      <ConsultationManageDialog
+        consultation={managing}
+        onClose={() => setManaging(null)}
         onSaved={onChanged}
       />
     </div>

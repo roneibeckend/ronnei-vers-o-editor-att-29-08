@@ -511,14 +511,60 @@ const consultationRecording: Builder = (d) =>
     cta: { label: "Assistir gravação", url: link(d, ["recording_url", "link"], LINKS.dashboard) },
   });
 
+const consultationReminder24h: Builder = (d) =>
+  build({
+    subject: `📅 Sua consultoria é amanhã — ${val(d, ["date", "data"], "confira o horário")}`,
+    preview: "Falta 1 dia para a sua consultoria.",
+    heading: "📅 Sua consultoria é amanhã",
+    greeting: `Olá, ${firstName(d)}`,
+    blocks: [
+      { type: "text", text: "Sua consultoria acontece em <strong>aproximadamente 24 horas</strong>." },
+      { type: "details", title: "Detalhes da reunião", rows: consultationRows(d) },
+      ...(d?.briefing_pending
+        ? ([
+            {
+              type: "text",
+              text: "⚠️ Seu <strong>briefing ainda não foi enviado</strong>. Preencha hoje para o Ronnei chegar preparado.",
+              highlight: true,
+            },
+          ] as EmailBlock[])
+        : []),
+    ],
+    cta: { label: "Ver minha consultoria", url: link(d, ["link", "meet_link"], LINKS.dashboard) },
+  });
+
+const consultationCompleted: Builder = (d) =>
+  build({
+    subject: "✅ Consultoria concluída — materiais liberados",
+    preview: "Veja o resumo, os materiais e a gravação da sua consultoria.",
+    heading: "✅ Consultoria concluída",
+    greeting: `Olá, ${firstName(d)}`,
+    blocks: [
+      { type: "text", text: "Sua consultoria foi concluída. Obrigado pela conversa!" },
+      { type: "details", rows: consultationRows(d) },
+      {
+        type: "text",
+        text: d?.has_recording
+          ? "A <strong>gravação</strong> e os <strong>materiais complementares</strong> já estão liberados na plataforma."
+          : "Os <strong>materiais complementares</strong> e as observações do Ronnei já estão liberados na plataforma.",
+        highlight: true,
+      },
+    ],
+    cta: { label: "Abrir minhas consultorias", url: `${LINKS.dashboard}/minhas-consultorias` },
+  });
+
 /** Nomes canônicos + aliases usados no código atual da plataforma. */
 export const EMAIL_TEMPLATES: Record<string, Builder> = {
   consultoria_confirmada: consultationConfirmed,
   consultation_confirmed: consultationConfirmed,
+  consultoria_lembrete_24h: consultationReminder24h,
   consultoria_lembrete_8h: consultationReminder8h,
   consultoria_lembrete_1h: consultationReminder1h,
   consultoria_gravacao: consultationRecording,
   consultation_recording: consultationRecording,
+  consultoria_concluida: consultationCompleted,
+  consultation_completed: consultationCompleted,
+
 
   welcome,
   boas_vindas: welcome,
