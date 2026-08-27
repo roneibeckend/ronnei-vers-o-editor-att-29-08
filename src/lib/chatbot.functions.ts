@@ -17,10 +17,79 @@ export type KnowledgeMenuCategory = {
   items: { id: string; title: string }[];
 };
 
+export type ChatSuggestion = { label: string; to?: string; ask?: string };
+
+/**
+ * Categorias públicas: são as únicas usadas pelo chat da landing.
+ * Nenhuma delas depende de dados de alunos, matrículas, pagamentos,
+ * chamados, afiliados ou qualquer informação pessoal — apenas conteúdo
+ * público de conhecimento (espetinhos, negócio, produto e plataforma).
+ */
+const PUBLIC_CATEGORIES = new Set([
+  "DO ZERO AOS 10K",
+  "RONNEI NA VEIA",
+  "RECEITAS",
+  "CARNES",
+  "TEMPEROS",
+  "PRODUCAO",
+  "PRODUÇÃO",
+  "CMV E PRECIFICACAO",
+  "PRECO E LUCRO",
+  "EQUIPAMENTOS",
+  "CONSERVACAO",
+  "CONSERVAÇÃO",
+  "SEGURANCA ALIMENTAR",
+  "SEGURANÇA ALIMENTAR",
+  "DELIVERY",
+  "VENDAS",
+  "GESTAO",
+  "GESTAO DO NEGOCIO",
+  "GESTÃO DO NEGÓCIO",
+  "CURSOS",
+  "CURSO E CONTEUDO",
+  "EBOOKS",
+  "MATERIAIS",
+  "GARANTIA",
+  "COMPRAS",
+  "PAGAMENTOS",
+  "PLATAFORMA",
+  "CERTIFICADOS",
+  "PWA",
+  "CONTA",
+  "SUPORTE",
+  "AFILIADOS",
+]);
+
+const isPublicCategory = (category?: string | null) =>
+  PUBLIC_CATEGORIES.has((category || "").trim().toUpperCase());
+
+/** Chamadas comerciais naturais, escolhidas pelo tema da resposta. */
+const COMMERCIAL_HOOKS: { match: RegExp; line: string }[] = [
+  { match: /(preco|preço|cmv|lucro|margem|custo|calcul)/i, line: "Esse cálculo está detalhado dentro do treinamento Do Zero aos 10K — e você também recebe planilhas prontas para fazer essa conta." },
+  { match: /(vend|ifood|whatsapp|delivery|client|marketing|instagram)/i, line: "Essa estratégia é ensinada passo a passo dentro do método Ronnei na Veia." },
+  { match: /(carne|tempero|receita|marinada|corte|brasa|assar)/i, line: "As receitas, cortes e temperos completos estão dentro do treinamento — posso te mostrar tudo que está incluso." },
+  { match: /(equipamento|conserva|higien|producao|produção|estoque|gest)/i, line: "Tem um passo a passo completo disso no treinamento, com checklists e planilhas prontas." },
+];
+
+const commercialLineFor = (text: string): string | null => {
+  for (const hook of COMMERCIAL_HOOKS) {
+    if (hook.match.test(text)) return hook.line;
+  }
+  return null;
+};
+
+const LANDING_SUGGESTIONS: ChatSuggestion[] = [
+  { label: "Ver conteúdo do treinamento", ask: "O que vem no treinamento Do Zero aos 10K?" },
+  { label: "Ver receitas", ask: "Quais receitas de espetinho estão incluídas?" },
+  { label: "Ver garantia", ask: "Como funciona a garantia?" },
+  { label: "Ver formas de pagamento", ask: "Quais são as formas de pagamento?" },
+  { label: "Falar com suporte", to: "/login" },
+];
 
 export const getChatbotResponse = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ 
     message: z.string(),
+    surface: z.enum(["app", "landing"]).optional(),
     context: z.object({
       url: z.string().optional(),
       path: z.string().optional()
@@ -28,6 +97,7 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
   }).parse(data))
   .handler(async ({ data }) => {
     const { message, context: requestContext } = data;
+    const isLanding = data.surface === "landing";
     
     // Importação dinâmica do supabaseAdmin para evitar problemas de serialização e bundling
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
