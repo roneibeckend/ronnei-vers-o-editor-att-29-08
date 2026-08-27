@@ -25,6 +25,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageUpload } from "@/components/admin/ImageUpload";
 import { ConsultationBriefingSummary } from "@/components/platform/ConsultationBriefingSummary";
+import { ConsultationManageDialog } from "@/components/admin/ConsultationManageDialog";
+import { ConsultationReports } from "@/components/admin/ConsultationReports";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
