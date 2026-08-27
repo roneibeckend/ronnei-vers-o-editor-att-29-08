@@ -3047,6 +3047,12 @@ export type Database = {
         | "PWA"
         | "SUPORTE"
         | "PROBLEMAS"
+        | "COMPRAS"
+        | "CERTIFICADOS"
+        | "AFILIADOS"
+        | "FINANCEIRO"
+        | "SEGURANCA"
+        | "PLATAFORMA"
       live_class_status: "scheduled" | "live" | "completed"
       payout_status:
         | "pending"
@@ -3197,6 +3203,12 @@ export const Constants = {
         "PWA",
         "SUPORTE",
         "PROBLEMAS",
+        "COMPRAS",
+        "CERTIFICADOS",
+        "AFILIADOS",
+        "FINANCEIRO",
+        "SEGURANCA",
+        "PLATAFORMA",
       ],
       live_class_status: ["scheduled", "live", "completed"],
       payout_status: [
