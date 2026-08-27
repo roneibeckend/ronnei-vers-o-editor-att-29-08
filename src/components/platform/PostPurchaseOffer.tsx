@@ -271,7 +271,7 @@ export function PostPurchaseOffer({
             </div>
           )}
 
-          {!isLoading && (
+          {!isLoading && copy.allowCoupon && (
             <div className="mt-5 shrink-0 rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
               <CouponInput
                 productId={originalProductId}
@@ -298,7 +298,8 @@ export function PostPurchaseOffer({
               onClick={handleAddAndProceed}
               className="w-full btn-fire rounded-xl font-bold h-12 shadow-lg shadow-fire/20 order-1 sm:order-2 text-sm sm:text-base whitespace-normal text-center py-2"
             >
-              Adicionar Ofertas e Prosseguir
+              {copy.ctaLabel}
+
             </Button>
           </div>
         </div>
