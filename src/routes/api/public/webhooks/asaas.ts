@@ -223,7 +223,7 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
 
           const { data: existingProduct, error: productError } = await supabaseAdmin
             .from(productTable)
-            .select('id')
+            .select('id, title')
             .eq('id', productId)
             .maybeSingle();
 
