@@ -62,6 +62,10 @@ const productSchema = z.object({
   status: z.enum(["draft", "coming_soon", "active"]),
   briefing_required: z.boolean(),
   affiliate_enabled: z.boolean(),
+  materials: z
+    .array(z.object({ title: z.string().trim().min(1).max(160), url: z.string().trim().url().max(600) }))
+    .max(20)
+    .optional(),
   sort_order: z.number().int().min(0).max(999),
 });
 
@@ -429,7 +433,7 @@ export const getConsultationHistory = createServerFn({ method: "GET" })
         .then((r) => r.data ?? []),
       supabaseAdmin
         .from("email_logs")
-        .select("id, event, status, to_email, created_at")
+        .select("id, template_name, status, recipient_email, created_at")
         .ilike("idempotency_key", `%${data.id}%`)
         .order("created_at", { ascending: false })
         .limit(30)
