@@ -327,17 +327,68 @@ function KiwifyImportPage() {
       <div>
         <h2 className="text-xl font-bold">Importação de Alunos (Kiwify)</h2>
         <p className="text-sm text-white/40">
-          Envie a planilha exportada da Kiwify em CSV. Colunas reconhecidas: nome, email, cpf e telefone. O CPF é opcional.
+          Envie a planilha exportada da Kiwify em CSV ou Excel (.xlsx). Colunas reconhecidas: nome, email, cpf, telefone e produto. O CPF é opcional.
         </p>
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 space-y-5">
         <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/15 bg-white/[0.02] p-8 text-center transition hover:border-[#ff6a00]/50">
           <FileSpreadsheet className="h-8 w-8 text-[#ff6a00]" />
-          <span className="text-sm font-medium">{fileName || "Selecionar arquivo CSV"}</span>
+          <span className="text-sm font-medium">{fileName || "Selecionar arquivo CSV ou XLSX"}</span>
           <span className="text-[11px] text-white/40">Máximo de 500 alunos por importação</span>
-          <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleFile} />
+          <input
+            type="file"
+            accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            className="hidden"
+            onChange={handleFile}
+          />
         </label>
+
+        {readError && (
+          <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-xs text-red-300">
+            <div className="mb-1 font-bold uppercase tracking-widest">Falha na leitura do arquivo</div>
+            {readError}
+          </div>
+        )}
+
+        {diagnostics && (
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-xs text-white/70 space-y-3">
+            <div className="font-bold uppercase tracking-widest text-white/40">Diagnóstico da leitura</div>
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-lg bg-white/5 px-2.5 py-1">Formato: {diagnostics.format}</span>
+              {diagnostics.delimiter && (
+                <span className="rounded-lg bg-white/5 px-2.5 py-1">Delimitador: “{diagnostics.delimiter}”</span>
+              )}
+              <span className="rounded-lg bg-white/5 px-2.5 py-1">Colunas: {diagnostics.columnCount}</span>
+              <span className="rounded-lg bg-white/5 px-2.5 py-1">Linhas de dados: {diagnostics.dataRows}</span>
+            </div>
+            <div>
+              <div className="mb-1 text-white/40">Cabeçalhos encontrados</div>
+              <div className="flex flex-wrap gap-1.5">
+                {diagnostics.headers.map((h, i) => (
+                  <span key={`${h}-${i}`} className="rounded bg-white/5 px-2 py-0.5">{h || "(vazio)"}</span>
+                ))}
+              </div>
+            </div>
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              {(["name", "email", "cpf", "phone", "product"] as const).map((field) => {
+                const labels = { name: "Nome", email: "E-mail", cpf: "CPF", phone: "Telefone", product: "Produto" };
+                const value = diagnostics.mapping[field];
+                return (
+                  <div key={field} className="flex items-center gap-2">
+                    <span className="text-white/40">{labels[field]}:</span>
+                    {value ? (
+                      <span className="text-emerald-400">{value}</span>
+                    ) : (
+                      <span className={field === "email" ? "text-red-400" : "text-white/30"}>não encontrada</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
