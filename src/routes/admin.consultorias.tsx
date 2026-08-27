@@ -204,8 +204,13 @@ function MeetingsTab({ consultations, onChanged }: { consultations: any[]; onCha
             </Badge>
           </div>
 
-          {c.briefing ? (
-            <p className="whitespace-pre-wrap rounded-md bg-muted/40 p-3 text-sm">{c.briefing}</p>
+          {c.briefing_data || c.briefing ? (
+            <div>
+              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Briefing do cliente
+              </p>
+              <ConsultationBriefingSummary data={c.briefing_data} fallback={c.briefing} />
+            </div>
           ) : (
             <p className="rounded-md bg-destructive/10 p-2 text-sm text-destructive">Briefing pendente.</p>
           )}
