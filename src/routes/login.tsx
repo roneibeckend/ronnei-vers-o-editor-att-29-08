@@ -313,11 +313,25 @@ function LoginPage() {
       return;
     }
 
+    const email = resetEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error("E-mail inválido", { description: "Digite um endereço de e-mail válido." });
+      return;
+    }
+
     setLoading(true);
     try {
+      try {
+        localStorage.setItem("last_reset_email", email);
+      } catch {
+        /* ignora */
+      }
       const { publicOrigin } = await import("@/lib/auth-callback");
       const { sendPasswordResetEmail } = await import("@/lib/auth-recovery.functions");
-      await sendPasswordResetEmail({ data: { email: resetEmail.trim(), origin: publicOrigin() } });
+      const result = await sendPasswordResetEmail({ data: { email, origin: publicOrigin() } });
+      if (!result.ok) {
+        throw new Error(result.error || "Não foi possível enviar o e-mail agora. Tente novamente em alguns instantes.");
+      }
       setResetSent(true);
     } catch (err: any) {
       toast.error("Não foi possível enviar o e-mail", { description: err?.message });
