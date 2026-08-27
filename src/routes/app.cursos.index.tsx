@@ -443,10 +443,14 @@ function CoursesPage() {
                   
                   <div className="mt-6 flex items-end justify-between">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Investimento</span>
-                      <div className="font-display text-2xl font-bold text-gold">
-                        R$ {c.price?.toString().replace(".", ",")}
-                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                        {isComingSoon(c.status) ? "Lançamento em breve" : "Investimento"}
+                      </span>
+                      {!isComingSoon(c.status) && (
+                        <div className="font-display text-2xl font-bold text-gold">
+                          R$ {c.price?.toString().replace(".", ",")}
+                        </div>
+                      )}
                     </div>
                   </div>
                   {isComingSoon(c.status) ? (
@@ -514,10 +518,14 @@ function CoursesPage() {
                   
                   <div className="mt-6 flex items-end justify-between">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Investimento</span>
-                      <div className="font-display text-2xl font-bold text-gold">
-                        R$ {e.price?.toString().replace(".", ",")}
-                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                        {isComingSoon(e.status) ? "Lançamento em breve" : "Investimento"}
+                      </span>
+                      {!isComingSoon(e.status) && (
+                        <div className="font-display text-2xl font-bold text-gold">
+                          R$ {e.price?.toString().replace(".", ",")}
+                        </div>
+                      )}
                     </div>
                   </div>
                   {isComingSoon(e.status) ? (
