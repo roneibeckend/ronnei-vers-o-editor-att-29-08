@@ -2,33 +2,40 @@ import { useEffect } from "react";
 import { useRouter } from "@tanstack/react-router";
 
 const AFFILIATE_REF_KEY = "affiliate_ref";
+// Chave legada usada pela landing page / login
+const LEGACY_REF_KEY = "affiliate_referrer_code";
 
 export function useAffiliateTracking() {
   const router = useRouter();
 
   useEffect(() => {
-    // Pegar o parâmetro 'ref' da URL
     const searchParams = new URLSearchParams(window.location.search);
     const ref = searchParams.get("ref");
 
-    if (ref) {
-      // Armazenar no localStorage (valido por 30 dias por padrão na lógica de negócio, mas aqui simplificamos para persistência básica)
-      localStorage.setItem(AFFILIATE_REF_KEY, ref);
-      
-      // Limpar o parâmetro da URL para uma estética melhor, se desejar (opcional)
-      // window.history.replaceState({}, document.title, window.location.pathname);
-      
-      console.log("Afiliado rastreado:", ref);
+    if (!ref) return;
+
+    // Grava nas duas chaves para manter a atribuição consistente em todo o app
+    localStorage.setItem(AFFILIATE_REF_KEY, ref);
+    localStorage.setItem(LEGACY_REF_KEY, ref);
+
+    // Contabiliza o clique no link do afiliado (uma vez por sessão do navegador)
+    const clickKey = `affiliate_click_${ref}`;
+    if (!sessionStorage.getItem(clickKey)) {
+      sessionStorage.setItem(clickKey, "1");
+      import("@/lib/affiliate-track.functions")
+        .then(({ registerAffiliateClick }) => registerAffiliateClick({ data: { code: ref } }))
+        .catch((err) => console.error("[Afiliados] Falha ao registrar clique:", err));
     }
   }, [router]);
 }
 
 export function getAffiliateRef() {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(AFFILIATE_REF_KEY);
+  return localStorage.getItem(AFFILIATE_REF_KEY) || localStorage.getItem(LEGACY_REF_KEY);
 }
 
 export function clearAffiliateRef() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(AFFILIATE_REF_KEY);
+  localStorage.removeItem(LEGACY_REF_KEY);
 }

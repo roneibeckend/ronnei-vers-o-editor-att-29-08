@@ -295,6 +295,30 @@ function LoginPage() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (loading) return;
+    if (!email.trim()) {
+      toast.info("Informe seu e-mail", { description: "Digite o e-mail da sua conta para receber o link de recuperação." });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { authCallbackUrl } = await import("@/lib/auth-callback");
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${authCallbackUrl().replace("/auth/callback", "/redefinir-senha")}`,
+      });
+      if (error) throw error;
+      toast.success("E-mail enviado!", {
+        description: "Verifique sua caixa de entrada (e o spam) para criar uma nova senha.",
+      });
+    } catch (err: any) {
+      toast.error("Não foi possível enviar o e-mail", { description: err?.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const isSignup = mode === "signup";
 
   const formatPhone = (value: string) => {
@@ -493,6 +517,17 @@ function LoginPage() {
                 </>
               )}
             </button>
+
+            {!isSignup && (
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={loading}
+                className="w-full text-center text-xs text-muted-foreground hover:text-gold hover:underline"
+              >
+                Esqueci minha senha
+              </button>
+            )}
           </form>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">

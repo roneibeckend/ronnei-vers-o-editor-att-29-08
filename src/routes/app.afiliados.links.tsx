@@ -100,12 +100,12 @@ function AffiliateLinksPage() {
                 Link de Indicação (Afiliados)
               </div>
               <div className="text-xs text-white/60 truncate">
-                {origin}/auth?ref={user?.id?.slice(0, 8)}
+                {origin}/login?ref={user?.id?.slice(0, 8)}
               </div>
             </div>
             <button
               onClick={() => {
-                navigator.clipboard.writeText(`${origin}/auth?ref=${user?.id?.slice(0, 8)}`);
+                navigator.clipboard.writeText(`${origin}/login?ref=${user?.id?.slice(0, 8)}`);
                 toast.success("Link de indicação copiado!");
               }}
               className="p-2 hover:bg-fire/10 rounded-lg text-fire transition shrink-0"

@@ -335,8 +335,58 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
                       .eq('id', (affiliate as any).id)
                       .maybeSingle();
 
-                    const rate = Number((affiliate as any).commission_rate ?? 30);
+                    // Comissão personalizada por curso tem prioridade sobre a taxa global
+                    let rate = Number((affiliate as any).commission_rate ?? 30);
+                    if (productType === 'course') {
+                      const { data: custom } = await supabaseAdmin
+                        .from('affiliate_custom_commissions')
+                        .select('commission_rate')
+                        .eq('affiliate_id', (affiliate as any).id)
+                        .filter('course_id', 'eq', productId)
+                        .maybeSingle();
+                      if (custom) rate = Number((custom as any).commission_rate);
+                    }
+
                     const commission = amount * (rate > 1 ? rate / 100 : rate);
+
+                    // Registra a venda e credita o saldo (idempotente por pagamento)
+                    const { data: existingSale } = await supabaseAdmin
+                      .from('affiliate_sales')
+                      .select('id')
+                      .filter('metadata->>payment_id', 'eq', paymentId)
+                      .maybeSingle();
+
+                    if (!existingSale) {
+                      const { error: saleError } = await supabaseAdmin
+                        .from('affiliate_sales')
+                        .insert({
+                          affiliate_id: (affiliate as any).id,
+                          course_id: productType === 'course' ? productId : null,
+                          amount,
+                          commission,
+                          status: 'pending',
+                          metadata: {
+                            payment_id: paymentId,
+                            product_type: productType,
+                            product_id: productId,
+                            product_name: product?.title || null,
+                            affiliate_code: affiliateCode,
+                            commission_rate: rate,
+                          },
+                        } as any);
+
+                      if (saleError) {
+                        console.error('[Webhook Asaas] Falha ao registrar venda de afiliado:', saleError.message);
+                      } else {
+                        const { error: creditError } = await supabaseAdmin.rpc('increment_affiliate_earnings', {
+                          aff_id: (affiliate as any).id,
+                          amount_to_add: commission,
+                        });
+                        if (creditError) {
+                          console.error('[Webhook Asaas] Falha ao creditar comissão:', creditError.message);
+                        }
+                      }
+                    }
 
                     if (affProfile?.email && (affProfile as any).email_notifications_opt_in !== false) {
                       await triggerEmailOnce({
