@@ -67,6 +67,8 @@ function OpsRecoveryPage() {
   const ignoreItem = useServerFn(ignoreReconciliation);
   const retryEmail = useServerFn(retryEmailQueueItem);
   const resolveAlert = useServerFn(resolveOpsAlert);
+  const dismissEmail = useServerFn(dismissEmailQueueItem);
+  const clearQueue = useServerFn(clearEmailQueue);
 
   const { data, isLoading } = useQuery({
     queryKey: ["ops-recovery-overview"],
