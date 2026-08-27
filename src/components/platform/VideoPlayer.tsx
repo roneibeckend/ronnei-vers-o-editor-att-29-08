@@ -334,7 +334,7 @@ export function VideoPlayer({
             }, 800);
           },
           onStateChange: (event: any) => {
-            killCaptions(event.target);
+            disableCaptions(event.target);
             if (event.data === 1) {
               setIsLoading(false);
               try {
