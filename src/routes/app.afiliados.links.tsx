@@ -44,11 +44,15 @@ function AffiliateLinksPage() {
   const { data: courses } = useQuery({
     queryKey: ["available-courses"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("courses").select("id, title");
+      const { data, error } = await supabase
+        .from("courses")
+        .select("id, title")
+        .eq("affiliate_enabled", true);
       if (error) throw error;
       return data;
     }
   });
+
 
   const createLinkMutation = useMutation({
     mutationFn: async (courseId: string | null) => {
