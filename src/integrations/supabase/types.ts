@@ -869,12 +869,16 @@ export type Database = {
           ends_at: string
           google_calendar_id: string | null
           google_event_id: string | null
+          hold_expires_at: string | null
           id: string
           materials: Json
           materials_released_at: string | null
           meet_link: string | null
           meeting_script: string | null
+          paid_at: string | null
           payment_id: string | null
+          payment_link_id: string | null
+          payment_url: string | null
           product_id: string | null
           product_title: string
           recording_file_id: string | null
@@ -912,12 +916,16 @@ export type Database = {
           ends_at: string
           google_calendar_id?: string | null
           google_event_id?: string | null
+          hold_expires_at?: string | null
           id?: string
           materials?: Json
           materials_released_at?: string | null
           meet_link?: string | null
           meeting_script?: string | null
+          paid_at?: string | null
           payment_id?: string | null
+          payment_link_id?: string | null
+          payment_url?: string | null
           product_id?: string | null
           product_title?: string
           recording_file_id?: string | null
@@ -955,12 +963,16 @@ export type Database = {
           ends_at?: string
           google_calendar_id?: string | null
           google_event_id?: string | null
+          hold_expires_at?: string | null
           id?: string
           materials?: Json
           materials_released_at?: string | null
           meet_link?: string | null
           meeting_script?: string | null
+          paid_at?: string | null
           payment_id?: string | null
+          payment_link_id?: string | null
+          payment_url?: string | null
           product_id?: string | null
           product_title?: string
           recording_file_id?: string | null
@@ -3619,6 +3631,7 @@ export type Database = {
         Returns: undefined
       }
       enroll_free_ebook: { Args: { p_ebook_id: string }; Returns: boolean }
+      expire_consultation_holds: { Args: never; Returns: number }
       finalize_ebook_completion: { Args: { _ebook_id: string }; Returns: Json }
       finish_ranking_campaign: {
         Args: { _campaign_id: string }
@@ -3746,6 +3759,7 @@ export type Database = {
         | "completed"
         | "cancelled"
         | "no_show"
+        | "awaiting_payment"
       difficulty_level: "Fácil" | "Médio" | "Avançado"
       integration_type: "ia" | "payment" | "oauth"
       knowledge_category:
@@ -3922,6 +3936,7 @@ export const Constants = {
         "completed",
         "cancelled",
         "no_show",
+        "awaiting_payment",
       ],
       difficulty_level: ["Fácil", "Médio", "Avançado"],
       integration_type: ["ia", "payment", "oauth"],
