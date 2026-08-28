@@ -84,7 +84,7 @@ function Dashboard() {
       });
       
       if (result.url) {
-        openPayment(result.url, targetItem.title, targetItem.id, targetItem.type);
+        openPayment(result.url, targetItem.title, targetItem.id, targetItem.type, { value: (result as any).value, transactionId: result.id });
       }
     } catch (error: any) {
       console.error("Erro ao processar compra:", error);
@@ -390,7 +390,7 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
       }
 
       if (result.url) {
-        openPayment(result.url, item.title, item.id, item.type);
+        openPayment(result.url, item.title, item.id, item.type, { value: (result as any).value, transactionId: result.id });
       }
     } catch (error: any) {
       console.error("Erro ao processar compra:", error);
