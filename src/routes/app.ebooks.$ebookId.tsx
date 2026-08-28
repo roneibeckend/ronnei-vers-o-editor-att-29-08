@@ -778,7 +778,11 @@ function EbookReaderPage() {
                 <p className="text-fire font-bold uppercase tracking-widest text-sm">Vídeo de Abertura</p>
               </div>
 
-              <div className="relative min-h-0 flex-1 w-full max-h-[calc(100dvh-10rem)] overflow-hidden bg-black sm:aspect-[9/16] sm:max-h-[68dvh] sm:max-w-[400px] sm:mx-auto sm:flex-none sm:rounded-3xl sm:border sm:border-white/10 sm:shadow-[0_0_50px_rgba(255,106,0,0.2)] group/intro">
+              <div className={`relative min-h-0 w-full overflow-hidden bg-black mx-auto sm:flex-none sm:rounded-3xl sm:border sm:border-white/10 sm:shadow-[0_0_50px_rgba(255,106,0,0.2)] group/intro ${
+                (ebook as any).opening_video_aspect === "landscape"
+                  ? "aspect-video max-w-[min(100%,900px,calc((100dvh-10rem)*1.7778))]"
+                  : "aspect-[9/16] max-w-[min(100%,400px,calc((100dvh-10rem)*0.5625))] sm:max-w-[min(400px,calc(68dvh*0.5625))]"
+              }`}>
 
                 {introNeedsSigning && !signedIntroUrl ? (
                   <div className="w-full h-full flex items-center justify-center"><Loader2 className="animate-spin text-fire" /></div>
@@ -844,7 +848,11 @@ function EbookReaderPage() {
               {activeChapter?.video_url && (
                 <div className="w-full bg-black/40 border-b border-white/5">
                   <div className="max-w-4xl mx-auto py-4 sm:py-8 px-0 sm:px-4">
-                    <div className="relative aspect-[9/16] max-h-[70vh] max-w-[400px] mx-auto rounded-none sm:rounded-2xl overflow-hidden shadow-2xl border-y sm:border border-white/10 bg-black/60 group">
+                    <div className={`relative mx-auto rounded-none sm:rounded-2xl overflow-hidden shadow-2xl border-y sm:border border-white/10 bg-black/60 group ${
+                      (activeChapter as any).video_aspect === "landscape"
+                        ? "aspect-video max-w-[min(100%,900px,calc(70vh*1.7778))]"
+                        : "aspect-[9/16] max-w-[min(100%,400px,calc(70vh*0.5625))]"
+                    }`}>
                       {needsSignedUrl(activeChapter.video_url) && (isLoadingSignedChapter || !signedChapterUrl) ? (
                         <div className="w-full h-full flex items-center justify-center"><Loader2 className="animate-spin text-fire" /></div>
                       ) : (
