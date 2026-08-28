@@ -317,16 +317,64 @@ function ScriptDialog({
   const [script, setScript] = useState("");
   const [loadedId, setLoadedId] = useState<string | null>(null);
   const saveNotes = useServerFn(saveConsultationNotes);
+  const sendReport = useServerFn(sendConsultationReportEmail);
+  const { session } = useAuth();
+  const consultantEmail = session?.user?.email ?? "";
+
+  const [toStudent, setToStudent] = useState(true);
+  const [toConsultant, setToConsultant] = useState(false);
+  const [extraEmails, setExtraEmails] = useState("");
+  const [message, setMessage] = useState("");
+  const [confirming, setConfirming] = useState(false);
 
   if (consultation && loadedId !== consultation.id) {
     setLoadedId(consultation.id);
     setScript(consultation.meeting_script ?? "");
+    setToStudent(Boolean(consultation.client_email));
+    setToConsultant(false);
+    setExtraEmails("");
+    setMessage("");
+    setConfirming(false);
   }
+
+  const recipients = [
+    ...(toStudent && consultation?.client_email ? [String(consultation.client_email)] : []),
+    ...(toConsultant && consultantEmail ? [consultantEmail] : []),
+    ...extraEmails
+      .split(/[,;\s]+/)
+      .map((e) => e.trim())
+      .filter((e) => e.includes("@")),
+  ];
+  const uniqueRecipients = Array.from(new Set(recipients.map((e) => e.toLowerCase())));
 
   const save = useMutation({
     mutationFn: () => saveNotes({ data: { id: consultation.id, meetingScript: script } as any }),
     onSuccess: () => onSaved(),
     onError: (e: any) => toast.error(e?.message ?? "Falha ao salvar o roteiro."),
+  });
+
+  const email = useMutation({
+    mutationFn: async () => {
+      const { base64, filename } = buildConsultationReportPdf({
+        ...consultation,
+        meeting_script: script,
+      });
+      return sendReport({
+        data: {
+          id: consultation.id,
+          recipients: uniqueRecipients,
+          message: message.trim() || undefined,
+          filename,
+          pdfBase64: base64,
+        } as any,
+      });
+    },
+    onSuccess: () => {
+      toast.success(`Relatório enviado para ${uniqueRecipients.join(", ")}.`);
+      setConfirming(false);
+      onClose();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar o relatório."),
   });
 
   const handle = async (withPdf: boolean) => {
@@ -343,6 +391,16 @@ function ScriptDialog({
     }
     onClose();
   };
+
+  const handleSend = async () => {
+    if (!uniqueRecipients.length) {
+      toast.error("Escolha pelo menos um destinatário.");
+      return;
+    }
+    await save.mutateAsync();
+    await email.mutateAsync();
+  };
+
 
   return (
     <Dialog open={Boolean(consultation)} onOpenChange={(o) => !o && onClose()}>
