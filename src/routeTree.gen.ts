@@ -70,6 +70,7 @@ import { Route as AppAfiliadosMateriaisRouteImport } from './routes/app.afiliado
 import { Route as AppAfiliadosLinksRouteImport } from './routes/app.afiliados.links'
 import { Route as AppAfiliadosFinanceiroRouteImport } from './routes/app.afiliados.financeiro'
 import { Route as AppAfiliadosConfigRouteImport } from './routes/app.afiliados.config'
+import { Route as ApiPublicTmpdrivecheckRouteImport } from './routes/api/public/tmpdrivecheck'
 import { Route as ApiPublicOpsRecoveryRouteImport } from './routes/api/public/ops-recovery'
 import { Route as ApiPublicDriveVideoRouteImport } from './routes/api/public/drive-video'
 import { Route as ApiPublicDailyUpdatesReportRouteImport } from './routes/api/public/daily-updates-report'
@@ -77,7 +78,6 @@ import { Route as ApiPublicDailyFinancialReportRouteImport } from './routes/api/
 import { Route as ApiPublicConsultoriaPresencaRouteImport } from './routes/api/public/consultoria-presenca'
 import { Route as ApiPublicConsultationRemindersRouteImport } from './routes/api/public/consultation-reminders'
 import { Route as ApiPublicConsultationRecordingsRouteImport } from './routes/api/public/consultation-recordings'
-import { Route as ApiPublicTmpDriveCheckRouteImport } from './routes/api/public/_tmp-drive-check'
 import { Route as AdminRankingCampanhasRouteImport } from './routes/admin.ranking.campanhas'
 import { Route as AdminAlunosStudentIdRouteImport } from './routes/admin.alunos_.$studentId'
 import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
@@ -389,6 +389,11 @@ const AppAfiliadosConfigRoute = AppAfiliadosConfigRouteImport.update({
   path: '/config',
   getParentRoute: () => AppAfiliadosRoute,
 } as any)
+const ApiPublicTmpdrivecheckRoute = ApiPublicTmpdrivecheckRouteImport.update({
+  id: '/api/public/tmpdrivecheck',
+  path: '/api/public/tmpdrivecheck',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicOpsRecoveryRoute = ApiPublicOpsRecoveryRouteImport.update({
   id: '/api/public/ops-recovery',
   path: '/api/public/ops-recovery',
@@ -429,11 +434,6 @@ const ApiPublicConsultationRecordingsRoute =
     path: '/api/public/consultation-recordings',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicTmpDriveCheckRoute = ApiPublicTmpDriveCheckRouteImport.update({
-  id: '/api/public/_tmp-drive-check',
-  path: '/api/public',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminRankingCampanhasRoute = AdminRankingCampanhasRouteImport.update({
   id: '/campanhas',
   path: '/campanhas',
@@ -516,7 +516,6 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/admin/alunos/$studentId': typeof AdminAlunosStudentIdRoute
   '/admin/ranking/campanhas': typeof AdminRankingCampanhasRoute
-  '/api/public': typeof ApiPublicTmpDriveCheckRoute
   '/api/public/consultation-recordings': typeof ApiPublicConsultationRecordingsRoute
   '/api/public/consultation-reminders': typeof ApiPublicConsultationRemindersRoute
   '/api/public/consultoria-presenca': typeof ApiPublicConsultoriaPresencaRoute
@@ -524,6 +523,7 @@ export interface FileRoutesByFullPath {
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
   '/api/public/ops-recovery': typeof ApiPublicOpsRecoveryRoute
+  '/api/public/tmpdrivecheck': typeof ApiPublicTmpdrivecheckRoute
   '/app/afiliados/config': typeof AppAfiliadosConfigRoute
   '/app/afiliados/financeiro': typeof AppAfiliadosFinanceiroRoute
   '/app/afiliados/links': typeof AppAfiliadosLinksRoute
@@ -588,7 +588,6 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/admin/alunos/$studentId': typeof AdminAlunosStudentIdRoute
   '/admin/ranking/campanhas': typeof AdminRankingCampanhasRoute
-  '/api/public': typeof ApiPublicTmpDriveCheckRoute
   '/api/public/consultation-recordings': typeof ApiPublicConsultationRecordingsRoute
   '/api/public/consultation-reminders': typeof ApiPublicConsultationRemindersRoute
   '/api/public/consultoria-presenca': typeof ApiPublicConsultoriaPresencaRoute
@@ -596,6 +595,7 @@ export interface FileRoutesByTo {
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
   '/api/public/ops-recovery': typeof ApiPublicOpsRecoveryRoute
+  '/api/public/tmpdrivecheck': typeof ApiPublicTmpdrivecheckRoute
   '/app/afiliados/config': typeof AppAfiliadosConfigRoute
   '/app/afiliados/financeiro': typeof AppAfiliadosFinanceiroRoute
   '/app/afiliados/links': typeof AppAfiliadosLinksRoute
@@ -665,7 +665,6 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/admin/alunos_/$studentId': typeof AdminAlunosStudentIdRoute
   '/admin/ranking/campanhas': typeof AdminRankingCampanhasRoute
-  '/api/public/_tmp-drive-check': typeof ApiPublicTmpDriveCheckRoute
   '/api/public/consultation-recordings': typeof ApiPublicConsultationRecordingsRoute
   '/api/public/consultation-reminders': typeof ApiPublicConsultationRemindersRoute
   '/api/public/consultoria-presenca': typeof ApiPublicConsultoriaPresencaRoute
@@ -673,6 +672,7 @@ export interface FileRoutesById {
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
   '/api/public/ops-recovery': typeof ApiPublicOpsRecoveryRoute
+  '/api/public/tmpdrivecheck': typeof ApiPublicTmpdrivecheckRoute
   '/app/afiliados/config': typeof AppAfiliadosConfigRoute
   '/app/afiliados/financeiro': typeof AppAfiliadosFinanceiroRoute
   '/app/afiliados/links': typeof AppAfiliadosLinksRoute
@@ -743,7 +743,6 @@ export interface FileRouteTypes {
     | '/app/'
     | '/admin/alunos/$studentId'
     | '/admin/ranking/campanhas'
-    | '/api/public'
     | '/api/public/consultation-recordings'
     | '/api/public/consultation-reminders'
     | '/api/public/consultoria-presenca'
@@ -751,6 +750,7 @@ export interface FileRouteTypes {
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
     | '/api/public/ops-recovery'
+    | '/api/public/tmpdrivecheck'
     | '/app/afiliados/config'
     | '/app/afiliados/financeiro'
     | '/app/afiliados/links'
@@ -815,7 +815,6 @@ export interface FileRouteTypes {
     | '/app'
     | '/admin/alunos/$studentId'
     | '/admin/ranking/campanhas'
-    | '/api/public'
     | '/api/public/consultation-recordings'
     | '/api/public/consultation-reminders'
     | '/api/public/consultoria-presenca'
@@ -823,6 +822,7 @@ export interface FileRouteTypes {
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
     | '/api/public/ops-recovery'
+    | '/api/public/tmpdrivecheck'
     | '/app/afiliados/config'
     | '/app/afiliados/financeiro'
     | '/app/afiliados/links'
@@ -891,7 +891,6 @@ export interface FileRouteTypes {
     | '/app/'
     | '/admin/alunos_/$studentId'
     | '/admin/ranking/campanhas'
-    | '/api/public/_tmp-drive-check'
     | '/api/public/consultation-recordings'
     | '/api/public/consultation-reminders'
     | '/api/public/consultoria-presenca'
@@ -899,6 +898,7 @@ export interface FileRouteTypes {
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
     | '/api/public/ops-recovery'
+    | '/api/public/tmpdrivecheck'
     | '/app/afiliados/config'
     | '/app/afiliados/financeiro'
     | '/app/afiliados/links'
@@ -928,7 +928,6 @@ export interface RootRouteChildren {
   VerificarCertificadoRoute: typeof VerificarCertificadoRoute
   ApiMaterialDownloadRoute: typeof ApiMaterialDownloadRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
-  ApiPublicTmpDriveCheckRoute: typeof ApiPublicTmpDriveCheckRoute
   ApiPublicConsultationRecordingsRoute: typeof ApiPublicConsultationRecordingsRoute
   ApiPublicConsultationRemindersRoute: typeof ApiPublicConsultationRemindersRoute
   ApiPublicConsultoriaPresencaRoute: typeof ApiPublicConsultoriaPresencaRoute
@@ -936,6 +935,7 @@ export interface RootRouteChildren {
   ApiPublicDailyUpdatesReportRoute: typeof ApiPublicDailyUpdatesReportRoute
   ApiPublicDriveVideoRoute: typeof ApiPublicDriveVideoRoute
   ApiPublicOpsRecoveryRoute: typeof ApiPublicOpsRecoveryRoute
+  ApiPublicTmpdrivecheckRoute: typeof ApiPublicTmpdrivecheckRoute
   ApiPublicManifestWebmanifestRoute: typeof ApiPublicManifestWebmanifestRoute
   ApiPublicWebhooksAsaasRoute: typeof ApiPublicWebhooksAsaasRoute
   ApiPublicGoogleOauthCallbackRoute: typeof ApiPublicGoogleOauthCallbackRoute
@@ -1370,6 +1370,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAfiliadosConfigRouteImport
       parentRoute: typeof AppAfiliadosRoute
     }
+    '/api/public/tmpdrivecheck': {
+      id: '/api/public/tmpdrivecheck'
+      path: '/api/public/tmpdrivecheck'
+      fullPath: '/api/public/tmpdrivecheck'
+      preLoaderRoute: typeof ApiPublicTmpdrivecheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/ops-recovery': {
       id: '/api/public/ops-recovery'
       path: '/api/public/ops-recovery'
@@ -1417,13 +1424,6 @@ declare module '@tanstack/react-router' {
       path: '/api/public/consultation-recordings'
       fullPath: '/api/public/consultation-recordings'
       preLoaderRoute: typeof ApiPublicConsultationRecordingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/_tmp-drive-check': {
-      id: '/api/public/_tmp-drive-check'
-      path: '/api/public'
-      fullPath: '/api/public'
-      preLoaderRoute: typeof ApiPublicTmpDriveCheckRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/ranking/campanhas': {
@@ -1624,7 +1624,6 @@ const rootRouteChildren: RootRouteChildren = {
   VerificarCertificadoRoute: VerificarCertificadoRoute,
   ApiMaterialDownloadRoute: ApiMaterialDownloadRoute,
   AuthCallbackRoute: AuthCallbackRoute,
-  ApiPublicTmpDriveCheckRoute: ApiPublicTmpDriveCheckRoute,
   ApiPublicConsultationRecordingsRoute: ApiPublicConsultationRecordingsRoute,
   ApiPublicConsultationRemindersRoute: ApiPublicConsultationRemindersRoute,
   ApiPublicConsultoriaPresencaRoute: ApiPublicConsultoriaPresencaRoute,
@@ -1632,6 +1631,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicDailyUpdatesReportRoute: ApiPublicDailyUpdatesReportRoute,
   ApiPublicDriveVideoRoute: ApiPublicDriveVideoRoute,
   ApiPublicOpsRecoveryRoute: ApiPublicOpsRecoveryRoute,
+  ApiPublicTmpdrivecheckRoute: ApiPublicTmpdrivecheckRoute,
   ApiPublicManifestWebmanifestRoute: ApiPublicManifestWebmanifestRoute,
   ApiPublicWebhooksAsaasRoute: ApiPublicWebhooksAsaasRoute,
   ApiPublicGoogleOauthCallbackRoute: ApiPublicGoogleOauthCallbackRoute,
