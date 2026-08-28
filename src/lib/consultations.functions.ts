@@ -16,7 +16,7 @@ export const listConsultationProducts = createServerFn({ method: "GET" }).handle
   return data ?? [];
 });
 
-/** Horários livres para uma duração específica. */
+/** Horários livres para uma duração específica (sessão de até 1h). */
 export const getConsultationSlots = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
     z.object({ durationMinutes: z.number().int().min(15).max(480) }).parse(data),
@@ -25,6 +25,23 @@ export const getConsultationSlots = createServerFn({ method: "GET" })
     const { computeAvailableSlots } = await import("@/lib/consultations.server");
     return computeAvailableSlots(data.durationMinutes);
   });
+
+/** Quantos encontros de 1h a consultoria contratada exige. */
+export const getConsultationSessionPlan = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) =>
+    z.object({ durationMinutes: z.number().int().min(15).max(480) }).parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { sessionMinutes, sessionCount, MAX_MINUTES_PER_DAY } = await import(
+      "@/lib/consultations.server"
+    );
+    return {
+      sessionMinutes: sessionMinutes(data.durationMinutes),
+      sessions: sessionCount(data.durationMinutes),
+      maxPerDay: MAX_MINUTES_PER_DAY,
+    };
+  });
+
 
 /**
  * Cria a RESERVA da consultoria (status `awaiting_payment`) e gera o checkout.
