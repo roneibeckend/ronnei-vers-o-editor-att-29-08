@@ -1172,3 +1172,174 @@ export const sendConsultationComboReport = createServerFn({ method: "POST" })
     return { sent: true, recipients, attachments: data.attachments.length };
   });
 
+
+/* --------------------- Grade de disponibilidade (presets) --------------------- */
+
+/** Cria várias janelas de uma vez (ex.: seg–sex 09:00–12:00), opcionalmente limpando a grade. */
+export const applyAvailabilityPreset = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        weekdays: z.array(z.number().int().min(0).max(6)).min(1).max(7),
+        windows: z
+          .array(
+            z.object({
+              start_time: z.string().regex(/^\d{2}:\d{2}$/),
+              end_time: z.string().regex(/^\d{2}:\d{2}$/),
+            }),
+          )
+          .min(1)
+          .max(4),
+        slot_interval_minutes: z.number().int().min(15).max(240).default(60),
+        replace: z.boolean().default(false),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { auditConsultation } = await import("@/lib/consultations.server");
+
+    for (const w of data.windows) {
+      if (w.end_time <= w.start_time) throw new Error("Horário final deve ser maior que o inicial.");
+    }
+
+    if (data.replace) {
+      await supabaseAdmin.from("consultation_availability").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    }
+
+    const rows = data.weekdays.flatMap((weekday) =>
+      data.windows.map((w) => ({
+        weekday,
+        start_time: w.start_time,
+        end_time: w.end_time,
+        slot_interval_minutes: data.slot_interval_minutes,
+        active: true,
+      })),
+    );
+
+    const { error } = await supabaseAdmin.from("consultation_availability").insert(rows);
+    if (error) throw new Error(`Falha ao aplicar grade: ${error.message}`);
+
+    await auditConsultation({
+      actorId: context.userId,
+      actorRole: "admin",
+      action: "availability_preset_applied",
+      details: { created: rows.length, replace: data.replace },
+    });
+
+    return { created: rows.length };
+  });
+
+/** Simula a grade: mostra quantos horários de 1h estão realmente disponíveis nos próximos dias. */
+export const previewAvailableSlots = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ durationMinutes: z.number().int().min(30).max(600).default(60), days: z.number().int().min(1).max(60).default(14) }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { computeAvailableSlots } = await import("@/lib/consultations.server");
+    const slots = await computeAvailableSlots(data.durationMinutes, data.days);
+    return { total: slots.length, next: slots.slice(0, 12) };
+  });
+
+/* ---------------------- Reprocessamento de falhas Google ---------------------- */
+
+/** Reuniões pagas/confirmadas que ficaram sem evento no Google, sem link do Meet ou sem e-mail de confirmação. */
+export const getGoogleSyncIssues = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: rows } = await supabaseAdmin
+      .from("consultations")
+      .select(
+        "id, product_title, client_name, client_email, scheduled_at, ends_at, status, google_event_id, meet_link, confirmation_sent_at, booking_group, session_index, sessions_total",
+      )
+      .eq("status", "scheduled")
+      .gte("scheduled_at", since)
+      .order("scheduled_at", { ascending: true })
+      .limit(200);
+
+    const issues = (rows ?? [])
+      .map((r) => {
+        const problems: string[] = [];
+        if (!r.google_event_id) problems.push("sem evento no Google");
+        if (!r.meet_link) problems.push("sem link do Meet");
+        if (!r.confirmation_sent_at) problems.push("sem e-mail de confirmação");
+        return { ...r, problems };
+      })
+      .filter((r) => r.problems.length > 0);
+
+    const { data: errors } = await supabaseAdmin
+      .from("consultation_audit_log")
+      .select("id, consultation_id, action, details, created_at")
+      .eq("status", "error")
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    return { issues, errors: errors ?? [] };
+  });
+
+/** Recria evento/Meet e reenvia a confirmação das reuniões com falha. */
+export const retryGoogleSync = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ ids: z.array(z.string().uuid()).min(1).max(50) }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { attachGoogleMeeting, sendConsultationConfirmation, auditConsultation } = await import(
+      "@/lib/consultations.server"
+    );
+
+    const results: { id: string; ok: boolean; error?: string }[] = [];
+
+    for (const id of data.ids) {
+      const { data: row } = await supabaseAdmin.from("consultations").select("*").eq("id", id).maybeSingle();
+      if (!row) {
+        results.push({ id, ok: false, error: "Consultoria não encontrada" });
+        continue;
+      }
+
+      let meetOk = Boolean(row.google_event_id && row.meet_link);
+      let error: string | undefined;
+
+      if (!meetOk) {
+        const res = await attachGoogleMeeting(row as never);
+        meetOk = res.ok;
+        if (!res.ok) error = res.error;
+      }
+
+      if (meetOk && !row.confirmation_sent_at) {
+        const { data: fresh } = await supabaseAdmin.from("consultations").select("*").eq("id", id).maybeSingle();
+        try {
+          await sendConsultationConfirmation((fresh ?? row) as never);
+        } catch (err) {
+          error = (err as Error)?.message ?? "Falha ao reenviar confirmação";
+        }
+      }
+
+      await auditConsultation({
+        consultationId: id,
+        actorId: context.userId,
+        actorRole: "admin",
+        action: "google_sync_retry",
+        status: error ? "error" : "success",
+        ...(error ? { details: { error } } : {}),
+      });
+
+      results.push(error ? { id, ok: false, error } : { id, ok: true });
+    }
+
+    return {
+      results,
+      recovered: results.filter((r) => r.ok).length,
+      failed: results.filter((r) => !r.ok).length,
+    };
+  });
