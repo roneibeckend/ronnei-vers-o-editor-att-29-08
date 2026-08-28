@@ -208,20 +208,7 @@ export function buildConsultationReportPdf(c: any) {
   sectionTitle(script ? "Roteiro / análise" : "Roteiro / análise (preencher)");
 
   if (script) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(30, 30, 34);
-    script.split(/\n/).forEach((paragraph) => {
-      if (!paragraph.trim()) {
-        y += 3;
-        return;
-      }
-      doc.splitTextToSize(paragraph, CW).forEach((line: string) => {
-        ensure(6);
-        doc.text(line, MX, y);
-        y += 5;
-      });
-    });
+    paragraphs(script);
   } else {
     doc.setDrawColor(215, 215, 220);
     for (let i = 0; i < 10; i += 1) {
@@ -230,6 +217,23 @@ export function buildConsultationReportPdf(c: any) {
       y += 9;
     }
   }
+
+  // Pós-reunião: resumo da consultoria e plano de ação entregues ao cliente.
+  const summary = String(c?.meeting_summary ?? "").trim();
+  if (summary) {
+    y += 6;
+    sectionTitle("Resumo da consultoria");
+    paragraphs(summary);
+  }
+
+  const actionPlan = String(c?.action_plan ?? "").trim();
+  if (actionPlan) {
+    y += 6;
+    sectionTitle("Plano de ação");
+    paragraphs(actionPlan);
+  }
+
+
 
   // Rodapé em todas as páginas
   const total = (doc as any).getNumberOfPages();
