@@ -164,11 +164,14 @@ export function buildExternalReference(opts: {
   productId: string;
   userId: string;
   affiliateRef?: string | null;
+  /** Reserva de consultoria vinculada a esta cobrança. */
+  consultationId?: string | null;
 }) {
   return [
     opts.productType,
     opts.productId,
     `u_${opts.userId}`,
+    ...(opts.consultationId ? [`c_${opts.consultationId}`] : []),
     ...(opts.affiliateRef ? [`ref_${opts.affiliateRef}`] : []),
   ].join(":");
 }
@@ -178,11 +181,13 @@ export function parseExternalReference(ref: string | null | undefined) {
   const parts = ref.split(":");
   const userPart = parts.find((p) => p.startsWith("u_"));
   const affiliatePart = parts.find((p) => p.startsWith("ref_"));
+  const consultationPart = parts.find((p) => p.startsWith("c_"));
   return {
     productType: parts[0],
     productId: parts[1],
     userId: userPart ? userPart.replace("u_", "") : null,
     affiliateCode: affiliatePart ? affiliatePart.replace("ref_", "") : null,
+    consultationId: consultationPart ? consultationPart.replace("c_", "") : null,
   };
 }
 
