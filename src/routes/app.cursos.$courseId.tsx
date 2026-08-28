@@ -551,22 +551,23 @@ function CoursePage() {
                 {introNeedsSigning && !signedIntroUrl ? (
                   <div className="w-full h-full flex items-center justify-center"><Loader2 className="animate-spin text-fire" /></div>
                 ) : (
-                  <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><Loader2 className="animate-spin text-fire" /></div>}>
-                    <VideoPlayer
-                      key={signedIntroUrl || course.intro_video_url}
-                      videoId={`intro-${course.id}`}
-                      src={signedIntroUrl || course.intro_video_url}
-                      poster={course.cover_url || undefined}
-                      isIntro={false}
-                      aspect="portrait"
-                      className="w-full h-full"
-                      autoStart
-                      onEnded={() => {
-                        if (showOpeningVideo) markVideoAsSeen();
-                        setShowIntroVideo(false);
-                      }}
-                    />
-                  </Suspense>
+                  <LessonPlayer
+                    key={signedIntroUrl || course.intro_video_url}
+                    videoId={`intro-${course.id}`}
+                    videoUrl={signedIntroUrl || course.intro_video_url}
+                    poster={course.cover_url || undefined}
+                    isIntro={false}
+                    aspect="portrait"
+                    frameless
+                    className="w-full h-full"
+                    autoStart
+                    autoplay
+                    onEnded={() => {
+                      if (showOpeningVideo) markVideoAsSeen();
+                      setShowIntroVideo(false);
+                    }}
+                  />
+
                 )}
               </div>
 
