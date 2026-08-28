@@ -263,11 +263,11 @@ export const reserveConsultation = createServerFn({ method: "POST" })
         status: "error",
         details: { error: message },
       });
-      // Libera o horário na hora: sem checkout não há como pagar.
+      // Libera os horários na hora: sem checkout não há como pagar.
       await supabaseAdmin
         .from("consultations")
         .update({ status: "cancelled", cancel_reason: "Falha ao gerar checkout", hold_expires_at: null } as never)
-        .eq("id", created.id);
+        .eq("booking_group", bookingGroup);
       throw new Error(message);
     }
 
@@ -278,7 +278,9 @@ export const reserveConsultation = createServerFn({ method: "POST" })
       paymentUrl,
       amount: Number(product.price),
       scheduledAt: created.scheduled_at,
-      durationMinutes: product.duration_minutes,
+      durationMinutes: meetingMinutes,
+      sessions: rows.map((r) => ({ id: r.id, scheduledAt: r.scheduled_at })),
+      sessionsTotal: totalSessions,
       productTitle: product.title,
     };
   });
