@@ -468,8 +468,37 @@ function BookingDialog({
             </p>
           ) : step === 1 ? (
             <div>
-              <p className="mb-1 text-sm font-semibold">Escolha a data</p>
-              <p className="mb-3 text-xs text-muted-foreground">Horário de Brasília</p>
+              <p className="mb-1 text-sm font-semibold">
+                {sessionsTotal > 1
+                  ? `Escolha a data do encontro ${picked.length + 1} de ${sessionsTotal}`
+                  : "Escolha a data"}
+              </p>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Horário de Brasília
+                {sessionsTotal > 1
+                  ? ` · ${sessionMinutes} min por dia, em dias diferentes`
+                  : ""}
+              </p>
+              {picked.length > 0 && (
+                <div className="mb-3 space-y-1 rounded-lg bg-muted/50 p-3 text-xs">
+                  {picked.map((iso, i) => (
+                    <p key={iso} className="flex items-center justify-between gap-2">
+                      <span className="font-medium">
+                        Encontro {i + 1}: {dateBR(iso)}
+                      </span>
+                    </p>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-1 h-7 px-2 text-xs"
+                    onClick={() => setPicked([])}
+                  >
+                    Recomeçar seleção
+                  </Button>
+                </div>
+              )}
+
               <div className="grid grid-cols-3 gap-2">
                 {dayList.map(([date, list]) => {
                   const isSuggested = list[0]?.startIso === suggested;
