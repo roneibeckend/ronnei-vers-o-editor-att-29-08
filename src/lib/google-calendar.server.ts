@@ -1,7 +1,7 @@
 // Google Calendar + Google Meet (server-only).
 // Cria/atualiza/cancela eventos na agenda oficial e gera o link do Meet.
 
-import { googleFetch } from "@/lib/google-oauth.server";
+import { getConnectionStatus, googleFetch } from "@/lib/google-oauth.server";
 
 const CALENDAR_BASE = "https://www.googleapis.com/calendar/v3";
 
@@ -174,6 +174,12 @@ export async function deleteCalendarEvent(eventId: string, notify = true) {
 }
 
 export async function listCalendars() {
+  const status = await getConnectionStatus();
+  if (!status.hasCalendarListScope) {
+    throw new Error(
+      "A conexão atual não recebeu a permissão calendar.readonly. Reconecte a conta usando esta versão atualizada do painel e aceite todas as permissões solicitadas.",
+    );
+  }
   const data = await googleFetch<any>(
     "calendar.calendarList.list",
     `${CALENDAR_BASE}/users/me/calendarList?minAccessRole=writer&maxResults=50`,

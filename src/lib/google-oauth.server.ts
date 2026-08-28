@@ -16,12 +16,16 @@ export const GOOGLE_SCOPES = [
 
 export const GOOGLE_CALLBACK_PATH = "/api/public/google/oauth/callback";
 
-const GOOGLE_PROD_ORIGIN = "https://ronneinv.lovable.app";
+const GOOGLE_PROD_ORIGIN = "https://grillmaster-pro.lovable.app";
 
 const GOOGLE_PREVIEW_ORIGIN =
-  "https://id-preview--19870d22-c8ea-4f04-9619-f074c2594e7b.lovable.app";
+  "https://id-preview--d1f36df5-e296-476a-9ac5-df68d64a889f.lovable.app";
 
-const GOOGLE_ALLOWED_ORIGINS = new Set([GOOGLE_PROD_ORIGIN, GOOGLE_PREVIEW_ORIGIN]);
+const GOOGLE_ALLOWED_ORIGINS = new Set([
+  GOOGLE_PROD_ORIGIN,
+  GOOGLE_PREVIEW_ORIGIN,
+  "https://ronneinaveia.com.br",
+]);
 
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -29,7 +33,7 @@ const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
 
 /** Cache do access token em memória do worker (curto, revalidado sempre). */
-let accessTokenCache: { token: string; expiresAt: number } | null = null;
+let accessTokenCache: { credentialId: string; token: string; expiresAt: number } | null = null;
 
 /** Cache do client OAuth (id/secret) guardado no banco pelo painel admin. */
 let clientCache: { clientId: string; clientSecret: string } | null = null;
@@ -286,6 +290,22 @@ export async function exchangeCodeAndStore(code: string, redirectUri: string, us
     );
   }
 
+  const grantedScopes = String(payload.scope ?? "").split(" ").filter(Boolean);
+  const hasCalendarListScope = grantedScopes.includes("https://www.googleapis.com/auth/calendar.readonly") ||
+    grantedScopes.includes("https://www.googleapis.com/auth/calendar");
+  const hasDriveReadScope = grantedScopes.includes("https://www.googleapis.com/auth/drive.readonly") ||
+    grantedScopes.includes("https://www.googleapis.com/auth/drive");
+  if (!hasCalendarListScope || !hasDriveReadScope) {
+    const missing = [
+      hasCalendarListScope ? null : "Google Calendar (leitura de agendas)",
+      hasDriveReadScope ? null : "Google Drive (leitura de arquivos)",
+    ].filter((scope): scope is string => Boolean(scope));
+    throw new Error(
+      `O Google não concedeu todas as permissões solicitadas: ${missing.join(" e ")}. ` +
+        "Adicione esses escopos na tela de consentimento do Google Cloud e conecte novamente aceitando todas as opções.",
+    );
+  }
+
   // Identifica a conta conectada
   let email: string | null = null;
   let name: string | null = null;
@@ -309,7 +329,7 @@ export async function exchangeCodeAndStore(code: string, redirectUri: string, us
     account_email: email,
     account_name: name,
     refresh_token_ciphertext: encryptToken(payload.refresh_token),
-    scopes: String(payload.scope ?? "").split(" ").filter(Boolean),
+    scopes: grantedScopes,
     status: "connected",
     last_refresh_at: new Date().toISOString(),
     connected_by: userId,
@@ -317,9 +337,13 @@ export async function exchangeCodeAndStore(code: string, redirectUri: string, us
   if (error) throw new Error(`Falha ao salvar as credenciais: ${error.message}`);
 
   accessTokenCache = {
+    credentialId: "pending-persisted-credential",
     token: payload.access_token,
     expiresAt: Date.now() + Math.max(0, (Number(payload.expires_in) || 3600) - 300) * 1000,
   };
+
+  const storedCredentials = await loadCredentials();
+  if (storedCredentials?.id) accessTokenCache.credentialId = storedCredentials.id;
 
   await logGoogleCall({
     action: "oauth.exchange",
@@ -370,10 +394,15 @@ async function markCredentialError(id: string, message: string, revoked: boolean
 
 /** Access token válido da conta conectada (renovado automaticamente). */
 export async function getGoogleAccessToken(): Promise<string> {
-  if (accessTokenCache && accessTokenCache.expiresAt > Date.now()) return accessTokenCache.token;
-
   const creds = await loadCredentials();
   if (!creds) throw new Error("Nenhuma conta Google conectada.");
+  if (
+    accessTokenCache &&
+    accessTokenCache.credentialId === creds.id &&
+    accessTokenCache.expiresAt > Date.now()
+  ) {
+    return accessTokenCache.token;
+  }
 
   const started = Date.now();
   const client = await requireClient();
@@ -409,6 +438,7 @@ export async function getGoogleAccessToken(): Promise<string> {
   }
 
   accessTokenCache = {
+    credentialId: creds.id,
     token: payload.access_token,
     expiresAt: Date.now() + Math.max(0, (Number(payload.expires_in) || 3600) - 300) * 1000,
   };
@@ -454,6 +484,9 @@ export async function googleFetch<T = any>(
     } catch {
       // resposta não-JSON
     }
+    if (res.status === 401 || /insufficient authentication scopes/i.test(message)) {
+      accessTokenCache = null;
+    }
     await logGoogleCall({
       action,
       status: "error",
@@ -486,12 +519,23 @@ export type GoogleConnectionStatus = {
   lastRefreshAt: string | null;
   lastError: string | null;
   hasCalendarScope: boolean;
+  hasCalendarListScope: boolean;
   hasDriveScope: boolean;
+  hasDriveReadScope: boolean;
+  missingScopes: string[];
 };
 
 export async function getConnectionStatus(): Promise<GoogleConnectionStatus> {
   const creds = await loadCredentials();
   const scopes = (creds?.scopes ?? []) as string[];
+  const hasCalendarListScope = scopes.includes("https://www.googleapis.com/auth/calendar.readonly") ||
+    scopes.includes("https://www.googleapis.com/auth/calendar");
+  const hasDriveReadScope = scopes.includes("https://www.googleapis.com/auth/drive.readonly") ||
+    scopes.includes("https://www.googleapis.com/auth/drive");
+  const missingScopes = [
+    hasCalendarListScope ? null : "calendar.readonly",
+    hasDriveReadScope ? null : "drive.readonly",
+  ].filter((scope): scope is string => Boolean(scope));
   return {
     clientConfigured: await googleClientConfigured(),
     connected: Boolean(creds),
@@ -501,8 +545,12 @@ export async function getConnectionStatus(): Promise<GoogleConnectionStatus> {
     status: creds?.status ?? null,
     lastRefreshAt: creds?.last_refresh_at ?? null,
     lastError: creds?.last_error ?? null,
-    hasCalendarScope: scopes.some((s) => s.includes("/auth/calendar")),
-    hasDriveScope: scopes.some((s) => s.includes("/auth/drive")),
+    hasCalendarScope: scopes.includes("https://www.googleapis.com/auth/calendar.events") ||
+      scopes.includes("https://www.googleapis.com/auth/calendar"),
+    hasCalendarListScope,
+    hasDriveScope: scopes.includes("https://www.googleapis.com/auth/drive.file") || hasDriveReadScope,
+    hasDriveReadScope,
+    missingScopes,
   };
 }
 
