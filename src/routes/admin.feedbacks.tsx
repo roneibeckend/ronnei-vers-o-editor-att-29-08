@@ -9,6 +9,14 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export const Route = createFileRoute("/admin/feedbacks")({
+  head: () => ({
+    meta: [
+      { title: "Feedbacks — Admin" },
+      { name: "description", content: "Moderação e resposta aos feedbacks enviados pelos alunos." },
+      { property: "og:title", content: "Feedbacks — Admin" },
+      { property: "og:description", content: "Moderação e resposta aos feedbacks enviados pelos alunos." },
+    ],
+  }),
   component: AdminFeedbacksPage,
 });
 

@@ -14,6 +14,14 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/afiliados/config")({
+  head: () => ({
+    meta: [
+      { title: "Configurações de Afiliado" },
+      { name: "description", content: "Ajuste seus dados de pagamento e preferências do programa de afiliados." },
+      { property: "og:title", content: "Configurações de Afiliado" },
+      { property: "og:description", content: "Ajuste seus dados de pagamento e preferências do programa de afiliados." },
+    ],
+  }),
   component: AffiliateConfigPage,
 });
 

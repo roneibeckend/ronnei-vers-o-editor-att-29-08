@@ -14,6 +14,14 @@ import { downloadFromResponse, openExternal } from "@/lib/download";
 
 
 export const Route = createFileRoute("/app/afiliados/materiais")({
+  head: () => ({
+    meta: [
+      { title: "Materiais de Divulgação" },
+      { name: "description", content: "Baixe artes, vídeos e textos prontos para divulgar os produtos." },
+      { property: "og:title", content: "Materiais de Divulgação" },
+      { property: "og:description", content: "Baixe artes, vídeos e textos prontos para divulgar os produtos." },
+    ],
+  }),
   component: AffiliateMaterialsPage,
 });
 

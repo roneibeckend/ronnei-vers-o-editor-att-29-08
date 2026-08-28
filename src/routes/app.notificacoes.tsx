@@ -8,6 +8,14 @@ import { useHasPurchase } from "@/hooks/use-access";
 import { LockedFeature } from "@/components/platform/LockedFeature";
 
 export const Route = createFileRoute("/app/notificacoes")({
+  head: () => ({
+    meta: [
+      { title: "Notificações" },
+      { name: "description", content: "Acompanhe avisos, novidades e liberações de conteúdo da plataforma." },
+      { property: "og:title", content: "Notificações" },
+      { property: "og:description", content: "Acompanhe avisos, novidades e liberações de conteúdo da plataforma." },
+    ],
+  }),
   component: NotificationsPage,
 });
 

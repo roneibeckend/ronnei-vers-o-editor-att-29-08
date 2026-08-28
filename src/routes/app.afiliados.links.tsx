@@ -15,6 +15,14 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/afiliados/links")({
+  head: () => ({
+    meta: [
+      { title: "Meus Links de Afiliado" },
+      { name: "description", content: "Crie e acompanhe seus links de divulgação e conversões." },
+      { property: "og:title", content: "Meus Links de Afiliado" },
+      { property: "og:description", content: "Crie e acompanhe seus links de divulgação e conversões." },
+    ],
+  }),
   component: AffiliateLinksPage,
 });
 
