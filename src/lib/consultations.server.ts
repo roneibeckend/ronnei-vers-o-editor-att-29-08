@@ -330,8 +330,10 @@ export async function attachGoogleMeeting(consultation: ConsultationRow) {
       status: "error",
       details: { error: message },
     });
+    await alertGoogleFailure(consultation, "criar o evento/Meet", message);
     return { ok: false as const, error: message };
   }
+
 }
 
 export async function cancelGoogleMeeting(consultation: ConsultationRow) {
