@@ -119,6 +119,18 @@ export const reserveConsultation = createServerFn({ method: "POST" })
       end: new Date(+start + meetingMinutes * 60_000),
     }));
 
+    // Uma reserva ativa por vez: descarta reservas anteriores não pagas do aluno
+    // ANTES de validar, para que o próprio hold antigo não bloqueie o horário.
+    await supabaseAdmin
+      .from("consultations")
+      .update({
+        status: "cancelled",
+        cancel_reason: "Substituída por nova reserva",
+        hold_expires_at: null,
+      } as never)
+      .eq("user_id", context.userId)
+      .eq("status", "awaiting_payment");
+
     for (const { start, end } of sessionsPlan) {
       if (+start < Date.now() + MIN_LEAD_MINUTES * 60_000) {
         throw new Error("Escolha horários com pelo menos 2 horas de antecedência.");
@@ -134,16 +146,6 @@ export const reserveConsultation = createServerFn({ method: "POST" })
       }
     }
 
-    // Uma reserva ativa por vez: descarta reservas anteriores não pagas do aluno.
-    await supabaseAdmin
-      .from("consultations")
-      .update({
-        status: "cancelled",
-        cancel_reason: "Substituída por nova reserva",
-        hold_expires_at: null,
-      } as never)
-      .eq("user_id", context.userId)
-      .eq("status", "awaiting_payment");
 
     const { data: profile } = await supabaseAdmin
       .from("profiles")
