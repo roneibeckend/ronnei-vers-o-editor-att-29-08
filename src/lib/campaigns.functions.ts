@@ -8,11 +8,32 @@ export const getCampaigns = createServerFn({ method: "GET" })
     const { data, error } = await supabaseAdmin
       .from("ranking_campaigns")
       .select("*")
+      .eq("is_active", true)
       .order("created_at", { ascending: false });
-    
+
     if (error) throw error;
     return data;
   });
+
+// Admin-only: inclui campanhas inativas/rascunho
+export const getAllCampaigns = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: hasRole } = await context.supabase.rpc('has_role', {
+      _user_id: context.userId,
+      _role: 'admin'
+    });
+    if (!hasRole) throw new Error("Unauthorized");
+
+    const { data, error } = await supabaseAdmin
+      .from("ranking_campaigns")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data;
+  });
+
 
 export const createCampaign = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
