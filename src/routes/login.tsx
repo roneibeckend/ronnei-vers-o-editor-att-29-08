@@ -7,7 +7,7 @@ import { IMG } from "@/lib/platform-data";
 import { supabase } from "@/integrations/supabase/client";
 import { validatePassword } from "@/lib/password-validation";
 import { checkSession } from "@/lib/session-guard";
-import { gtmLogin, gtmSignUp } from "@/lib/gtm";
+import { gtmLogin, gtmSignUp, gtmRememberAuthMethod } from "@/lib/gtm";
 import {
   Dialog,
   DialogContent,
@@ -277,7 +277,7 @@ function LoginPage() {
           throw new Error("Não foi possível iniciar sua sessão após o cadastro.");
         }
 
-        gtmSignUp("email");
+        gtmSignUp("email", session.user.id);
         toast.success("Conta criada!", { description: "Você já pode acessar sua área de membros." });
 
         // Remove qualquer dado em cache de um usuário anterior neste navegador
