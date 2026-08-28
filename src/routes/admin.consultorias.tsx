@@ -248,18 +248,7 @@ function MeetingsTab({ consultations, onChanged }: { consultations: any[]; onCha
             <Button size="sm" variant="outline" onClick={() => setRecordingFor(c)}>
               Gravação
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                try {
-                  generateConsultationReportPdf(c);
-                  toast.success("Relatório em PDF gerado.");
-                } catch {
-                  toast.error("Não foi possível gerar o PDF.");
-                }
-              }}
-            >
+            <Button size="sm" variant="outline" onClick={() => setScriptFor(c)}>
               <FileText className="mr-2 h-4 w-4" /> Relatório PDF
             </Button>
 
