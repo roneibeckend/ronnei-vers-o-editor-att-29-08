@@ -1,4 +1,5 @@
 import {
+import { gtmPwaInstalled } from "@/lib/gtm";
   useCallback,
   useEffect,
   useState,
@@ -252,6 +253,7 @@ export function usePwaInstall() {
             "accepted"
           ) {
             setIsInstalling(false);
+            gtmPwaInstalled("accepted");
 
             // Não fingimos que o WebAPK
             // terminou. A partir daqui a
