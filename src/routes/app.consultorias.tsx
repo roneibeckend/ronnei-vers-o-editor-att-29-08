@@ -673,11 +673,29 @@ function BookingDialog({
 
               <Card className="space-y-2 p-4 text-sm">
                 <p className="font-display text-base font-bold">Reserva criada</p>
-                <p className="text-muted-foreground">
-                  {product?.title} · {dateBR(reservation.scheduledAt)}
-                </p>
+                <p className="text-muted-foreground">{product?.title}</p>
+
+                <div className="space-y-1 border-t pt-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Cronograma
+                  </p>
+                  {((liveReservation?.sessions ?? reservation.sessions ?? []) as any[]).map((s, i) => (
+                    <div key={s.id ?? i} className="flex items-center justify-between gap-3">
+                      <span className="text-muted-foreground">
+                        {(liveReservation?.sessions ?? reservation.sessions ?? []).length > 1
+                          ? `Encontro ${s.index ?? i + 1}`
+                          : "Horário"}
+                      </span>
+                      <span className="text-right font-medium">
+                        {dateBR(s.scheduledAt)} · {s.durationMinutes ?? sessionMinutes} min
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
                 <p className="font-display text-lg font-bold">{money(reservation.amount)}</p>
               </Card>
+
 
               {paymentUrl && (
                 <Button asChild className="w-full">
