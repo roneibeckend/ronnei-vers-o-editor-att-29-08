@@ -12,6 +12,8 @@ import {
   listMyConsultations,
   submitConsultationBriefing,
   cancelMyConsultation,
+  rescheduleMyConsultation,
+
 } from "@/lib/consultations.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -170,8 +172,10 @@ function ConsultationsPage() {
 
 function ConsultationCard({ consultation, onChanged }: { consultation: any; onChanged: () => void }) {
   const [editing, setEditing] = useState(false);
+  const [rescheduling, setRescheduling] = useState(false);
   const saveBriefing = useServerFn(submitConsultationBriefing);
   const cancel = useServerFn(cancelMyConsultation);
+
 
   const save = useMutation({
     mutationFn: (value: ConsultationBriefing) => saveBriefing({ data: { id: consultation.id, briefingData: value } }),
@@ -269,6 +273,10 @@ function ConsultationCard({ consultation, onChanged }: { consultation: any; onCh
               <FileText className="mr-2 h-4 w-4" />
               {consultation.briefing ? "Editar briefing" : "Preencher briefing"}
             </Button>
+            <Button size="sm" variant="outline" onClick={() => setRescheduling(true)}>
+              <Calendar className="mr-2 h-4 w-4" />
+              Reagendar
+            </Button>
             <Button
               size="sm"
               variant="ghost"
@@ -297,9 +305,131 @@ function ConsultationCard({ consultation, onChanged }: { consultation: any; onCh
       ) : (
         <ConsultationBriefingSummary data={consultation.briefing_data} fallback={consultation.briefing} />
       )}
+
+      <RescheduleDialog
+        consultation={consultation}
+        open={rescheduling}
+        onClose={() => setRescheduling(false)}
+        onDone={onChanged}
+      />
     </Card>
   );
 }
+
+/** Reagenda um encontro específico mantendo a mesma compra. */
+function RescheduleDialog({
+  consultation,
+  open,
+  onClose,
+  onDone,
+}: {
+  consultation: any;
+  open: boolean;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [date, setDate] = useState<string | null>(null);
+  const reschedule = useServerFn(rescheduleMyConsultation);
+
+  const { data: slots, isLoading } = useQuery({
+    queryKey: ["consultation-slots", consultation.duration_minutes],
+    queryFn: () => getConsultationSlots({ data: { durationMinutes: consultation.duration_minutes } }),
+    enabled: open,
+  });
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, any[]>();
+    for (const s of (slots ?? []) as any[]) {
+      const list = map.get(s.date) ?? [];
+      list.push(s);
+      map.set(s.date, list);
+    }
+    return Array.from(map.entries());
+  }, [slots]);
+
+  const move = useMutation({
+    mutationFn: (startIso: string) => reschedule({ data: { id: consultation.id, startIso } }),
+    onSuccess: () => {
+      toast.success("Encontro reagendado. Enviamos o novo horário e o link do Meet por e-mail.");
+      onClose();
+      setDate(null);
+      onDone();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao reagendar."),
+  });
+
+  const times = grouped.find(([d]) => d === date)?.[1] ?? [];
+  const fmtDay = (d: string, opts: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", ...opts }).format(
+      new Date(`${d}T12:00:00-03:00`),
+    );
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90dvh] max-w-lg overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Reagendar encontro</DialogTitle>
+        </DialogHeader>
+
+        <p className="text-sm text-muted-foreground">
+          Horário atual: <span className="font-medium text-foreground">{dateBR(consultation.scheduled_at)}</span>
+          {" · "}
+          {consultation.duration_minutes} min. A compra e os demais encontros do combo permanecem os mesmos.
+        </p>
+
+        {isLoading ? (
+          <div className="flex h-24 items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          </div>
+        ) : grouped.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhum horário disponível no momento.</p>
+        ) : !date ? (
+          <div className="grid grid-cols-3 gap-2">
+            {grouped.slice(0, 9).map(([d, list]) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setDate(d)}
+                className="flex min-h-20 flex-col items-center justify-center rounded-xl border border-border p-3 text-center transition hover:border-primary/60"
+              >
+                <span className="text-[11px] uppercase text-muted-foreground">{fmtDay(d, { weekday: "short" })}</span>
+                <span className="text-lg font-bold leading-tight">{fmtDay(d, { day: "2-digit" })}</span>
+                <span className="text-[11px] text-muted-foreground">{fmtDay(d, { month: "short" })}</span>
+                <span className="mt-1 text-[10px] text-muted-foreground">
+                  {list.length} horário{list.length > 1 ? "s" : ""}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate text-sm font-semibold">
+                {fmtDay(date, { weekday: "long", day: "2-digit", month: "long" })}
+              </p>
+              <Button variant="ghost" size="sm" onClick={() => setDate(null)}>
+                Trocar data
+              </Button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {times.map((s: any) => (
+                <Button
+                  key={s.startIso}
+                  variant="outline"
+                  disabled={move.isPending}
+                  onClick={() => move.mutate(s.startIso)}
+                >
+                  {move.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : s.time}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 function useCountdown(deadline: string | null | undefined) {
   const [left, setLeft] = useState(() => (deadline ? +new Date(deadline) - Date.now() : 0));
@@ -612,18 +742,22 @@ function BookingDialog({
                   <span className="text-muted-foreground">Consultoria</span>
                   <span className="text-right font-medium">{product?.title}</span>
                 </div>
-                <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">
-                    {sessionsTotal > 1 ? `Encontros (${sessionsTotal})` : "Data e hora"}
-                  </span>
-                  <span className="space-y-0.5 text-right font-medium">
-                    {picked.map((iso) => (
-                      <span key={iso} className="block">
-                        {dateBR(iso)}
+                <div className="space-y-1 border-t pt-2">
+                  <p className="text-muted-foreground">
+                    {sessionsTotal > 1 ? `Cronograma (${sessionsTotal} encontros de ${sessionMinutes} min)` : "Data e hora"}
+                  </p>
+                  {picked.map((iso, i) => (
+                    <div key={iso} className="flex justify-between gap-3">
+                      <span className="text-muted-foreground">
+                        {sessionsTotal > 1 ? `Encontro ${i + 1}` : "Horário"}
                       </span>
-                    ))}
-                  </span>
+                      <span className="text-right font-medium">
+                        {dateBR(iso)} · {sessionMinutes} min
+                      </span>
+                    </div>
+                  ))}
                 </div>
+
                 <div className="flex justify-between gap-3">
                   <span className="text-muted-foreground">Duração</span>
                   <span className="text-right font-medium">
@@ -669,11 +803,29 @@ function BookingDialog({
 
               <Card className="space-y-2 p-4 text-sm">
                 <p className="font-display text-base font-bold">Reserva criada</p>
-                <p className="text-muted-foreground">
-                  {product?.title} · {dateBR(reservation.scheduledAt)}
-                </p>
+                <p className="text-muted-foreground">{product?.title}</p>
+
+                <div className="space-y-1 border-t pt-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Cronograma
+                  </p>
+                  {((liveReservation?.sessions ?? reservation.sessions ?? []) as any[]).map((s, i) => (
+                    <div key={s.id ?? i} className="flex items-center justify-between gap-3">
+                      <span className="text-muted-foreground">
+                        {(liveReservation?.sessions ?? reservation.sessions ?? []).length > 1
+                          ? `Encontro ${s.index ?? i + 1}`
+                          : "Horário"}
+                      </span>
+                      <span className="text-right font-medium">
+                        {dateBR(s.scheduledAt)} · {s.durationMinutes ?? sessionMinutes} min
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
                 <p className="font-display text-lg font-bold">{money(reservation.amount)}</p>
               </Card>
+
 
               {paymentUrl && (
                 <Button asChild className="w-full">

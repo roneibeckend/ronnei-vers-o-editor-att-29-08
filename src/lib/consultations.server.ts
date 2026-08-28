@@ -338,11 +338,14 @@ async function sendConsultationEmail(
       title: consultation.product_title,
       date: formatBR(consultation.scheduled_at),
       duration: `${consultation.duration_minutes} minutos`,
+      session_index: (consultation as any).session_index ?? null,
+      sessions_total: (consultation as any).sessions_total ?? null,
       meet_link: consultation.meet_link || DASH,
       link: consultation.meet_link || DASH,
       briefing_link: DASH,
       ...extra,
     },
+
   };
 
   try {
@@ -362,7 +365,21 @@ async function sendConsultationEmail(
   }
 }
 
+/** Avisa o aluno que o encontro mudou de horário (novo link/instruções). */
+export async function sendConsultationRescheduled(
+  consultation: ConsultationRow,
+  previousIso: string,
+) {
+  return sendConsultationEmail(
+    consultation,
+    "consultoria_reagendada",
+    { previous_date: formatBR(previousIso) },
+    `consult-resched-${consultation.id}-${consultation.scheduled_at}`,
+  );
+}
+
 export async function sendConsultationConfirmation(consultation: ConsultationRow) {
+
   const res = await sendConsultationEmail(
     consultation,
     "consultoria_confirmada",

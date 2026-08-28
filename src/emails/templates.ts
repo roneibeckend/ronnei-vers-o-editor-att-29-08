@@ -433,9 +433,44 @@ const supportReceived: Builder = (d) =>
 /* ========================= CONSULTORIAS ========================= */
 const consultationRows = (d: EmailData) => [
   { label: "Consultoria", value: val(d, ["title"], "-") },
+  ...(d?.session_index && d?.sessions_total && Number(d.sessions_total) > 1
+    ? [{ label: "Encontro", value: `${d.session_index} de ${d.sessions_total}` }]
+    : []),
   { label: "Data e horário", value: `${val(d, ["date", "data"], "-")} (horário de Brasília)` },
   { label: "Duração", value: val(d, ["duration"], "-") },
 ];
+
+const consultationRescheduled: Builder = (d) =>
+  build({
+    subject: `🔄 Novo horário da sua consultoria — ${val(d, ["date", "data"], "veja os detalhes")}`,
+    preview: "Seu encontro foi reagendado. Confira o novo horário.",
+    heading: "🔄 Consultoria reagendada",
+    subheading: "Atualizamos o horário na agenda e no Google Meet.",
+    greeting: `Fala, ${firstName(d)}!`,
+    blocks: [
+      ...(d?.previous_date
+        ? ([
+            {
+              type: "text",
+              text: `O encontro que estava marcado para <strong>${d.previous_date}</strong> foi movido.`,
+            },
+          ] as EmailBlock[])
+        : []),
+      { type: "details", title: "Novo horário", rows: consultationRows(d) },
+      {
+        type: "checklist",
+        title: "Antes do encontro",
+        items: [
+          "Entre pelo link do Google Meet no novo horário",
+          "Tenha seus números em mãos (custos, preços, volume de vendas)",
+          "Revise o briefing na plataforma",
+          "Use fones de ouvido e um lugar silencioso",
+        ],
+      },
+    ],
+    cta: { label: "Entrar na reunião (Google Meet)", url: link(d, ["meet_link", "link"], LINKS.dashboard) },
+  });
+
 
 const consultationConfirmed: Builder = (d) =>
   build({
@@ -582,6 +617,9 @@ const consultationCompleted: Builder = (d) =>
 /** Nomes canônicos + aliases usados no código atual da plataforma. */
 export const EMAIL_TEMPLATES: Record<string, Builder> = {
   consultoria_confirmada: consultationConfirmed,
+  consultoria_reagendada: consultationRescheduled,
+  consultation_rescheduled: consultationRescheduled,
+
   consultation_confirmed: consultationConfirmed,
   consultoria_lembrete_24h: consultationReminder24h,
   consultoria_lembrete_8h: consultationReminder8h,

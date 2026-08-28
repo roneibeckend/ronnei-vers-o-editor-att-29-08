@@ -279,7 +279,14 @@ export const reserveConsultation = createServerFn({ method: "POST" })
       amount: Number(product.price),
       scheduledAt: created.scheduled_at,
       durationMinutes: meetingMinutes,
-      sessions: rows.map((r) => ({ id: r.id, scheduledAt: r.scheduled_at })),
+      sessions: rows.map((r, i) => ({
+        id: r.id,
+        scheduledAt: r.scheduled_at,
+        endsAt: r.ends_at,
+        index: i + 1,
+        durationMinutes: meetingMinutes,
+      })),
+
       sessionsTotal: totalSessions,
       productTitle: product.title,
     };
@@ -296,11 +303,46 @@ export const getConsultationReservation = createServerFn({ method: "POST" })
 
     const { data: row } = await supabaseAdmin
       .from("consultations")
-      .select("id, user_id, status, hold_expires_at, payment_url, meet_link, scheduled_at, amount, cancel_reason")
+      .select(
+        "id, user_id, status, hold_expires_at, payment_url, meet_link, scheduled_at, ends_at, duration_minutes, amount, cancel_reason, booking_group, session_index, sessions_total",
+      )
       .eq("id", data.id)
       .maybeSingle();
 
     if (!row || row.user_id !== context.userId) throw new Error("Reserva não encontrada.");
+
+    // Combo: o cronograma completo dos encontros de 1h por dia.
+    let sessions = [
+      {
+        id: row.id,
+        scheduledAt: row.scheduled_at,
+        endsAt: (row as any).ends_at,
+        index: (row as any).session_index ?? 1,
+        durationMinutes: row.duration_minutes,
+        status: row.status,
+        meetLink: row.meet_link,
+      },
+    ];
+
+    const group = (row as any).booking_group as string | null;
+    if (group) {
+      const { data: groupRows } = await supabaseAdmin
+        .from("consultations")
+        .select("id, scheduled_at, ends_at, duration_minutes, status, meet_link, session_index")
+        .eq("booking_group", group)
+        .order("scheduled_at", { ascending: true });
+      if (groupRows?.length) {
+        sessions = groupRows.map((r: any, i: number) => ({
+          id: r.id,
+          scheduledAt: r.scheduled_at,
+          endsAt: r.ends_at,
+          index: r.session_index ?? i + 1,
+          durationMinutes: r.duration_minutes,
+          status: r.status,
+          meetLink: r.meet_link,
+        }));
+      }
+    }
 
     return {
       id: row.id,
@@ -311,6 +353,8 @@ export const getConsultationReservation = createServerFn({ method: "POST" })
       scheduledAt: row.scheduled_at,
       amount: Number(row.amount ?? 0),
       cancelReason: (row as any).cancel_reason ?? null,
+      sessions,
+      sessionsTotal: (row as any).sessions_total ?? sessions.length,
     };
   });
 
@@ -322,13 +366,116 @@ export const listMyConsultations = createServerFn({ method: "GET" })
     const { data } = await supabaseAdmin
       .from("consultations")
       .select(
-        "id, product_id, product_title, scheduled_at, ends_at, duration_minutes, status, hold_expires_at, payment_url, paid_at, briefing, briefing_data, meet_link, calendar_html_link, recording_url, recording_file_id, student_notes, action_plan, materials, materials_released_at, cancel_reason, completed_at, amount, created_at",
+        "id, product_id, product_title, scheduled_at, ends_at, duration_minutes, status, hold_expires_at, payment_url, paid_at, briefing, briefing_data, meet_link, calendar_html_link, recording_url, recording_file_id, student_notes, action_plan, materials, materials_released_at, cancel_reason, completed_at, amount, created_at, booking_group, session_index, sessions_total",
       )
       .eq("user_id", context.userId)
       .order("scheduled_at", { ascending: false });
 
     return data ?? [];
   });
+
+/**
+ * Reagenda um encontro específico (inclusive de um combo) mantendo a mesma
+ * compra: atualiza o horário, move o evento/Meet no Google e avisa o aluno.
+ */
+export const rescheduleMyConsultation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ id: z.string().uuid(), startIso: z.string().min(10) }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const {
+      isSlotFree,
+      auditConsultation,
+      rescheduleGoogleMeeting,
+      sendConsultationRescheduled,
+      CONSULTATION_TZ,
+      MIN_LEAD_MINUTES,
+      MAX_MINUTES_PER_DAY,
+    } = await import("@/lib/consultations.server");
+
+    const { data: row } = await supabaseAdmin
+      .from("consultations")
+      .select("*")
+      .eq("id", data.id)
+      .maybeSingle();
+
+    if (!row || row.user_id !== context.userId) throw new Error("Consultoria não encontrada.");
+    if (row.status !== "scheduled") throw new Error("Somente reuniões confirmadas podem ser reagendadas.");
+    if (+new Date(row.scheduled_at) - Date.now() < 12 * 3600_000) {
+      throw new Error("Reagendamentos só podem ser feitos com 12 horas de antecedência. Fale com o suporte.");
+    }
+
+    const start = new Date(data.startIso);
+    if (Number.isNaN(+start)) throw new Error("Horário inválido.");
+    if (+start < Date.now() + MIN_LEAD_MINUTES * 60_000) {
+      throw new Error("Escolha um horário com pelo menos 2 horas de antecedência.");
+    }
+
+    const end = new Date(+start + row.duration_minutes * 60_000);
+    const dayKey = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: CONSULTATION_TZ }).format(d);
+
+    // O aluno não pode acumular mais de 1h de consultoria no mesmo dia.
+    const { data: sameDay } = await supabaseAdmin
+      .from("consultations")
+      .select("id, scheduled_at, duration_minutes")
+      .eq("user_id", context.userId)
+      .in("status", ["scheduled", "pending_payment", "awaiting_payment"])
+      .neq("id", row.id);
+
+    const minutesThatDay = (sameDay ?? [])
+      .filter((r: any) => dayKey(new Date(r.scheduled_at)) === dayKey(start))
+      .reduce((sum: number, r: any) => sum + (r.duration_minutes || 0), 0);
+
+    if (minutesThatDay + row.duration_minutes > MAX_MINUTES_PER_DAY) {
+      throw new Error(
+        `Você já tem consultoria marcada nesse dia. O limite é de ${MAX_MINUTES_PER_DAY} minutos por dia.`,
+      );
+    }
+
+    if (!(await isSlotFree(start.toISOString(), end.toISOString()))) {
+      throw new Error("Esse horário acabou de ser reservado. Escolha outro.");
+    }
+
+    const previousIso = row.scheduled_at;
+
+    const { error } = await supabaseAdmin
+      .from("consultations")
+      .update({
+        scheduled_at: start.toISOString(),
+        ends_at: end.toISOString(),
+        // Novos lembretes precisam ser reenviados para o novo horário.
+        reminder_24h_sent_at: null,
+        reminder_8h_sent_at: null,
+        reminder_1h_sent_at: null,
+      } as never)
+      .eq("id", row.id);
+
+    if (error) throw new Error(`Falha ao reagendar: ${error.message}`);
+
+    const google = await rescheduleGoogleMeeting(row as never, start.toISOString(), end.toISOString());
+
+    const updated = {
+      ...(row as any),
+      scheduled_at: start.toISOString(),
+      ends_at: end.toISOString(),
+      meet_link: (google as any)?.meetLink ?? row.meet_link,
+    };
+
+    await sendConsultationRescheduled(updated as never, previousIso);
+
+    await auditConsultation({
+      consultationId: row.id,
+      actorId: context.userId,
+      actorRole: "student",
+      action: "rescheduled",
+      details: { from: previousIso, to: start.toISOString(), google: (google as any)?.ok ?? null },
+    });
+
+    return { rescheduled: true, scheduledAt: start.toISOString(), meetLink: updated.meet_link };
+  });
+
 
 /** Envia/atualiza o briefing obrigatório antes da reunião. */
 export const submitConsultationBriefing = createServerFn({ method: "POST" })
