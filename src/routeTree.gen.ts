@@ -16,6 +16,7 @@ import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-
 import { Route as PerguntasFrequentesRouteImport } from './routes/perguntas-frequentes'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InicioRouteImport } from './routes/inicio'
+import { Route as GoogleRouteImport } from './routes/google'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -113,6 +114,11 @@ const LoginRoute = LoginRouteImport.update({
 const InicioRoute = InicioRouteImport.update({
   id: '/inicio',
   path: '/inicio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GoogleRoute = GoogleRouteImport.update({
+  id: '/google',
+  path: '/google',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -440,6 +446,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
+  '/google': typeof GoogleRoute
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
   '/perguntas-frequentes': typeof PerguntasFrequentesRoute
@@ -510,6 +517,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/google': typeof GoogleRoute
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
   '/perguntas-frequentes': typeof PerguntasFrequentesRoute
@@ -581,6 +589,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
+  '/google': typeof GoogleRoute
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
   '/perguntas-frequentes': typeof PerguntasFrequentesRoute
@@ -655,6 +664,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/app'
+    | '/google'
     | '/inicio'
     | '/login'
     | '/perguntas-frequentes'
@@ -725,6 +735,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/google'
     | '/inicio'
     | '/login'
     | '/perguntas-frequentes'
@@ -795,6 +806,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/app'
+    | '/google'
     | '/inicio'
     | '/login'
     | '/perguntas-frequentes'
@@ -868,6 +880,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   AppRoute: typeof AppRouteWithChildren
+  GoogleRoute: typeof GoogleRoute
   InicioRoute: typeof InicioRoute
   LoginRoute: typeof LoginRoute
   PerguntasFrequentesRoute: typeof PerguntasFrequentesRoute
@@ -936,6 +949,13 @@ declare module '@tanstack/react-router' {
       path: '/inicio'
       fullPath: '/inicio'
       preLoaderRoute: typeof InicioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/google': {
+      id: '/google'
+      path: '/google'
+      fullPath: '/google'
+      preLoaderRoute: typeof GoogleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -1532,6 +1552,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   AppRoute: AppRouteWithChildren,
+  GoogleRoute: GoogleRoute,
   InicioRoute: InicioRoute,
   LoginRoute: LoginRoute,
   PerguntasFrequentesRoute: PerguntasFrequentesRoute,
