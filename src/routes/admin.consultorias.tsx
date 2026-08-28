@@ -868,10 +868,21 @@ function ScheduleTab({
     onSuccess: onChanged,
   });
 
+  const hasActive = availability.some((a) => a.active);
+
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card className="space-y-4 p-4">
         <h3 className="font-semibold">Disponibilidade semanal (horário de Brasília)</h3>
+
+        {!hasActive && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            <strong>Grade vazia:</strong> nenhum horário será oferecido aos alunos e as remarcações serão
+            recusadas. Aplique uma grade padrão abaixo ou cadastre janelas manualmente.
+          </div>
+        )}
+
+        <AvailabilityPresets onChanged={onChanged} hasRules={availability.length > 0} />
 
         <div className="space-y-2">
           {availability.map((a) => (
@@ -889,6 +900,7 @@ function ScheduleTab({
             <p className="text-sm text-muted-foreground">Nenhuma janela cadastrada — nenhum horário será oferecido.</p>
           )}
         </div>
+
 
         <div className="grid grid-cols-2 gap-2">
           <div>
