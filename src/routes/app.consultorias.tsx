@@ -193,6 +193,7 @@ function ConsultationCard({ consultation, onChanged }: { consultation: any; onCh
   });
 
   const isUpcoming = consultation.status === "scheduled";
+  const isAwaitingPayment = consultation.status === "awaiting_payment";
 
   return (
     <Card className="space-y-4 p-5">
@@ -204,10 +205,38 @@ function ConsultationCard({ consultation, onChanged }: { consultation: any; onCh
             {dateBR(consultation.scheduled_at)} · {consultation.duration_minutes} min
           </p>
         </div>
-        <Badge variant={isUpcoming ? "default" : "secondary"}>
+        <Badge variant={isUpcoming ? "default" : isAwaitingPayment ? "outline" : "secondary"}>
           {STATUS_LABEL[consultation.status] ?? consultation.status}
         </Badge>
       </div>
+
+      {isAwaitingPayment && (
+        <div className="space-y-3">
+          <HoldCountdown deadline={consultation.hold_expires_at} />
+          <p className="text-sm text-muted-foreground">
+            Conclua o pagamento para confirmar a reunião. Sem o pagamento, o horário volta para a agenda.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {consultation.payment_url && (
+              <Button asChild size="sm">
+                <a href={consultation.payment_url} target="_blank" rel="noreferrer">
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Pagar agora
+                </a>
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-destructive"
+              disabled={drop.isPending}
+              onClick={() => drop.mutate()}
+            >
+              Cancelar reserva
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {isUpcoming && consultation.meet_link && (
