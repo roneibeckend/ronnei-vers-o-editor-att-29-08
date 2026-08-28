@@ -209,6 +209,7 @@ function BunnyFrame({
       }
       if (!data || data.context !== 'player.js') return;
       if (data.event === 'ready') subscribe();
+      if (data.event === 'playing') unmute();
       if (data.event === 'ended') endedRef.current?.();
     };
 
