@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
 import { RefreshCw } from 'lucide-react';
+import { swAllowedHere } from '@/lib/pwa-sw';
 
 export function PwaUpdateManager() {
   const [needRefresh, setNeedRefresh] = useState(false);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
+    if ('serviceWorker' in navigator && swAllowedHere()) {
       navigator.serviceWorker.ready.then((registration) => {
         // Verifica atualizações imediatamente
-        registration.update();
+        registration.update().catch(() => { /* ignora falhas de update */ });
+
         
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
