@@ -205,7 +205,7 @@ export async function applyConsultationReschedule(
       no_show_notified_at: null,
       attendance_confirmed_at: null,
       attendance_requested_at: null,
-      no_show_at: null,
+
       reminder_24h_sent_at: null,
       reminder_8h_sent_at: null,
       reminder_1h_sent_at: null,
