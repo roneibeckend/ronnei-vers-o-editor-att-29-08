@@ -211,6 +211,63 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
             throw new Error(`Falha ao registrar pagamento confirmado: ${paymentError.message}`);
           }
 
+          // CONSULTORIA: confirma a reserva, cria Calendar/Meet e envia o e-mail.
+          if (productType === 'consultation') {
+            const { confirmConsultationPayment } = await import('@/lib/consultations.server');
+            const consultationId = (parsed as any).consultationId as string | null;
+
+            if (!consultationId) {
+              throw new Error('Referência da consultoria ausente no pagamento.');
+            }
+
+            const result = await confirmConsultationPayment({
+              consultationId,
+              paymentId,
+              amount,
+              userId,
+            });
+
+            await supabaseAdmin
+              .from('asaas_webhook_events')
+              .update({
+                status: result.ok ? 'completed' : 'failed',
+                processed_at: new Date().toISOString(),
+                last_error: result.ok ? null : (result as any).error ?? 'Falha ao confirmar consultoria',
+              })
+              .eq('event_id', eventId as string)
+              .eq('claim_token', claimToken as string)
+              .eq('status', 'processing');
+
+            if (!result.ok) {
+              await logSystemError({
+                source: 'webhook_asaas',
+                message: `Falha ao confirmar consultoria: ${(result as any).error}`,
+                details: { eventId, paymentId, consultationId, userId },
+              });
+            }
+
+            try {
+              const { notifyAdmin, formatMoney } = await import('@/lib/admin-notify.server');
+              await notifyAdmin({
+                type: 'sale',
+                severity: result.ok ? 'success' : 'warning',
+                title: `🗓️ Consultoria paga — ${formatMoney(amount)}`,
+                body: result.ok
+                  ? 'Reserva confirmada e reunião criada no Google.'
+                  : `Pagamento recebido, mas a confirmação falhou: ${(result as any).error}`,
+                entityType: 'consultation',
+                entityId: consultationId,
+                link: '/admin/consultorias',
+                dedupKey: `consultation-sale:${paymentId}`,
+                metadata: { consultationId, paymentId, amount },
+              });
+            } catch (notifyErr) {
+              console.warn('[Webhook Asaas] Falha ao notificar consultoria:', notifyErr);
+            }
+
+            return Response.json({ received: true, processed: result.ok, type: 'consultation' });
+          }
+
           const productTable = productType === 'course'
             ? 'courses'
             : productType === 'ebook'
