@@ -157,16 +157,26 @@ export async function computeAvailableSlots(rawDurationMinutes: number, days = 3
       .gte("ends_at", new Date().toISOString()),
     supabaseAdmin
       .from("consultations")
-      .select("scheduled_at, ends_at, status")
+      .select("scheduled_at, ends_at, status, hold_expires_at")
       .in("status", [...BUSY_STATUSES])
       .gte("ends_at", new Date().toISOString()),
   ]);
 
   if (!availability?.length) return [];
 
+  const nowIso = new Date().toISOString();
+  // Blindagem: hold de reserva não paga que já venceu NUNCA bloqueia horário,
+  // mesmo que a expiração automática tenha falhado.
   const busy: { start: number; end: number }[] = [
     ...(blocks ?? []).map((b) => ({ start: +new Date(b.starts_at), end: +new Date(b.ends_at) })),
-    ...(booked ?? []).map((b) => ({ start: +new Date(b.scheduled_at), end: +new Date(b.ends_at) })),
+    ...(booked ?? [])
+      .filter(
+        (b: any) =>
+          b.status !== "awaiting_payment" ||
+          !b.hold_expires_at ||
+          b.hold_expires_at >= nowIso,
+      )
+      .map((b: any) => ({ start: +new Date(b.scheduled_at), end: +new Date(b.ends_at) })),
   ];
 
   const minStart = Date.now() + MIN_LEAD_MINUTES * 60_000;
