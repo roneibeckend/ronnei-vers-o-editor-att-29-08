@@ -244,7 +244,7 @@ export const reserveConsultation = createServerFn({ method: "POST" })
       await supabaseAdmin
         .from("consultations")
         .update({ payment_url: paymentUrl, payment_link_id: paymentLinkId } as never)
-        .eq("id", created.id);
+        .eq("booking_group", bookingGroup);
 
       await auditConsultation({
         consultationId: created.id,
