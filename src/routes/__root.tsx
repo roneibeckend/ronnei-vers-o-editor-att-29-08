@@ -192,7 +192,19 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR" className="dark">
       <head>
+        {/* Google Tag Manager — container único, carregado uma só vez */}
         <script
+          data-rnv-gtm
+          dangerouslySetInnerHTML={{
+            __html: `(function(w,d,s,l,i){if(w.__RNV_GTM_LOADED__)return;w.__RNV_GTM_LOADED__=true;w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-M376JTZP');`,
+          }}
+        />
+        <script
+
           data-rnv-auth-return
           dangerouslySetInnerHTML={{
             __html: `
