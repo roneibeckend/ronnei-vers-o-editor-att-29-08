@@ -612,18 +612,22 @@ function BookingDialog({
                   <span className="text-muted-foreground">Consultoria</span>
                   <span className="text-right font-medium">{product?.title}</span>
                 </div>
-                <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">
-                    {sessionsTotal > 1 ? `Encontros (${sessionsTotal})` : "Data e hora"}
-                  </span>
-                  <span className="space-y-0.5 text-right font-medium">
-                    {picked.map((iso) => (
-                      <span key={iso} className="block">
-                        {dateBR(iso)}
+                <div className="space-y-1 border-t pt-2">
+                  <p className="text-muted-foreground">
+                    {sessionsTotal > 1 ? `Cronograma (${sessionsTotal} encontros de ${sessionMinutes} min)` : "Data e hora"}
+                  </p>
+                  {picked.map((iso, i) => (
+                    <div key={iso} className="flex justify-between gap-3">
+                      <span className="text-muted-foreground">
+                        {sessionsTotal > 1 ? `Encontro ${i + 1}` : "Horário"}
                       </span>
-                    ))}
-                  </span>
+                      <span className="text-right font-medium">
+                        {dateBR(iso)} · {sessionMinutes} min
+                      </span>
+                    </div>
+                  ))}
                 </div>
+
                 <div className="flex justify-between gap-3">
                   <span className="text-muted-foreground">Duração</span>
                   <span className="text-right font-medium">
