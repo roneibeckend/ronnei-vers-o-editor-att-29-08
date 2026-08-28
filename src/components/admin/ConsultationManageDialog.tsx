@@ -256,8 +256,184 @@ export function ConsultationManageDialog({
             <TabsTrigger value="historico">
               <History className="mr-1.5 h-4 w-4" /> Histórico
             </TabsTrigger>
-
           </TabsList>
+
+          <TabsContent value="preparacao" className="mt-4 space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" disabled={generatePrep.isPending} onClick={() => generatePrep.mutate()}>
+                {generatePrep.isPending ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-1.5 h-4 w-4" />
+                )}
+                {prep ? "Regenerar preparação" : "Gerar preparação"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!prep || sendPrep.isPending}
+                onClick={() => sendPrep.mutate()}
+              >
+                {sendPrep.isPending ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-1.5 h-4 w-4" />
+                )}
+                Enviar dossiê por e-mail
+              </Button>
+            </div>
+
+            <div>
+              <Label className="text-xs">Destinatários (vazio = admins da plataforma)</Label>
+              <Input
+                value={prepRecipients}
+                onChange={(e) => setPrepRecipients(e.target.value)}
+                placeholder="ronnei@exemplo.com, outro@exemplo.com"
+              />
+            </div>
+
+            {consultation?.prep_sent_at && (
+              <p className="text-xs text-muted-foreground">
+                Dossiê enviado em {dateBR(consultation.prep_sent_at)}.
+              </p>
+            )}
+
+            {!prep ? (
+              <p className="text-sm text-muted-foreground">
+                Nenhuma preparação gerada. O sistema também gera e envia automaticamente até 12h antes da
+                reunião.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Resumo executivo
+                  </p>
+                  {(prep.executiveSummary ?? []).map((p: string, i: number) => (
+                    <p key={i} className="text-sm leading-relaxed">
+                      {p}
+                    </p>
+                  ))}
+                </div>
+
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Dados identificados
+                  </p>
+                  <div className="rounded-md border">
+                    {(prep.identified ?? []).map((item: any, i: number) => (
+                      <div key={i} className="flex gap-3 border-b px-3 py-1.5 text-sm last:border-b-0">
+                        <span className="w-40 shrink-0 text-muted-foreground">{item.label}</span>
+                        <span className="break-words">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Roteiro sugerido
+                  </p>
+                  {(prep.script ?? []).map((block: any, i: number) => (
+                    <div key={i} className="mb-2">
+                      <p className="text-sm font-semibold">
+                        {block.title}{" "}
+                        <span className="font-normal text-muted-foreground">({block.minutes} min)</span>
+                      </p>
+                      <ul className="ml-4 list-disc text-sm text-muted-foreground">
+                        {(block.bullets ?? []).map((b: string, j: number) => (
+                          <li key={j}>{b}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+
+                {(prep.alerts ?? []).length > 0 && (
+                  <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3">
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-destructive">
+                      Pontos de atenção
+                    </p>
+                    <ul className="ml-4 list-disc text-sm">
+                      {prep.alerts.map((a: string, i: number) => (
+                        <li key={i}>{a}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="pos" className="mt-4 space-y-4">
+            <div>
+              <Label>Observações da reunião</Label>
+              <Textarea
+                rows={6}
+                value={meetingNotes}
+                onChange={(e) => setMeetingNotes(e.target.value)}
+                placeholder="Anote o que foi conversado, decisões e tarefas (uma por linha)..."
+              />
+            </div>
+            <Button
+              className="w-full"
+              disabled={meetingNotes.trim().length < 5 || generateOutcome.isPending}
+              onClick={() => generateOutcome.mutate()}
+            >
+              {generateOutcome.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="mr-2 h-4 w-4" />
+              )}
+              Gerar resumo e plano de ação
+            </Button>
+
+            <div>
+              <Label>Resumo da consultoria (enviado ao cliente)</Label>
+              <Textarea rows={6} value={meetingSummary} onChange={(e) => setMeetingSummary(e.target.value)} />
+            </div>
+            <div>
+              <Label>Plano de ação</Label>
+              <Textarea rows={5} value={actionPlan} onChange={(e) => setActionPlan(e.target.value)} />
+            </div>
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={notes.isPending}
+              onClick={() => notes.mutate()}
+            >
+              {notes.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Salvar alterações
+            </Button>
+
+            <div>
+              <Label className="text-xs">Enviar para</Label>
+              <Input
+                value={clientRecipients}
+                onChange={(e) => setClientRecipients(e.target.value)}
+                placeholder="cliente@exemplo.com"
+              />
+            </div>
+            <Button
+              className="w-full"
+              disabled={!meetingSummary.trim() || !clientRecipients.includes("@") || sendClientReport.isPending}
+              onClick={() => sendClientReport.mutate()}
+            >
+              {sendClientReport.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
+              Enviar resumo + PDF final ao cliente
+            </Button>
+            {consultation?.client_report_sent_at && (
+              <p className="text-xs text-muted-foreground">
+                Enviado ao cliente em {dateBR(consultation.client_report_sent_at)}.
+              </p>
+            )}
+          </TabsContent>
+
+
 
           <TabsContent value="notas" className="mt-4 space-y-4">
             <div>
