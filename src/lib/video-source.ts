@@ -41,23 +41,41 @@ export interface ResolvedVideo {
 const BUNNY_LIBRARY_ID =
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_BUNNY_LIBRARY_ID) || '';
 
+/** Extrai libraryId/videoId de qualquer URL do Bunny (play, embed ou CDN). */
+function parseBunnyUrl(url: string): { library: string; id: string } | null {
+  const match = url.match(/mediadelivery\.net\/(?:play|embed)\/([^/?#]+)\/([^/?#]+)/i);
+  if (match) return { library: match[1], id: match[2] };
+  const cdn = url.match(/b-cdn\.net\/([^/?#]+)/i);
+  if (cdn) return { library: '', id: cdn[1] };
+  return null;
+}
+
 /**
- * Aceita o ID puro do vídeo, "libraryId/videoId" ou a URL completa de embed
- * do Bunny Stream e devolve sempre a URL de embed.
+ * Aceita o ID puro do vídeo, "libraryId/videoId" ou a URL completa (play/embed)
+ * do Bunny Stream e devolve sempre a URL de embed do iframe.
  */
 export function buildBunnyEmbedUrl(videoId: string, libraryId = BUNNY_LIBRARY_ID): string {
   const value = videoId.trim();
   if (!value) return '';
-  if (value.startsWith('http')) return value;
-  const [maybeLibrary, maybeVideo] = value.split('/');
-  const library = maybeVideo ? maybeLibrary : libraryId;
-  const id = maybeVideo || maybeLibrary;
+  let library = libraryId;
+  let id = '';
+  if (value.startsWith('http')) {
+    const parsed = parseBunnyUrl(value);
+    if (!parsed) return value; // outra URL de iframe qualquer
+    if (parsed.library) library = parsed.library;
+    id = parsed.id;
+  } else {
+    const [first, second] = value.split('/');
+    if (second) library = first;
+    id = second || first;
+  }
   if (!library || !id) return '';
   // Player limpo: sem botões de compartilhar/baixar, sem vídeos relacionados.
   return `https://iframe.mediadelivery.net/embed/${encodeURIComponent(library)}/${encodeURIComponent(
     id,
   )}?autoplay=false&preload=true&responsive=true`;
 }
+
 
 export function resolveLessonVideo(input: {
   provider?: VideoProvider | string | null;
@@ -75,9 +93,12 @@ export function resolveLessonVideo(input: {
     (provider === 'auto' && (Boolean(id) || url.includes('mediadelivery.net')));
 
   if (isBunny) {
-    const src = buildBunnyEmbedUrl(id || url);
+    // A URL completa contém o libraryId, então tem prioridade sobre o ID puro.
+    const fromUrl = url.includes('mediadelivery.net') || url.includes('b-cdn.net') ? url : '';
+    const src = buildBunnyEmbedUrl(fromUrl || id) || buildBunnyEmbedUrl(id);
     if (src) return { kind: 'bunny', src, aspect, needsSigning: false };
   }
+
 
   if (!url) return { kind: 'none', src: '', aspect, needsSigning: false };
   if (isExternalVideoUrl(url)) return { kind: 'external', src: url, aspect, needsSigning: false };
