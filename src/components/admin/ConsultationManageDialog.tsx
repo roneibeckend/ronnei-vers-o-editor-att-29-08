@@ -150,6 +150,83 @@ export function ConsultationManageDialog({
     onError: (e: any) => toast.error(e?.message ?? "Falha ao salvar o link."),
   });
 
+  /* ------------------- Preparação automática ------------------- */
+
+  const prepFn = useServerFn(generateConsultationPrepFn);
+  const prepEmailFn = useServerFn(sendConsultationPrepEmailFn);
+  const outcomeFn = useServerFn(generateConsultationOutcome);
+  const clientReportFn = useServerFn(sendConsultationOutcomeToClient);
+
+  const emailList = (value: string) =>
+    value
+      .split(/[,\s;]+/)
+      .map((e) => e.trim())
+      .filter((e) => e.includes("@"));
+
+  /** PDF atual da reunião, já com preparação/resumo, para anexar nos e-mails. */
+  const currentPdf = (extra?: Record<string, unknown>) =>
+    buildConsultationReportPdf({ ...consultation, prep_data: prep, ...extra });
+
+  const generatePrep = useMutation({
+    mutationFn: () => prepFn({ data: { id: consultation.id } }),
+    onSuccess: (r: any) => {
+      setPrep(r?.prep ?? null);
+      toast.success("Preparação da reunião gerada.");
+      onSaved();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao gerar a preparação."),
+  });
+
+  const sendPrep = useMutation({
+    mutationFn: () => {
+      const pdf = currentPdf();
+      const recipients = emailList(prepRecipients);
+      return prepEmailFn({
+        data: {
+          id: consultation.id,
+          ...(recipients.length ? { recipients } : {}),
+          filename: pdf.filename,
+          pdfBase64: pdf.base64,
+        },
+      });
+    },
+    onSuccess: (r: any) => {
+      toast.success(`Preparação enviada para ${(r?.recipients ?? []).join(", ")}`);
+      onSaved();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar a preparação."),
+  });
+
+  const generateOutcome = useMutation({
+    mutationFn: () => outcomeFn({ data: { id: consultation.id, notes: meetingNotes, save: true } }),
+    onSuccess: (r: any) => {
+      setMeetingSummary(r?.summary ?? "");
+      setActionPlan(r?.actionPlan ?? "");
+      toast.success("Resumo e plano de ação gerados.");
+      onSaved();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao gerar o resumo."),
+  });
+
+  const sendClientReport = useMutation({
+    mutationFn: () => {
+      const pdf = currentPdf({ meeting_summary: meetingSummary, action_plan: actionPlan });
+      return clientReportFn({
+        data: {
+          id: consultation.id,
+          recipients: emailList(clientRecipients),
+          filename: pdf.filename,
+          pdfBase64: pdf.base64,
+        },
+      });
+    },
+    onSuccess: (r: any) => {
+      toast.success(`Enviado para ${(r?.recipients ?? []).join(", ")}`);
+      onSaved();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar ao cliente."),
+  });
+
   return (
     <Dialog open={Boolean(consultation)} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[88dvh] max-w-2xl overflow-y-auto">
@@ -159,8 +236,14 @@ export function ConsultationManageDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="notas">
+        <Tabs defaultValue="preparacao">
           <TabsList className="flex-wrap">
+            <TabsTrigger value="preparacao">
+              <Sparkles className="mr-1.5 h-4 w-4" /> Preparação
+            </TabsTrigger>
+            <TabsTrigger value="pos">
+              <ClipboardCheck className="mr-1.5 h-4 w-4" /> Pós-reunião
+            </TabsTrigger>
             <TabsTrigger value="notas">
               <StickyNote className="mr-1.5 h-4 w-4" /> Notas e materiais
             </TabsTrigger>
@@ -173,6 +256,7 @@ export function ConsultationManageDialog({
             <TabsTrigger value="historico">
               <History className="mr-1.5 h-4 w-4" /> Histórico
             </TabsTrigger>
+
           </TabsList>
 
           <TabsContent value="notas" className="mt-4 space-y-4">
