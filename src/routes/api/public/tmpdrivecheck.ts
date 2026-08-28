@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 // ROTA TEMPORÁRIA DE DIAGNÓSTICO — remover após validação.
-export const Route = createFileRoute("/api/public/_tmp-drive-check")({
+export const Route = createFileRoute("/api/public/tmpdrivecheck")({
   server: {
     handlers: {
       GET: async () => {
