@@ -127,7 +127,9 @@ function slotDate(dateStr: string, time: string) {
 
 export type Slot = { startIso: string; endIso: string; label: string; date: string; time: string };
 
-export async function computeAvailableSlots(durationMinutes: number, days = 30): Promise<Slot[]> {
+export async function computeAvailableSlots(rawDurationMinutes: number, days = 30): Promise<Slot[]> {
+  // Cada encontro tem no máximo 1 hora, mesmo que a consultoria contratada seja maior.
+  const durationMinutes = sessionMinutes(rawDurationMinutes);
   await expireConsultationHolds();
   const [{ data: availability }, { data: blocks }, { data: booked }] = await Promise.all([
     supabaseAdmin.from("consultation_availability").select("*").eq("active", true),
