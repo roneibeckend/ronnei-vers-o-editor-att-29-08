@@ -39,7 +39,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus, Trash2, RefreshCw, Video, Bell, ShieldCheck } from "lucide-react";
+import { generateConsultationReportPdf } from "@/lib/consultation-pdf";
+import { Loader2, Plus, Trash2, RefreshCw, Video, Bell, ShieldCheck, FileText } from "lucide-react";
 
 export const Route = createFileRoute("/admin/consultorias")({
   head: () => ({
