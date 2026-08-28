@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
 import { RefreshCw } from 'lucide-react';
+import { swAllowedHere } from '@/lib/pwa-sw';
 
 export function PwaUpdateManager() {
   const [needRefresh, setNeedRefresh] = useState(false);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
+    if ('serviceWorker' in navigator && swAllowedHere()) {
       navigator.serviceWorker.ready.then((registration) => {
         // Verifica atualizações imediatamente
-        registration.update();
+        registration.update().catch(() => { /* ignora falhas de update */ });
+
         
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
@@ -26,8 +27,11 @@ export function PwaUpdateManager() {
 
       // Polling para atualizações em background a cada 1 hora
       const interval = setInterval(() => {
-        navigator.serviceWorker.ready.then(reg => reg.update());
+        navigator.serviceWorker.ready
+          .then(reg => reg.update())
+          .catch(() => { /* ignora falhas de update */ });
       }, 60 * 60 * 1000);
+
 
       return () => clearInterval(interval);
     }

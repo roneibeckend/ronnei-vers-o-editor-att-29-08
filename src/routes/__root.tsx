@@ -54,14 +54,16 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     if (isChunkError && typeof window !== 'undefined') {
       console.warn("Detectado erro de carregamento de recursos. Tentando recuperação automática...");
       
-      // Limpa caches do Service Worker se possível antes do reload
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(registrations => {
-          for (const registration of registrations) {
-            registration.unregister();
-          }
-        });
+      // Limpa os caches (sem desregistrar o SW: desregistrar + recarregar
+      // provoca "Failed to update a ServiceWorker for scope").
+      if (typeof caches !== "undefined") {
+        caches.keys().then((keys) => {
+          keys
+            .filter((key) => key.startsWith("rnv-") || key.startsWith("ronnei-"))
+            .forEach((key) => void caches.delete(key));
+        }).catch(() => { /* ignora */ });
       }
+
       
       setTimeout(() => {
         window.location.reload();
@@ -70,17 +72,24 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   }, [error]);
 
   const handleReset = async () => {
-    // Tentar recarregar a página inteira para limpar o cache do navegador e manifestos antigos
+    // Recarrega limpando os caches do app (mantém o SW de push registrado).
     if (typeof window !== 'undefined') {
-      if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        for (const registration of registrations) {
-          await registration.unregister();
+      if (typeof caches !== 'undefined') {
+        try {
+          const keys = await caches.keys();
+          await Promise.allSettled(
+            keys
+              .filter((key) => key.startsWith('rnv-') || key.startsWith('ronnei-'))
+              .map((key) => caches.delete(key)),
+          );
+        } catch {
+          /* ignora */
         }
       }
       window.location.reload();
       return;
     }
+
     await queryClient.resetQueries();
     router.invalidate();
     reset();
@@ -267,24 +276,49 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                 );
 
                 if ("serviceWorker" in navigator) {
-                  navigator.serviceWorker
-                    .register(
-                      "/sw.js",
-                      {
+                  var host = location.hostname;
+
+                  var blocked =
+                    window.top !== window.self ||
+                    !window.isSecureContext ||
+                    location.search.indexOf("sw=off") > -1 ||
+                    host === "localhost" ||
+                    host === "127.0.0.1" ||
+                    host.indexOf("id-preview--") === 0 ||
+                    host.indexOf("preview--") === 0 ||
+                    host === "lovableproject.com" ||
+                    host.slice(-19) === ".lovableproject.com" ||
+                    host.slice(-16) === ".beta.lovable.dev" ||
+                    host.slice(-16) === "-dev.lovable.app";
+
+                  if (blocked) {
+                    navigator.serviceWorker
+                      .getRegistrations()
+                      .then(function (list) {
+                        list.forEach(function (reg) {
+                          var script =
+                            (reg.active || reg.installing || reg.waiting || {})
+                              .scriptURL || "";
+                          if (script.indexOf("/sw.js") > -1) reg.unregister();
+                        });
+                      })
+                      .catch(function () {});
+                  } else if (!window.__RNV_SW_REGISTRATION__) {
+                    window.__RNV_SW_REGISTRATION__ = navigator.serviceWorker
+                      .register("/sw.js", {
                         scope: "/",
                         updateViaCache: "none"
-                      }
-                    )
-                    .then(function (registration) {
-                      return registration.update();
-                    })
-                    .catch(function (error) {
-                      console.error(
-                        "[RNV PWA] Falha no Service Worker:",
-                        error
-                      );
-                    });
+                      })
+                      .catch(function (error) {
+                        console.warn(
+                          "[RNV PWA] Service Worker indisponível:",
+                          error
+                        );
+                        return null;
+                      });
+                  }
                 }
+
               })();
             `,
           }}
