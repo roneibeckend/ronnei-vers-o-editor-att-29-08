@@ -341,7 +341,7 @@ function BookingDialog({
   onClose: () => void;
   onBooked: () => void;
 }) {
-  const [slot, setSlot] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [visibleDays, setVisibleDays] = useState(3);
   const [expandedTimes, setExpandedTimes] = useState(false);
@@ -350,6 +350,10 @@ function BookingDialog({
   const reserve = useServerFn(reserveConsultation);
   const fetchReservation = useServerFn(getConsultationReservation);
 
+  // Combo: no máximo 1 hora por dia, então uma consultoria de 3h vira 3 encontros.
+  const sessionMinutes = Math.min(product?.duration_minutes ?? 60, 60);
+  const sessionsTotal = Math.max(1, Math.ceil((product?.duration_minutes ?? 60) / 60));
+
   const { data: slots, isLoading } = useQuery({
     queryKey: ["consultation-slots", product?.duration_minutes],
     queryFn: () => getConsultationSlots({ data: { durationMinutes: product.duration_minutes } }),
@@ -357,12 +361,17 @@ function BookingDialog({
   });
 
   const reset = () => {
-    setSlot(null);
+    setPicked([]);
     setSelectedDate(null);
     setBriefing(null);
     setReservation(null);
     setExpandedTimes(false);
   };
+
+  const pickedDates = useMemo(
+    () => new Set(picked.map((iso) => (slots ?? []).find((s: any) => s.startIso === iso)?.date)),
+    [picked, slots],
+  );
 
   const grouped = useMemo(() => {
     const map = new Map<string, any[]>();
@@ -371,8 +380,8 @@ function BookingDialog({
       list.push(s);
       map.set(s.date, list);
     }
-    return Array.from(map.entries()).filter(([, list]) => list.length > 0);
-  }, [slots]);
+    return Array.from(map.entries()).filter(([date, list]) => list.length > 0 && !pickedDates.has(date));
+  }, [slots, pickedDates]);
 
   const dayList = grouped.slice(0, visibleDays);
   const activeDay = grouped.find(([d]) => d === selectedDate);
@@ -385,10 +394,16 @@ function BookingDialog({
       new Date(`${date}T12:00:00-03:00`),
     );
 
+  const pickTime = (iso: string) => {
+    setPicked((prev) => [...prev, iso].sort());
+    setSelectedDate(null);
+    setExpandedTimes(false);
+  };
+
   // 6. Enviar para checkout — cria a reserva temporária e o link de pagamento.
   const submit = useMutation({
     mutationFn: () =>
-      reserve({ data: { productId: product.id, startIso: slot!, briefingData: briefing ?? undefined } }),
+      reserve({ data: { productId: product.id, startIsos: picked, briefingData: briefing ?? undefined } }),
     onSuccess: (res: any) => {
       setReservation(res);
       onBooked();
@@ -417,7 +432,9 @@ function BookingDialog({
   const holdDeadline = liveReservation?.holdExpiresAt ?? reservation?.holdExpiresAt ?? null;
   const paymentUrl = liveReservation?.paymentUrl ?? reservation?.paymentUrl ?? null;
 
-  const step = reservation ? 5 : briefing ? 4 : slot ? 3 : selectedDate ? 2 : 1;
+  const complete = picked.length >= sessionsTotal;
+  const step = reservation ? 5 : briefing ? 4 : complete ? 3 : selectedDate ? 2 : 1;
+
 
   return (
     <Dialog
@@ -451,8 +468,37 @@ function BookingDialog({
             </p>
           ) : step === 1 ? (
             <div>
-              <p className="mb-1 text-sm font-semibold">Escolha a data</p>
-              <p className="mb-3 text-xs text-muted-foreground">Horário de Brasília</p>
+              <p className="mb-1 text-sm font-semibold">
+                {sessionsTotal > 1
+                  ? `Escolha a data do encontro ${picked.length + 1} de ${sessionsTotal}`
+                  : "Escolha a data"}
+              </p>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Horário de Brasília
+                {sessionsTotal > 1
+                  ? ` · ${sessionMinutes} min por dia, em dias diferentes`
+                  : ""}
+              </p>
+              {picked.length > 0 && (
+                <div className="mb-3 space-y-1 rounded-lg bg-muted/50 p-3 text-xs">
+                  {picked.map((iso, i) => (
+                    <p key={iso} className="flex items-center justify-between gap-2">
+                      <span className="font-medium">
+                        Encontro {i + 1}: {dateBR(iso)}
+                      </span>
+                    </p>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-1 h-7 px-2 text-xs"
+                    onClick={() => setPicked([])}
+                  >
+                    Recomeçar seleção
+                  </Button>
+                </div>
+              )}
+
               <div className="grid grid-cols-3 gap-2">
                 {dayList.map(([date, list]) => {
                   const isSuggested = list[0]?.startIso === suggested;
@@ -517,7 +563,7 @@ function BookingDialog({
                   <Button
                     key={s.startIso}
                     variant={s.startIso === suggested ? "default" : "outline"}
-                    onClick={() => setSlot(s.startIso)}
+                    onClick={() => pickTime(s.startIso)}
                   >
                     {s.time}
                   </Button>
@@ -536,15 +582,20 @@ function BookingDialog({
             </div>
           ) : step === 3 ? (
             <div>
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <p className="min-w-0 truncate text-sm font-semibold">
-                  {fmtDay(selectedDate!, { weekday: "short", day: "2-digit", month: "short" })} ·{" "}
-                  {times.find((s: any) => s.startIso === slot)?.time}
-                </p>
-                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setSlot(null)}>
-                  Trocar horário
+              <div className="mb-3 flex items-start justify-between gap-2">
+                <div className="min-w-0 space-y-0.5 text-sm font-semibold">
+                  {picked.map((iso, i) => (
+                    <p key={iso} className="truncate">
+                      {sessionsTotal > 1 ? `Encontro ${i + 1}: ` : ""}
+                      {dateBR(iso)}
+                    </p>
+                  ))}
+                </div>
+                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setPicked([])}>
+                  Trocar horários
                 </Button>
               </div>
+
               <p className="mb-3 text-xs text-muted-foreground">
                 Responda em etapas curtas para o Ronnei chegar preparado na sua reunião.
               </p>
@@ -562,13 +613,26 @@ function BookingDialog({
                   <span className="text-right font-medium">{product?.title}</span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">Data e hora</span>
-                  <span className="text-right font-medium">{dateBR(slot!)}</span>
+                  <span className="text-muted-foreground">
+                    {sessionsTotal > 1 ? `Encontros (${sessionsTotal})` : "Data e hora"}
+                  </span>
+                  <span className="space-y-0.5 text-right font-medium">
+                    {picked.map((iso) => (
+                      <span key={iso} className="block">
+                        {dateBR(iso)}
+                      </span>
+                    ))}
+                  </span>
                 </div>
                 <div className="flex justify-between gap-3">
                   <span className="text-muted-foreground">Duração</span>
-                  <span className="font-medium">{product?.duration_minutes} minutos</span>
+                  <span className="text-right font-medium">
+                    {sessionsTotal > 1
+                      ? `${product?.duration_minutes} min no total · ${sessionMinutes} min por encontro`
+                      : `${product?.duration_minutes} minutos`}
+                  </span>
                 </div>
+
                 <div className="flex justify-between gap-3">
                   <span className="text-muted-foreground">Briefing</span>
                   <span className="font-medium">Preenchido ✓</span>

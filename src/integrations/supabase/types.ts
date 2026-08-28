@@ -853,6 +853,7 @@ export type Database = {
           action_plan: string | null
           admin_notes: string | null
           amount: number | null
+          booking_group: string | null
           briefing: string | null
           briefing_data: Json | null
           briefing_submitted_at: string | null
@@ -895,6 +896,8 @@ export type Database = {
           reschedule_count: number
           rescheduled_from: string | null
           scheduled_at: string
+          session_index: number
+          sessions_total: number
           status: Database["public"]["Enums"]["consultation_status"]
           student_notes: string | null
           timezone: string
@@ -905,6 +908,7 @@ export type Database = {
           action_plan?: string | null
           admin_notes?: string | null
           amount?: number | null
+          booking_group?: string | null
           briefing?: string | null
           briefing_data?: Json | null
           briefing_submitted_at?: string | null
@@ -947,6 +951,8 @@ export type Database = {
           reschedule_count?: number
           rescheduled_from?: string | null
           scheduled_at: string
+          session_index?: number
+          sessions_total?: number
           status?: Database["public"]["Enums"]["consultation_status"]
           student_notes?: string | null
           timezone?: string
@@ -957,6 +963,7 @@ export type Database = {
           action_plan?: string | null
           admin_notes?: string | null
           amount?: number | null
+          booking_group?: string | null
           briefing?: string | null
           briefing_data?: Json | null
           briefing_submitted_at?: string | null
@@ -999,6 +1006,8 @@ export type Database = {
           reschedule_count?: number
           rescheduled_from?: string | null
           scheduled_at?: string
+          session_index?: number
+          sessions_total?: number
           status?: Database["public"]["Enums"]["consultation_status"]
           student_notes?: string | null
           timezone?: string

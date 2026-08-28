@@ -16,7 +16,7 @@ export const listConsultationProducts = createServerFn({ method: "GET" }).handle
   return data ?? [];
 });
 
-/** Horários livres para uma duração específica. */
+/** Horários livres para uma duração específica (sessão de até 1h). */
 export const getConsultationSlots = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
     z.object({ durationMinutes: z.number().int().min(15).max(480) }).parse(data),
@@ -25,6 +25,23 @@ export const getConsultationSlots = createServerFn({ method: "GET" })
     const { computeAvailableSlots } = await import("@/lib/consultations.server");
     return computeAvailableSlots(data.durationMinutes);
   });
+
+/** Quantos encontros de 1h a consultoria contratada exige. */
+export const getConsultationSessionPlan = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) =>
+    z.object({ durationMinutes: z.number().int().min(15).max(480) }).parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { sessionMinutes, sessionCount, MAX_MINUTES_PER_DAY } = await import(
+      "@/lib/consultations.server"
+    );
+    return {
+      sessionMinutes: sessionMinutes(data.durationMinutes),
+      sessions: sessionCount(data.durationMinutes),
+      maxPerDay: MAX_MINUTES_PER_DAY,
+    };
+  });
+
 
 /**
  * Cria a RESERVA da consultoria (status `awaiting_payment`) e gera o checkout.
@@ -37,10 +54,12 @@ export const reserveConsultation = createServerFn({ method: "POST" })
     z
       .object({
         productId: z.string().min(1),
-        startIso: z.string().min(10),
+        startIso: z.string().min(10).optional(),
+        startIsos: z.array(z.string().min(10)).min(1).max(8).optional(),
         briefingData: briefingSchema.optional(),
         phone: z.string().trim().max(30).optional(),
       })
+      .refine((v) => v.startIso || v.startIsos?.length, { message: "Selecione os horários." })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
@@ -54,6 +73,7 @@ export const reserveConsultation = createServerFn({ method: "POST" })
       HOLD_MINUTES,
       MAX_MINUTES_PER_DAY,
       sessionMinutes,
+      sessionCount,
       studentMinutesOnDay,
     } = await import("@/lib/consultations.server");
 
@@ -73,24 +93,45 @@ export const reserveConsultation = createServerFn({ method: "POST" })
       throw new Error("Preencha o briefing antes de reservar.");
     }
 
-    const start = new Date(data.startIso);
-    if (Number.isNaN(+start)) throw new Error("Horário inválido.");
-    if (+start < Date.now() + MIN_LEAD_MINUTES * 60_000) {
-      throw new Error("Escolha um horário com pelo menos 2 horas de antecedência.");
-    }
-    // Cada encontro dura no máximo 1 hora por dia.
+    // Cada encontro dura no máximo 1 hora por dia; consultorias maiores viram
+    // vários encontros marcados de uma vez, em dias diferentes.
     const meetingMinutes = sessionMinutes(product.duration_minutes);
-    const end = new Date(+start + meetingMinutes * 60_000);
+    const totalSessions = sessionCount(product.duration_minutes);
 
-    const alreadyToday = await studentMinutesOnDay(context.userId, start.toISOString());
-    if (alreadyToday + meetingMinutes > MAX_MINUTES_PER_DAY) {
-      throw new Error(
-        `Você já tem consultoria marcada neste dia. O limite é de ${MAX_MINUTES_PER_DAY} minutos por dia — escolha outra data.`,
-      );
+    const rawStarts = data.startIsos?.length ? data.startIsos : [data.startIso!];
+    const starts = rawStarts
+      .map((iso) => new Date(iso))
+      .sort((a, b) => +a - +b);
+
+    if (starts.some((s) => Number.isNaN(+s))) throw new Error("Horário inválido.");
+    if (starts.length !== totalSessions) {
+      throw new Error(`Selecione ${totalSessions} encontro(s) de ${meetingMinutes} minutos, um por dia.`);
     }
 
-    if (!(await isSlotFree(start.toISOString(), end.toISOString()))) {
-      throw new Error("Este horário acabou de ser reservado. Escolha outro.");
+    const dayKey = (d: Date) =>
+      new Intl.DateTimeFormat("en-CA", { timeZone: CONSULTATION_TZ }).format(d);
+    if (new Set(starts.map(dayKey)).size !== starts.length) {
+      throw new Error(`Cada encontro precisa ser em um dia diferente (limite de ${MAX_MINUTES_PER_DAY} min por dia).`);
+    }
+
+    const sessionsPlan = starts.map((start) => ({
+      start,
+      end: new Date(+start + meetingMinutes * 60_000),
+    }));
+
+    for (const { start, end } of sessionsPlan) {
+      if (+start < Date.now() + MIN_LEAD_MINUTES * 60_000) {
+        throw new Error("Escolha horários com pelo menos 2 horas de antecedência.");
+      }
+      const alreadyToday = await studentMinutesOnDay(context.userId, start.toISOString());
+      if (alreadyToday + meetingMinutes > MAX_MINUTES_PER_DAY) {
+        throw new Error(
+          `Você já tem consultoria marcada em um dos dias escolhidos. O limite é de ${MAX_MINUTES_PER_DAY} minutos por dia.`,
+        );
+      }
+      if (!(await isSlotFree(start.toISOString(), end.toISOString()))) {
+        throw new Error("Um dos horários acabou de ser reservado. Escolha outro.");
+      }
     }
 
     // Uma reserva ativa por vez: descarta reservas anteriores não pagas do aluno.
@@ -111,39 +152,56 @@ export const reserveConsultation = createServerFn({ method: "POST" })
       .maybeSingle();
 
     const holdExpiresAt = new Date(Date.now() + HOLD_MINUTES * 60_000).toISOString();
+    const bookingGroup = crypto.randomUUID();
 
-    const { data: created, error } = await supabaseAdmin
+    const { data: rows, error } = await supabaseAdmin
       .from("consultations")
-      .insert({
-        user_id: context.userId,
-        product_id: product.id,
-        product_title: product.title,
-        client_name: profile?.name ?? null,
-        client_email: profile?.email ?? (context.claims as any)?.email ?? null,
-        client_phone: data.phone || (profile as any)?.phone || null,
-        scheduled_at: start.toISOString(),
-        ends_at: end.toISOString(),
-        duration_minutes: meetingMinutes,
-        timezone: CONSULTATION_TZ,
-        status: "awaiting_payment",
-        hold_expires_at: holdExpiresAt,
-        briefing: briefing || null,
-        briefing_data: (data.briefingData ?? null) as never,
-        briefing_submitted_at: briefing ? new Date().toISOString() : null,
-        amount: product.price,
-      } as never)
+      .insert(
+        sessionsPlan.map(({ start, end }, index) => ({
+          user_id: context.userId,
+          product_id: product.id,
+          product_title:
+            totalSessions > 1 ? `${product.title} — Encontro ${index + 1}/${totalSessions}` : product.title,
+          client_name: profile?.name ?? null,
+          client_email: profile?.email ?? (context.claims as any)?.email ?? null,
+          client_phone: data.phone || (profile as any)?.phone || null,
+          scheduled_at: start.toISOString(),
+          ends_at: end.toISOString(),
+          duration_minutes: meetingMinutes,
+          timezone: CONSULTATION_TZ,
+          status: "awaiting_payment",
+          hold_expires_at: holdExpiresAt,
+          briefing: briefing || null,
+          briefing_data: (data.briefingData ?? null) as never,
+          briefing_submitted_at: briefing ? new Date().toISOString() : null,
+          // O valor total fica no primeiro encontro (é a compra); os demais são R$ 0.
+          amount: index === 0 ? product.price : 0,
+          booking_group: bookingGroup,
+          session_index: index + 1,
+          sessions_total: totalSessions,
+        })) as never,
+      )
       .select("*")
-      .single();
+      .order("scheduled_at", { ascending: true });
 
-    if (error) throw new Error(`Falha ao reservar: ${error.message}`);
+    if (error || !rows?.length) throw new Error(`Falha ao reservar: ${error?.message ?? "erro desconhecido"}`);
+
+    const created = rows[0];
+    const start = new Date(created.scheduled_at);
 
     await auditConsultation({
       consultationId: created.id,
       actorId: context.userId,
       actorRole: "student",
       action: "reserved",
-      details: { productId: product.id, startIso: start.toISOString(), holdExpiresAt },
+      details: {
+        productId: product.id,
+        bookingGroup,
+        sessions: rows.map((r) => r.scheduled_at),
+        holdExpiresAt,
+      },
     });
+
 
     // Checkout no Asaas vinculado à reserva
     let paymentUrl: string | null = null;
@@ -186,7 +244,7 @@ export const reserveConsultation = createServerFn({ method: "POST" })
       await supabaseAdmin
         .from("consultations")
         .update({ payment_url: paymentUrl, payment_link_id: paymentLinkId } as never)
-        .eq("id", created.id);
+        .eq("booking_group", bookingGroup);
 
       await auditConsultation({
         consultationId: created.id,
@@ -205,11 +263,11 @@ export const reserveConsultation = createServerFn({ method: "POST" })
         status: "error",
         details: { error: message },
       });
-      // Libera o horário na hora: sem checkout não há como pagar.
+      // Libera os horários na hora: sem checkout não há como pagar.
       await supabaseAdmin
         .from("consultations")
         .update({ status: "cancelled", cancel_reason: "Falha ao gerar checkout", hold_expires_at: null } as never)
-        .eq("id", created.id);
+        .eq("booking_group", bookingGroup);
       throw new Error(message);
     }
 
@@ -220,7 +278,9 @@ export const reserveConsultation = createServerFn({ method: "POST" })
       paymentUrl,
       amount: Number(product.price),
       scheduledAt: created.scheduled_at,
-      durationMinutes: product.duration_minutes,
+      durationMinutes: meetingMinutes,
+      sessions: rows.map((r) => ({ id: r.id, scheduledAt: r.scheduled_at })),
+      sessionsTotal: totalSessions,
       productTitle: product.title,
     };
   });
