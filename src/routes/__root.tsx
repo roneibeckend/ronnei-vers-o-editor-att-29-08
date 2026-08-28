@@ -54,14 +54,16 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     if (isChunkError && typeof window !== 'undefined') {
       console.warn("Detectado erro de carregamento de recursos. Tentando recuperação automática...");
       
-      // Limpa caches do Service Worker se possível antes do reload
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(registrations => {
-          for (const registration of registrations) {
-            registration.unregister();
-          }
-        });
+      // Limpa os caches (sem desregistrar o SW: desregistrar + recarregar
+      // provoca "Failed to update a ServiceWorker for scope").
+      if (typeof caches !== "undefined") {
+        caches.keys().then((keys) => {
+          keys
+            .filter((key) => key.startsWith("rnv-") || key.startsWith("ronnei-"))
+            .forEach((key) => void caches.delete(key));
+        }).catch(() => { /* ignora */ });
       }
+
       
       setTimeout(() => {
         window.location.reload();
