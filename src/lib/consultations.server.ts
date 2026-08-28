@@ -698,26 +698,39 @@ export async function runConsultationReminders() {
 
 
 
-  // Reuniões que já passaram entram no fluxo completo de conclusão
-  // (materiais liberados + e-mail + auditoria).
+  // Reuniões que já passaram: quem confirmou presença entra no fluxo de
+  // conclusão; quem nunca confirmou vira falta (no_show) 30 min após o fim.
+  const { NO_SHOW_GRACE_MINUTES, isNoShowDue } = await import("@/lib/consultation-policy");
+
   const { data: finished } = await supabaseAdmin
     .from("consultations")
-    .select("id")
+    .select("*")
     .eq("status", "scheduled")
     .lt("ends_at", new Date(now - 15 * 60_000).toISOString());
 
-  for (const f of finished ?? []) {
+  let noShows = 0;
+  let completedCount = 0;
+
+  for (const f of (finished ?? []) as any[]) {
     try {
-      await completeConsultation(f.id, { actorRole: "system" });
+      if (isNoShowDue(f, now)) {
+        await markConsultationNoShow(f, { actorRole: "system" });
+        noShows++;
+      } else if (f.attendance_confirmed_at) {
+        await completeConsultation(f.id, { actorRole: "system" });
+        completedCount++;
+      }
+      // Sem confirmação e ainda dentro da tolerância: aguarda o próximo ciclo.
     } catch (err) {
       await auditConsultation({
         consultationId: f.id,
         action: "auto_completed",
         status: "error",
-        details: { error: (err as Error)?.message },
+        details: { error: (err as Error)?.message, graceMinutes: NO_SHOW_GRACE_MINUTES },
       });
     }
   }
+
 
   return {
     checked: upcoming?.length ?? 0,
