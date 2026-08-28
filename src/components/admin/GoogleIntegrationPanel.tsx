@@ -254,6 +254,7 @@ export function GoogleIntegrationPanel() {
 
   const status = data?.status;
   const connected = Boolean(status?.connected && status?.status === "connected");
+  const missingScopes = status?.missingScopes ?? [];
 
   if (isLoading) {
     return (
@@ -357,14 +358,14 @@ export function GoogleIntegrationPanel() {
             </Alert>
           )}
 
-          {connected && status?.missingScopes?.length > 0 && (
+          {connected && missingScopes.length > 0 && (
             <Alert className="border-amber-500/30 bg-amber-500/10">
               <AlertTriangle className="h-4 w-4 text-amber-400" />
               <AlertTitle className="text-xs font-bold uppercase tracking-widest text-amber-300">
                 Permissões incompletas
               </AlertTitle>
               <AlertDescription className="text-[11px] text-white/70">
-                A conta conectada não concedeu: {status.missingScopes.join(" e ")}. Use “Reconectar conta” nesta
+                A conta conectada não concedeu: {missingScopes.join(" e ")}. Use “Reconectar conta” nesta
                 página e aceite todas as permissões para listar agendas e ler a pasta de gravações.
               </AlertDescription>
             </Alert>
