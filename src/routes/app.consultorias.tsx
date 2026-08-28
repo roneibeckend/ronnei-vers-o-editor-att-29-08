@@ -12,6 +12,8 @@ import {
   listMyConsultations,
   submitConsultationBriefing,
   cancelMyConsultation,
+  rescheduleMyConsultation,
+
 } from "@/lib/consultations.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
