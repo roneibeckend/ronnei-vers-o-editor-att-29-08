@@ -72,6 +72,8 @@ export const Route = createFileRoute("/api/public/consultation-reminders")({
         try {
           const expiredHolds = await expireConsultationHolds();
           const result = await runConsultationReminders();
+          const { runConsultationPrep } = await import("@/lib/consultation-prep.server");
+          const prep = await runConsultationPrep();
           await supabaseAdmin
             .from("ops_job_runs")
             .update({
@@ -81,7 +83,8 @@ export const Route = createFileRoute("/api/public/consultation-reminders")({
               last_run_at: new Date().toISOString(),
             })
             .eq("job", JOB);
-          return Response.json({ ok: true, expiredHolds, ...result });
+          return Response.json({ ok: true, expiredHolds, ...result, prep });
+
         } catch (err) {
           const message = (err as Error)?.message || "Erro desconhecido";
           await supabaseAdmin
