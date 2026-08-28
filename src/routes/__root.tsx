@@ -351,10 +351,13 @@ function RootComponent() {
         document.body.classList.remove("loading-route");
       }
       trackEvent("PageView");
+      gtmPageView();
     });
 
     initPixel();
+    gtmPageView();
     installClientLogger();
+
 
     return () => {
       unsubBefore();
