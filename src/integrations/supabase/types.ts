@@ -1403,6 +1403,9 @@ export type Database = {
           slug: string
           title: string
           updated_at: string | null
+          video_aspect: string
+          video_id: string | null
+          video_provider: string
           video_url: string | null
         }
         Insert: {
@@ -1417,6 +1420,9 @@ export type Database = {
           slug: string
           title: string
           updated_at?: string | null
+          video_aspect?: string
+          video_id?: string | null
+          video_provider?: string
           video_url?: string | null
         }
         Update: {
@@ -1431,6 +1437,9 @@ export type Database = {
           slug?: string
           title?: string
           updated_at?: string | null
+          video_aspect?: string
+          video_id?: string | null
+          video_provider?: string
           video_url?: string | null
         }
         Relationships: [
@@ -1451,6 +1460,7 @@ export type Database = {
           id: string
           order_index: number | null
           title: string
+          video_aspect: string
           video_url: string | null
         }
         Insert: {
@@ -1460,6 +1470,7 @@ export type Database = {
           id?: string
           order_index?: number | null
           title: string
+          video_aspect?: string
           video_url?: string | null
         }
         Update: {
@@ -1469,6 +1480,7 @@ export type Database = {
           id?: string
           order_index?: number | null
           title?: string
+          video_aspect?: string
           video_url?: string | null
         }
         Relationships: [

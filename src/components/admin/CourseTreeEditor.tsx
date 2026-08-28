@@ -36,6 +36,9 @@ interface Lesson {
   slug: string;
   description: string | null;
   video_url: string | null;
+  video_provider?: string | null;
+  video_id?: string | null;
+  video_aspect?: string | null;
   duration_minutes: number;
   order_index: number;
   is_free: boolean;
@@ -107,6 +110,9 @@ export function CourseTreeEditor({ courseId }: CourseTreeEditorProps) {
         slug: l.slug,
         description: l.description,
         video_url: l.video_url,
+        video_provider: (l as any).video_provider || "auto",
+        video_id: (l as any).video_id || "",
+        video_aspect: (l as any).video_aspect || "landscape",
         duration_minutes: l.duration_minutes || 0,
         order_index: l.order_index || 0,
         is_free: l.is_free || false,
@@ -237,7 +243,7 @@ export function CourseTreeEditor({ courseId }: CourseTreeEditorProps) {
               </div>
               <div className="flex shrink-0 items-center gap-1 sm:gap-2">
                 <button 
-                  onClick={() => setEditingLesson({ module_id: module.id, title: "", slug: "", description: "", video_url: "", duration_minutes: 10, order_index: lessons.filter(l => l.module_id === module.id).length, is_free: false, content: "" })}
+                  onClick={() => setEditingLesson({ module_id: module.id, title: "", slug: "", description: "", video_url: "", video_provider: "auto", video_id: "", video_aspect: "landscape", duration_minutes: 10, order_index: lessons.filter(l => l.module_id === module.id).length, is_free: false, content: "" })}
                   className="p-2 text-white/40 hover:text-white"
                 >
                   <Plus className="h-4 w-4" />
@@ -317,6 +323,42 @@ export function CourseTreeEditor({ courseId }: CourseTreeEditorProps) {
                     bucket="course-assets"
                     label="Vídeo da Aula"
                   />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Fonte do vídeo</label>
+                  <select
+                    value={editingLesson.video_provider || "auto"}
+                    onChange={e => setEditingLesson({ ...editingLesson, video_provider: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 p-3 rounded-lg outline-none"
+                  >
+                    <option value="auto">Automático</option>
+                    <option value="bunny">Bunny Stream</option>
+                    <option value="youtube">YouTube</option>
+                    <option value="drive">Google Drive</option>
+                    <option value="url">Arquivo / URL direta</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">ID do vídeo (Bunny)</label>
+                  <input
+                    placeholder="libraryId/videoId"
+                    value={editingLesson.video_id || ""}
+                    onChange={e => setEditingLesson({ ...editingLesson, video_id: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 p-3 rounded-lg outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Formato</label>
+                  <select
+                    value={editingLesson.video_aspect || "landscape"}
+                    onChange={e => setEditingLesson({ ...editingLesson, video_aspect: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 p-3 rounded-lg outline-none"
+                  >
+                    <option value="landscape">Horizontal 16:9 (padrão cursos)</option>
+                    <option value="portrait">Vertical 9:16</option>
+                  </select>
                 </div>
               </div>
               <div className="space-y-1">
