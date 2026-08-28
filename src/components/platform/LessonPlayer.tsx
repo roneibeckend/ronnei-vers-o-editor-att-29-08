@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import {
   resolveLessonVideo,
@@ -104,13 +104,10 @@ export function LessonPlayer({
     const src = autoplay || autoStart ? resolved.src.replace('autoplay=false', 'autoplay=true') : resolved.src;
     return (
       <Frame aspect={resolved.aspect} className={className} frameless={frameless}>
-        <iframe
+        <BunnyFrame
           src={src}
-          title={title || 'Vídeo'}
-          loading="lazy"
-          className="absolute inset-0 h-full w-full border-0"
-          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
-          allowFullScreen
+          title={title}
+          onEnded={onEnded}
         />
       </Frame>
     );
@@ -139,6 +136,76 @@ export function LessonPlayer({
         onEnded={onEnded}
       />
     </Suspense>
+  );
+}
+
+/**
+ * Embed do Bunny com escuta do evento `ended` via protocolo player.js,
+ * para que aberturas fechem sozinhas quando o vídeo termina.
+ */
+function BunnyFrame({
+  src,
+  title,
+  onEnded,
+}: {
+  src: string;
+  title?: string;
+  onEnded?: () => void;
+}) {
+  const ref = useRef<HTMLIFrameElement>(null);
+  const endedRef = useRef(onEnded);
+  endedRef.current = onEnded;
+
+  useEffect(() => {
+    const iframe = ref.current;
+    if (!iframe) return;
+
+    const post = (payload: Record<string, unknown>) => {
+      iframe.contentWindow?.postMessage(
+        JSON.stringify({ context: 'player.js', version: '0.0.11', ...payload }),
+        '*',
+      );
+    };
+
+    const subscribe = () => {
+      post({ method: 'addEventListener', value: 'ended', listener: 'lp-ended' });
+      post({ method: 'addEventListener', value: 'ready', listener: 'lp-ready' });
+    };
+
+    const onMessage = (event: MessageEvent) => {
+      if (!iframe.contentWindow || event.source !== iframe.contentWindow) return;
+      let data: any = event.data;
+      if (typeof data === 'string') {
+        try {
+          data = JSON.parse(data);
+        } catch {
+          return;
+        }
+      }
+      if (!data || data.context !== 'player.js') return;
+      if (data.event === 'ready') subscribe();
+      if (data.event === 'ended') endedRef.current?.();
+    };
+
+    window.addEventListener('message', onMessage);
+    iframe.addEventListener('load', subscribe);
+    const retry = window.setTimeout(subscribe, 1500);
+    return () => {
+      window.removeEventListener('message', onMessage);
+      iframe.removeEventListener('load', subscribe);
+      window.clearTimeout(retry);
+    };
+  }, [src]);
+
+  return (
+    <iframe
+      ref={ref}
+      src={src}
+      title={title || 'Vídeo'}
+      className="absolute inset-0 h-full w-full border-0"
+      allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+      allowFullScreen
+    />
   );
 }
 
