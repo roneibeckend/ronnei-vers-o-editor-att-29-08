@@ -1,4 +1,6 @@
 import { getPushConfig, removePushSubscription, savePushSubscription } from "@/lib/admin-notifications.functions";
+import { registerAppServiceWorker } from "@/lib/pwa-sw";
+
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
