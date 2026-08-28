@@ -364,6 +364,7 @@ export const saveConsultationNotes = createServerFn({ method: "POST" })
     if (data.adminNotes !== undefined) patch["admin_notes"] = data.adminNotes || null;
     if (data.studentNotes !== undefined) patch["student_notes"] = data.studentNotes || null;
     if (data.actionPlan !== undefined) patch["action_plan"] = data.actionPlan || null;
+    if (data.meetingScript !== undefined) patch["meeting_script"] = data.meetingScript || null;
     if (data.materials !== undefined) {
       patch["materials"] = data.materials;
       patch["materials_released_at"] = data.materials.length ? new Date().toISOString() : null;
