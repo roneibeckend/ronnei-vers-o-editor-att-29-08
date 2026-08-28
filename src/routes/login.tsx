@@ -7,7 +7,7 @@ import { IMG } from "@/lib/platform-data";
 import { supabase } from "@/integrations/supabase/client";
 import { validatePassword } from "@/lib/password-validation";
 import { checkSession } from "@/lib/session-guard";
-import { gtmLogin, gtmSignUp } from "@/lib/gtm";
+import { gtmLogin, gtmSignUp, gtmRememberAuthMethod } from "@/lib/gtm";
 import {
   Dialog,
   DialogContent,
@@ -124,7 +124,7 @@ function LoginPage() {
       const redirectTo = urlParams.get('redirectTo');
       const { authCallbackUrl } = await import("@/lib/auth-callback");
       const callback = authCallbackUrl(redirectTo ?? undefined);
-      gtmLogin("google");
+      gtmRememberAuthMethod("google");
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -157,7 +157,7 @@ function LoginPage() {
       const redirectTo = urlParams.get('redirectTo');
       const { authCallbackUrl } = await import("@/lib/auth-callback");
       const callback = authCallbackUrl(redirectTo ?? undefined);
-      gtmLogin("google");
+      gtmRememberAuthMethod("apple");
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "apple",
         options: { redirectTo: callback },
@@ -182,7 +182,7 @@ function LoginPage() {
       const redirectTo = urlParams.get('redirectTo');
       const { authCallbackUrl } = await import("@/lib/auth-callback");
       const callback = authCallbackUrl(redirectTo ?? undefined);
-      gtmLogin("google");
+      gtmRememberAuthMethod("facebook");
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "facebook",
         options: { redirectTo: callback },
@@ -277,7 +277,7 @@ function LoginPage() {
           throw new Error("Não foi possível iniciar sua sessão após o cadastro.");
         }
 
-        gtmSignUp("email");
+        gtmSignUp("email", session.user.id);
         toast.success("Conta criada!", { description: "Você já pode acessar sua área de membros." });
 
         // Remove qualquer dado em cache de um usuário anterior neste navegador

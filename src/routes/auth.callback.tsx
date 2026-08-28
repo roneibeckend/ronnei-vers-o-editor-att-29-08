@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { Loader2, BadgeCheck, ShieldAlert } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { completeAuthFromUrl } from "@/lib/auth-callback";
+import { supabase } from "@/integrations/supabase/client";
+import { gtmTrackAuthenticatedUser } from "@/lib/gtm";
 
 export const Route = createFileRoute("/auth/callback")({
   ssr: false,
@@ -32,6 +34,13 @@ function AuthCallbackPage() {
         return;
       }
       setDone(true);
+      // Login/sign_up só são reportados após a sessão existir de fato.
+      try {
+        const { data } = await supabase.auth.getUser();
+        gtmTrackAuthenticatedUser(data.user as any);
+      } catch {
+        /* noop */
+      }
       await queryClient.cancelQueries();
       queryClient.clear();
       navigate({ to: result.redirectTo, replace: true });

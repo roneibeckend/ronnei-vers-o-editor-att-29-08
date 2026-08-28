@@ -152,7 +152,7 @@ export const createAsaasPaymentLink = createServerFn({ method: "POST" })
 
       const result = response.json;
 
-      return { url: result.url, id: result.id };
+      return { url: result.url, id: result.id, value: totalValue };
     } catch (error: any) {
       console.error("[Asaas] Erro ao criar link:", error);
       throw new Error(error?.message || "Falha na comunicação com o Asaas. Tente novamente em instantes.");

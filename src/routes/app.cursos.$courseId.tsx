@@ -174,7 +174,7 @@ function CoursePage() {
       }
 
       if (result.url) {
-        openPayment(result.url, course.title, course.id, 'course');
+        openPayment(result.url, course.title, course.id, 'course', { value: (result as any).value, transactionId: result.id });
       }
     } catch (error: any) {
       console.error("Erro ao processar compra:", error);

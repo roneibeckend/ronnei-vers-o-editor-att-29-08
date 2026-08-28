@@ -7,9 +7,19 @@ interface PaymentState {
   title: string;
   productId: string | null;
   productType: 'course' | 'ebook' | null;
+  /** Valor real cobrado no Asaas (BRL). */
+  value: number | null;
+  /** ID real do pedido/link de pagamento no Asaas. */
+  transactionId: string | null;
   status: 'idle' | 'processing' | 'confirmed' | 'failed';
   onClose: (() => void) | null;
-  openPayment: (url: string, title: string, productId: string, productType: 'course' | 'ebook', onClose?: () => void) => void;
+  openPayment: (
+    url: string,
+    title: string,
+    productId: string,
+    productType: 'course' | 'ebook',
+    order?: { value?: number | null; transactionId?: string | null; onClose?: () => void },
+  ) => void;
   closePayment: () => void;
   setStatus: (status: 'idle' | 'processing' | 'confirmed' | 'failed') => void;
 }
@@ -20,18 +30,28 @@ export const usePaymentModal = create<PaymentState>((set) => ({
   title: '',
   productId: null,
   productType: null,
+  value: null,
+  transactionId: null,
   status: 'idle',
   onClose: null,
-  openPayment: (url, title, productId, productType, onClose) => {
-    gtmBeginCheckout({ productId, productType, productName: title });
-    return set({ 
-    isOpen: true, 
-    paymentUrl: url, 
-    title, 
-    productId,
-    productType,
-    status: 'idle',
-    onClose: onClose || null 
+  openPayment: (url, title, productId, productType, order) => {
+    gtmBeginCheckout({
+      productId,
+      productType,
+      productName: title,
+      value: order?.value ?? undefined,
+      transactionId: order?.transactionId ?? undefined,
+    });
+    return set({
+      isOpen: true,
+      paymentUrl: url,
+      title,
+      productId,
+      productType,
+      value: order?.value ?? null,
+      transactionId: order?.transactionId ?? null,
+      status: 'idle',
+      onClose: order?.onClose || null,
     });
   },
   closePayment: () => set((state) => {
@@ -42,8 +62,10 @@ export const usePaymentModal = create<PaymentState>((set) => ({
       title: '', 
       productId: null,
       productType: null,
+      value: null,
+      transactionId: null,
       status: 'idle',
-      onClose: null 
+      onClose: null,
     };
   }),
   setStatus: (status) => set({ status }),

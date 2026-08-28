@@ -504,7 +504,7 @@ function EbookReaderPage() {
       }
 
       if (result.url) {
-        openPayment(result.url, ebook.title, ebook.id, 'ebook');
+        openPayment(result.url, ebook.title, ebook.id, 'ebook', { value: (result as any).value, transactionId: result.id });
       }
     } catch (error: any) {
       console.error("Erro ao processar compra:", error);

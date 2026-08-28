@@ -67,23 +67,11 @@ export function initPixel(): void {
     window.fbq?.("track", "PageView");
   }
 
-  // ---- Google Analytics 4 ----
-  if (GA4_ID) {
-    const s = document.createElement("script");
-    s.async = true;
-    s.src = `https://www.googletagmanager.com/gtag/js?id=${GA4_ID}`;
-    document.head.appendChild(s);
-    window.dataLayer = window.dataLayer || [];
-    window.gtag = function gtag() {
-      // eslint-disable-next-line prefer-rest-params
-      window.dataLayer!.push(arguments);
-    };
-    window.gtag("js", new Date());
-    window.gtag("config", GA4_ID, { send_page_view: true });
-  }
+  // GA4 é servido exclusivamente pelo Google Tag Manager (GTM-M376JTZP).
+  // Nunca inicializar gtag.js aqui: gera dupla instrumentação e page_view duplicado.
 }
 
-/** Dispara um evento padrão do Pixel (Meta) + evento GA4 correspondente. */
+/** Dispara um evento padrão do Pixel (Meta). GA4 recebe tudo via GTM/dataLayer. */
 export function trackEvent(
   event: "PageView" | "InitiateCheckout" | "Lead" | "ViewContent" | "Purchase" | "AddToCart",
   params?: Record<string, any>
@@ -96,24 +84,6 @@ export function trackEvent(
     console.warn("[pixel] fbq error", err);
   }
 
-  try {
-    // Espelha no GA4 usando um nome equivalente.
-    const ga4Name =
-      event === "InitiateCheckout"
-        ? "begin_checkout"
-        : event === "Lead"
-        ? "generate_lead"
-        : event === "Purchase"
-        ? "purchase"
-        : event === "AddToCart"
-        ? "add_to_cart"
-        : event === "ViewContent"
-        ? "view_item"
-        : "page_view";
-    window.gtag?.("event", ga4Name, params ?? {});
-  } catch (err) {
-    console.warn("[analytics] gtag error", err);
-  }
 }
 
 /** Helper específico para o CTA principal. */

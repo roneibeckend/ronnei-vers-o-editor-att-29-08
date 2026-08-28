@@ -21,7 +21,7 @@ import { gtmPurchase } from "@/lib/gtm";
 
 
 export function AsaasPaymentModal() {
-  const { isOpen, paymentUrl, title, productId, productType, status, closePayment, setStatus } = usePaymentModal();
+  const { isOpen, paymentUrl, title, productId, productType, value, transactionId, status, closePayment, setStatus } = usePaymentModal();
   const { isEnrolledInCourse, isEnrolledInEbook, refetchEnrollments } = useEnrollments();
   const [opened, setOpened] = React.useState(false);
   const [checking, setChecking] = React.useState(false);
@@ -90,11 +90,17 @@ export function AsaasPaymentModal() {
   const purchaseTracked = React.useRef<string | null>(null);
   React.useEffect(() => {
     if (status !== 'confirmed' || !productId || !productType) return;
-    const key = `${productType}:${productId}`;
-    if (purchaseTracked.current === key) return;
-    purchaseTracked.current = key;
-    gtmPurchase({ productId, productType, productName: title });
-  }, [status, productId, productType, title]);
+    if (!transactionId) return; // sem o ID real do pedido Asaas não reportamos a compra
+    if (purchaseTracked.current === transactionId) return;
+    purchaseTracked.current = transactionId;
+    gtmPurchase({
+      productId,
+      productType,
+      productName: title,
+      value: Number(value ?? 0),
+      transactionId,
+    });
+  }, [status, productId, productType, title, value, transactionId]);
 
   // Redirecionamento automático após confirmação
   React.useEffect(() => {

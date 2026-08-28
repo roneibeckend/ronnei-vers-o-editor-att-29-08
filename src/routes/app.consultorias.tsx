@@ -619,7 +619,13 @@ function BookingDialog({
     onSuccess: (res: any) => {
       setReservation(res);
       onBooked();
-      gtmBeginCheckout({ productId: String(res?.id ?? "consultoria"), productType: "consultation" });
+      gtmBeginCheckout({
+        productId: product.id,
+        productType: "consultation",
+        productName: product.title,
+        value: Number(res?.amount ?? 0),
+        transactionId: res?.paymentLinkId ?? String(res?.id ?? ""),
+      });
       if (res?.paymentUrl) window.open(res.paymentUrl, "_blank", "noopener");
     },
     onError: (e: any) => toast.error(e?.message ?? "Falha ao criar a reserva."),
@@ -635,10 +641,26 @@ function BookingDialog({
 
   useEffect(() => {
     if (liveReservation?.status === "scheduled") {
-      gtmPurchase({ productId: String(liveReservation?.id ?? ""), productType: "consultation" });
+      const orderId =
+        (liveReservation as any)?.paymentLinkId ??
+        (reservation as any)?.paymentLinkId ??
+        String(liveReservation?.id ?? "");
+      const orderValue = Number(
+        (liveReservation as any)?.amount ?? (reservation as any)?.amount ?? 0,
+      );
+      gtmPurchase({
+        productId: product.id,
+        productType: "consultation",
+        productName: product.title,
+        value: orderValue,
+        transactionId: orderId,
+      });
       gtmConsultationScheduled({
         consultationId: String(liveReservation?.id ?? ""),
-        scheduledAt: (liveReservation as any)?.scheduled_at,
+        productName: product.title,
+        scheduledAt: (liveReservation as any)?.scheduledAt ?? (liveReservation as any)?.scheduled_at,
+        sessions: (liveReservation as any)?.sessionsTotal ?? sessionsTotal,
+        transactionId: orderId,
       });
       toast.success("Pagamento aprovado! Sua consultoria está confirmada e o link do Meet foi enviado por e-mail.");
       onBooked();
