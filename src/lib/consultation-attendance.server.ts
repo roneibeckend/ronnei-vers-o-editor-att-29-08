@@ -16,7 +16,6 @@ import {
   RESCHEDULE_FEE_BRL,
   RESCHEDULE_FEE_HOLD_MINUTES,
   formatFee,
-  rescheduleRequiresFee,
   rescheduleFeeDecision,
 } from "@/lib/consultation-policy";
 

@@ -409,21 +409,25 @@ export const getMyReschedulePolicy = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row } = await supabaseAdmin
       .from("consultations")
-      .select("id, user_id, booking_group, pending_reschedule_at, pending_reschedule_payment_url")
+      .select(
+        "id, user_id, booking_group, status, no_show_excused, cancelled_by, pending_reschedule_at, pending_reschedule_payment_url",
+      )
       .eq("id", data.id)
       .maybeSingle();
     if (!row || row.user_id !== context.userId) throw new Error("Consultoria não encontrada.");
 
-    const { orderRescheduleCount } = await import("@/lib/consultation-attendance.server");
-    const { freeReschedulesLeft, rescheduleRequiresFee, RESCHEDULE_FEE_BRL, formatFee } = await import(
+    const { rescheduleFeeInfo } = await import("@/lib/consultation-attendance.server");
+    const { freeReschedulesLeft, RESCHEDULE_FEE_BRL, formatFee } = await import(
       "@/lib/consultation-policy"
     );
-    const used = await orderRescheduleCount(row as never);
+    const { used, requiresFee, reason } = await rescheduleFeeInfo(row as never);
 
     return {
       used,
       freeLeft: freeReschedulesLeft(used),
-      requiresFee: rescheduleRequiresFee(used),
+      requiresFee,
+      reason,
+      cancelledByConsultant: (row as any).cancelled_by === "admin",
       fee: RESCHEDULE_FEE_BRL,
       feeLabel: formatFee(),
       pendingAt: (row as any).pending_reschedule_at ?? null,
@@ -462,12 +466,13 @@ export const rescheduleMyConsultation = createServerFn({ method: "POST" })
     if (!row || row.user_id !== context.userId) throw new Error("Consultoria não encontrada.");
 
     const isNoShow = row.status === "no_show";
-    if (!isNoShow && row.status !== "scheduled") {
+    const cancelledByConsultant = row.status === "cancelled" && (row as any).cancelled_by === "admin";
+    if (!isNoShow && !cancelledByConsultant && row.status !== "scheduled") {
       throw new Error("Somente reuniões confirmadas podem ser reagendadas.");
     }
     // Quem faltou remarca a qualquer momento; quem vai remarcar antes precisa
     // avisar com antecedência.
-    if (!isNoShow && +new Date(row.scheduled_at) - Date.now() < RESCHEDULE_LEAD_HOURS * 3600_000) {
+    if (!isNoShow && !cancelledByConsultant && +new Date(row.scheduled_at) - Date.now() < RESCHEDULE_LEAD_HOURS * 3600_000) {
       throw new Error(
         `Reagendamentos só podem ser feitos com ${RESCHEDULE_LEAD_HOURS} horas de antecedência. Fale com o suporte.`,
       );
