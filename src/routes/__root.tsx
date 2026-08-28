@@ -267,24 +267,49 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                 );
 
                 if ("serviceWorker" in navigator) {
-                  navigator.serviceWorker
-                    .register(
-                      "/sw.js",
-                      {
+                  var host = location.hostname;
+
+                  var blocked =
+                    window.top !== window.self ||
+                    !window.isSecureContext ||
+                    location.search.indexOf("sw=off") > -1 ||
+                    host === "localhost" ||
+                    host === "127.0.0.1" ||
+                    host.indexOf("id-preview--") === 0 ||
+                    host.indexOf("preview--") === 0 ||
+                    host === "lovableproject.com" ||
+                    host.slice(-19) === ".lovableproject.com" ||
+                    host.slice(-16) === ".beta.lovable.dev" ||
+                    host.slice(-16) === "-dev.lovable.app";
+
+                  if (blocked) {
+                    navigator.serviceWorker
+                      .getRegistrations()
+                      .then(function (list) {
+                        list.forEach(function (reg) {
+                          var script =
+                            (reg.active || reg.installing || reg.waiting || {})
+                              .scriptURL || "";
+                          if (script.indexOf("/sw.js") > -1) reg.unregister();
+                        });
+                      })
+                      .catch(function () {});
+                  } else if (!window.__RNV_SW_REGISTRATION__) {
+                    window.__RNV_SW_REGISTRATION__ = navigator.serviceWorker
+                      .register("/sw.js", {
                         scope: "/",
                         updateViaCache: "none"
-                      }
-                    )
-                    .then(function (registration) {
-                      return registration.update();
-                    })
-                    .catch(function (error) {
-                      console.error(
-                        "[RNV PWA] Falha no Service Worker:",
-                        error
-                      );
-                    });
+                      })
+                      .catch(function (error) {
+                        console.warn(
+                          "[RNV PWA] Service Worker indisponível:",
+                          error
+                        );
+                        return null;
+                      });
+                  }
                 }
+
               })();
             `,
           }}
