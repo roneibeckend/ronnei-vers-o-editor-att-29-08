@@ -245,7 +245,19 @@ export const setConsultationStatus = createServerFn({ method: "POST" })
       return { saved: true, materials: result.materials.length };
     }
 
-    if (data.status === "cancelled" && row.google_event_id) {
+    // Falta manual passa pelo fluxo completo (Google + e-mail + auditoria).
+    if (data.status === "no_show") {
+      const { markConsultationNoShow } = await import("@/lib/consultations.server");
+      await markConsultationNoShow(row as never, {
+        actorId: context.userId,
+        actorRole: "admin",
+        reason: data.notes || undefined,
+      });
+      return { saved: true };
+    }
+
+    const cancelledByConsultant = data.status === "cancelled";
+    if (cancelledByConsultant && row.google_event_id) {
       await cancelGoogleMeeting(row as never);
     }
 
@@ -253,10 +265,17 @@ export const setConsultationStatus = createServerFn({ method: "POST" })
       .from("consultations")
       .update({
         status: data.status,
-        cancel_reason: data.status === "cancelled" ? data.notes || "Cancelado pelo admin" : row.cancel_reason,
-      })
+        cancelled_by: cancelledByConsultant ? "admin" : (row as any).cancelled_by ?? null,
+        cancel_reason: cancelledByConsultant ? data.notes || "Cancelado pelo admin" : row.cancel_reason,
+      } as never)
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+
+    // Cancelamento nosso: o aluno escolhe entre remarcar sem taxa ou suporte.
+    if (cancelledByConsultant) {
+      const { sendConsultationCancelledByConsultant } = await import("@/lib/consultations.server");
+      await sendConsultationCancelledByConsultant(row as never, data.notes ?? null);
+    }
 
     await auditConsultation({
       consultationId: data.id,
