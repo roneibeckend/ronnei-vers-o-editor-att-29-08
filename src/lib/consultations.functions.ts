@@ -52,6 +52,9 @@ export const reserveConsultation = createServerFn({ method: "POST" })
       CONSULTATION_TZ,
       MIN_LEAD_MINUTES,
       HOLD_MINUTES,
+      MAX_MINUTES_PER_DAY,
+      sessionMinutes,
+      studentMinutesOnDay,
     } = await import("@/lib/consultations.server");
 
     await expireConsultationHolds();
@@ -75,7 +78,16 @@ export const reserveConsultation = createServerFn({ method: "POST" })
     if (+start < Date.now() + MIN_LEAD_MINUTES * 60_000) {
       throw new Error("Escolha um horário com pelo menos 2 horas de antecedência.");
     }
-    const end = new Date(+start + product.duration_minutes * 60_000);
+    // Cada encontro dura no máximo 1 hora por dia.
+    const meetingMinutes = sessionMinutes(product.duration_minutes);
+    const end = new Date(+start + meetingMinutes * 60_000);
+
+    const alreadyToday = await studentMinutesOnDay(context.userId, start.toISOString());
+    if (alreadyToday + meetingMinutes > MAX_MINUTES_PER_DAY) {
+      throw new Error(
+        `Você já tem consultoria marcada neste dia. O limite é de ${MAX_MINUTES_PER_DAY} minutos por dia — escolha outra data.`,
+      );
+    }
 
     if (!(await isSlotFree(start.toISOString(), end.toISOString()))) {
       throw new Error("Este horário acabou de ser reservado. Escolha outro.");
@@ -111,7 +123,7 @@ export const reserveConsultation = createServerFn({ method: "POST" })
         client_phone: data.phone || (profile as any)?.phone || null,
         scheduled_at: start.toISOString(),
         ends_at: end.toISOString(),
-        duration_minutes: product.duration_minutes,
+        duration_minutes: meetingMinutes,
         timezone: CONSULTATION_TZ,
         status: "awaiting_payment",
         hold_expires_at: holdExpiresAt,

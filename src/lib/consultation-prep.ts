@@ -176,8 +176,9 @@ export function buildConsultationPrep(d: ConsultationDossier): ConsultationPrep 
       : "Primeira consultoria com o Ronnei.",
   ];
 
-  // Roteiro sugerido, escalado conforme a duração contratada.
-  const total = d.durationMinutes;
+  // Roteiro sugerido. O encontro tem no máximo 1 hora por dia — nunca entregar tudo de uma vez.
+  const MAX_MINUTES_PER_DAY = 60;
+  const total = Math.min(d.durationMinutes, MAX_MINUTES_PER_DAY);
   const challengeBlocks = PLAYBOOK.filter((p) => p.match.test(challenges) || p.match.test(clean(b.goal as string)));
   const core = challengeBlocks.length
     ? challengeBlocks
