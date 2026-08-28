@@ -170,8 +170,10 @@ function ConsultationsPage() {
 
 function ConsultationCard({ consultation, onChanged }: { consultation: any; onChanged: () => void }) {
   const [editing, setEditing] = useState(false);
+  const [rescheduling, setRescheduling] = useState(false);
   const saveBriefing = useServerFn(submitConsultationBriefing);
   const cancel = useServerFn(cancelMyConsultation);
+
 
   const save = useMutation({
     mutationFn: (value: ConsultationBriefing) => saveBriefing({ data: { id: consultation.id, briefingData: value } }),
