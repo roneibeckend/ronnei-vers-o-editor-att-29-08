@@ -20,6 +20,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/admin/chatbot")({
+  head: () => ({
+    meta: [
+      { title: "Chatbot — Admin" },
+      { name: "description", content: "Configuração da base de conhecimento e respostas do chatbot Brasa." },
+      { property: "og:title", content: "Chatbot — Admin" },
+      { property: "og:description", content: "Configuração da base de conhecimento e respostas do chatbot Brasa." },
+    ],
+  }),
   component: AdminChatbotPage,
 });
 

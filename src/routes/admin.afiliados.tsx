@@ -28,6 +28,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { saveAffiliateMaterial, deleteAffiliateMaterial, updateAffiliateStatus } from "@/lib/affiliates.functions";
 
 export const Route = createFileRoute("/admin/afiliados")({
+  head: () => ({
+    meta: [
+      { title: "Afiliados — Admin" },
+      { name: "description", content: "Gestão de afiliados, comissões e aprovações da plataforma Espetinho na Veia." },
+      { property: "og:title", content: "Afiliados — Admin" },
+      { property: "og:description", content: "Gestão de afiliados, comissões e aprovações da plataforma Espetinho na Veia." },
+    ],
+  }),
   component: AdminAffiliatesPage,
 });
 

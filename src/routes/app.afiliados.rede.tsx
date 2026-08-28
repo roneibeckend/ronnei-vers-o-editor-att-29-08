@@ -10,6 +10,14 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/app/afiliados/rede")({
+  head: () => ({
+    meta: [
+      { title: "Minha Rede de Afiliados" },
+      { name: "description", content: "Acompanhe indicações, níveis e desempenho da sua rede." },
+      { property: "og:title", content: "Minha Rede de Afiliados" },
+      { property: "og:description", content: "Acompanhe indicações, níveis e desempenho da sua rede." },
+    ],
+  }),
   component: AffiliateNetworkPage,
 });
 

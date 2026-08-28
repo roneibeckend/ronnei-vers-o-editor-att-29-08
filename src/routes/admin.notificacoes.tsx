@@ -33,6 +33,14 @@ import {
 } from "@/lib/admin-notifications.functions";
 
 export const Route = createFileRoute("/admin/notificacoes")({
+  head: () => ({
+    meta: [
+      { title: "Notificações — Admin" },
+      { name: "description", content: "Envio e histórico de notificações push e avisos internos." },
+      { property: "og:title", content: "Notificações — Admin" },
+      { property: "og:description", content: "Envio e histórico de notificações push e avisos internos." },
+    ],
+  }),
   component: AdminNotifications,
 });
 
