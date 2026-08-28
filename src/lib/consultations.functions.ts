@@ -374,7 +374,7 @@ export const listMyConsultations = createServerFn({ method: "GET" })
     const { data } = await supabaseAdmin
       .from("consultations")
       .select(
-        "id, product_id, product_title, scheduled_at, ends_at, duration_minutes, status, hold_expires_at, payment_url, paid_at, briefing, briefing_data, meet_link, calendar_html_link, recording_url, recording_file_id, student_notes, action_plan, materials, materials_released_at, cancel_reason, completed_at, amount, created_at, booking_group, session_index, sessions_total, attendance_requested_at, attendance_confirmed_at, no_show_at, reschedule_count, pending_reschedule_at, pending_reschedule_payment_url, pending_reschedule_expires_at",
+        "id, product_id, product_title, scheduled_at, ends_at, duration_minutes, status, hold_expires_at, payment_url, paid_at, briefing, briefing_data, meet_link, calendar_html_link, recording_url, recording_file_id, student_notes, action_plan, materials, materials_released_at, cancel_reason, cancelled_by, no_show_excused, completed_at, amount, created_at, booking_group, session_index, sessions_total, attendance_requested_at, attendance_confirmed_at, no_show_at, reschedule_count, pending_reschedule_at, pending_reschedule_payment_url, pending_reschedule_expires_at",
       )
       .eq("user_id", context.userId)
       .order("scheduled_at", { ascending: false });
@@ -598,6 +598,7 @@ export const cancelMyConsultation = createServerFn({ method: "POST" })
         .from("consultations")
         .update({
           status: "cancelled",
+          cancelled_by: "student",
           cancel_reason: data.reason || "Reserva cancelada pelo aluno",
           hold_expires_at: null,
         } as never)
@@ -620,7 +621,11 @@ export const cancelMyConsultation = createServerFn({ method: "POST" })
     await cancelGoogleMeeting(row as never);
     await supabaseAdmin
       .from("consultations")
-      .update({ status: "cancelled", cancel_reason: data.reason || "Cancelado pelo aluno" })
+      .update({
+        status: "cancelled",
+        cancelled_by: "student",
+        cancel_reason: data.reason || "Cancelado pelo aluno",
+      } as never)
       .eq("id", data.id);
 
     await auditConsultation({
