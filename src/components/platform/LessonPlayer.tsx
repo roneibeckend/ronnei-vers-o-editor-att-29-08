@@ -101,12 +101,22 @@ export function LessonPlayer({
   }
 
   if (resolved.kind === 'bunny') {
-    const src = autoplay || autoStart ? resolved.src.replace('autoplay=false', 'autoplay=true') : resolved.src;
+    const wantsAutoplay = Boolean(autoplay || autoStart);
+    let src = resolved.src;
+    if (wantsAutoplay) {
+      // No mobile, autoplay com som é bloqueado: começa mudo e o BunnyFrame
+      // desmuta via API assim que a reprodução inicia (1 clique só).
+      src = src
+        .replace('autoplay=false', 'autoplay=true')
+        .replace('muted=false', 'muted=true');
+      if (!src.includes('muted=')) src += '&muted=true';
+    }
     return (
       <Frame aspect={resolved.aspect} className={className} frameless={frameless}>
         <BunnyFrame
           src={src}
           title={title}
+          unmuteOnPlay={wantsAutoplay}
           onEnded={onEnded}
         />
       </Frame>
@@ -146,10 +156,13 @@ export function LessonPlayer({
 function BunnyFrame({
   src,
   title,
+  unmuteOnPlay,
   onEnded,
 }: {
   src: string;
   title?: string;
+  /** Quando o embed iniciou mudo por causa do autoplay mobile, desmuta no 1º `playing`. */
+  unmuteOnPlay?: boolean;
   onEnded?: () => void;
 }) {
   const ref = useRef<HTMLIFrameElement>(null);
@@ -167,9 +180,21 @@ function BunnyFrame({
       );
     };
 
+    let unmuted = false;
+
     const subscribe = () => {
       post({ method: 'addEventListener', value: 'ended', listener: 'lp-ended' });
       post({ method: 'addEventListener', value: 'ready', listener: 'lp-ready' });
+      if (unmuteOnPlay) {
+        post({ method: 'addEventListener', value: 'playing', listener: 'lp-playing' });
+      }
+    };
+
+    const unmute = () => {
+      if (unmuted) return;
+      unmuted = true;
+      post({ method: 'unmute' });
+      post({ method: 'setVolume', value: 1 });
     };
 
     const onMessage = (event: MessageEvent) => {
@@ -184,6 +209,7 @@ function BunnyFrame({
       }
       if (!data || data.context !== 'player.js') return;
       if (data.event === 'ready') subscribe();
+      if (data.event === 'playing') unmute();
       if (data.event === 'ended') endedRef.current?.();
     };
 
