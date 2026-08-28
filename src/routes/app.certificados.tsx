@@ -349,7 +349,11 @@ function CertificateModal({ cert, onClose, autoDownload }: { cert: any; onClose:
     const toastId = toast.loading("Gerando o PDF do seu certificado...");
     try {
       await downloadCertificatePDF(certRef.current, cert);
-      gtmCertificateIssued({ courseId: String(cert?.courseId ?? cert?.id ?? ""), courseName: cert?.course });
+      gtmCertificateDownloaded({
+        certificateId: String(cert?.id ?? ""),
+        courseId: String(cert?.courseId ?? cert?.id ?? ""),
+        courseName: cert?.course,
+      });
       toast.success("Certificado baixado em PDF!", { id: toastId });
     } catch (err) {
       console.error("PDF generation failed", err);

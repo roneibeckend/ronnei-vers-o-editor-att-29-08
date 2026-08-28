@@ -410,6 +410,14 @@ function RootComponent() {
       const { completeAuthFromUrl } = await import("@/lib/auth-callback");
       const result = await completeAuthFromUrl();
       if (cancelled || result.status !== "success") return;
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { gtmTrackAuthenticatedUser } = await import("@/lib/gtm");
+        const { data } = await supabase.auth.getUser();
+        gtmTrackAuthenticatedUser(data.user as any);
+      } catch {
+        /* noop */
+      }
       await queryClient.cancelQueries();
       queryClient.clear();
       router.navigate({ to: result.redirectTo, replace: true });
