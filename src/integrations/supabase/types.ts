@@ -861,6 +861,7 @@ export type Database = {
           client_email: string | null
           client_name: string | null
           client_phone: string | null
+          client_report_sent_at: string | null
           completed_at: string | null
           confirmation_sent_at: string | null
           created_at: string
@@ -875,10 +876,14 @@ export type Database = {
           materials_released_at: string | null
           meet_link: string | null
           meeting_script: string | null
+          meeting_summary: string | null
           paid_at: string | null
           payment_id: string | null
           payment_link_id: string | null
           payment_url: string | null
+          prep_data: Json | null
+          prep_generated_at: string | null
+          prep_sent_at: string | null
           product_id: string | null
           product_title: string
           recording_file_id: string | null
@@ -908,6 +913,7 @@ export type Database = {
           client_email?: string | null
           client_name?: string | null
           client_phone?: string | null
+          client_report_sent_at?: string | null
           completed_at?: string | null
           confirmation_sent_at?: string | null
           created_at?: string
@@ -922,10 +928,14 @@ export type Database = {
           materials_released_at?: string | null
           meet_link?: string | null
           meeting_script?: string | null
+          meeting_summary?: string | null
           paid_at?: string | null
           payment_id?: string | null
           payment_link_id?: string | null
           payment_url?: string | null
+          prep_data?: Json | null
+          prep_generated_at?: string | null
+          prep_sent_at?: string | null
           product_id?: string | null
           product_title?: string
           recording_file_id?: string | null
@@ -955,6 +965,7 @@ export type Database = {
           client_email?: string | null
           client_name?: string | null
           client_phone?: string | null
+          client_report_sent_at?: string | null
           completed_at?: string | null
           confirmation_sent_at?: string | null
           created_at?: string
@@ -969,10 +980,14 @@ export type Database = {
           materials_released_at?: string | null
           meet_link?: string | null
           meeting_script?: string | null
+          meeting_summary?: string | null
           paid_at?: string | null
           payment_id?: string | null
           payment_link_id?: string | null
           payment_url?: string | null
+          prep_data?: Json | null
+          prep_generated_at?: string | null
+          prep_sent_at?: string | null
           product_id?: string | null
           product_title?: string
           recording_file_id?: string | null
