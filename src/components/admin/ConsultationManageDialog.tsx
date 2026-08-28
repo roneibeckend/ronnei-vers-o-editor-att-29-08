@@ -498,7 +498,42 @@ export function ConsultationManageDialog({
                 Enviado ao cliente em {dateBR(consultation.client_report_sent_at)}.
               </p>
             )}
+
+            {isCombo && (
+              <div className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-3">
+                <div>
+                  <p className="text-sm font-semibold">Relatório final do combo</p>
+                  <p className="text-xs text-muted-foreground">
+                    {group.isLoading
+                      ? "Carregando encontros..."
+                      : `${((group.data as any)?.sessions ?? []).length} encontro(s) nesta compra. O PDF consolidado reúne resumo e plano de ação de todos, e cada encontro também tem o seu PDF.`}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" disabled={group.isLoading} onClick={downloadCombo}>
+                    Baixar PDF consolidado
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={group.isLoading} onClick={downloadSessions}>
+                    Baixar PDF de cada encontro
+                  </Button>
+                </div>
+                <Button
+                  size="sm"
+                  className="w-full"
+                  disabled={group.isLoading || !clientRecipients.includes("@") || sendCombo.isPending}
+                  onClick={() => sendCombo.mutate()}
+                >
+                  {sendCombo.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="mr-2 h-4 w-4" />
+                  )}
+                  Enviar relatório final (consolidado + encontros)
+                </Button>
+              </div>
+            )}
           </TabsContent>
+
 
 
 
