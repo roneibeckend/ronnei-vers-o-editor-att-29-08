@@ -798,6 +798,9 @@ export type Database = {
           size_bytes: number | null
           status: string
           updated_at: string
+          video_aspect: string
+          video_id: string | null
+          video_provider: string
           web_view_link: string | null
         }
         Insert: {
@@ -817,6 +820,9 @@ export type Database = {
           size_bytes?: number | null
           status?: string
           updated_at?: string
+          video_aspect?: string
+          video_id?: string | null
+          video_provider?: string
           web_view_link?: string | null
         }
         Update: {
@@ -836,6 +842,9 @@ export type Database = {
           size_bytes?: number | null
           status?: string
           updated_at?: string
+          video_aspect?: string
+          video_id?: string | null
+          video_provider?: string
           web_view_link?: string | null
         }
         Relationships: [
@@ -1582,6 +1591,9 @@ export type Database = {
           reading_minutes: number | null
           slug: string | null
           title: string
+          video_aspect: string
+          video_id: string | null
+          video_provider: string
           video_url: string | null
         }
         Insert: {
@@ -1594,6 +1606,9 @@ export type Database = {
           reading_minutes?: number | null
           slug?: string | null
           title: string
+          video_aspect?: string
+          video_id?: string | null
+          video_provider?: string
           video_url?: string | null
         }
         Update: {
@@ -1606,6 +1621,9 @@ export type Database = {
           reading_minutes?: number | null
           slug?: string | null
           title?: string
+          video_aspect?: string
+          video_id?: string | null
+          video_provider?: string
           video_url?: string | null
         }
         Relationships: [
@@ -1774,6 +1792,9 @@ export type Database = {
           is_ai_generated: boolean | null
           is_locked: boolean | null
           keywords: string[] | null
+          opening_video_aspect: string
+          opening_video_id: string | null
+          opening_video_provider: string
           opening_video_url: string | null
           original_price: number | null
           pages_count: number | null
@@ -1803,6 +1824,9 @@ export type Database = {
           is_ai_generated?: boolean | null
           is_locked?: boolean | null
           keywords?: string[] | null
+          opening_video_aspect?: string
+          opening_video_id?: string | null
+          opening_video_provider?: string
           opening_video_url?: string | null
           original_price?: number | null
           pages_count?: number | null
@@ -1832,6 +1856,9 @@ export type Database = {
           is_ai_generated?: boolean | null
           is_locked?: boolean | null
           keywords?: string[] | null
+          opening_video_aspect?: string
+          opening_video_id?: string | null
+          opening_video_provider?: string
           opening_video_url?: string | null
           original_price?: number | null
           pages_count?: number | null
