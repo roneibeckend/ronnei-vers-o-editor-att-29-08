@@ -598,13 +598,13 @@ export async function confirmConsultationPayment(input: {
   amount?: number | null;
   userId?: string | null;
 }) {
-  const { data: row } = await supabaseAdmin
+  const { data: leader } = await supabaseAdmin
     .from("consultations")
     .select("*")
     .eq("id", input.consultationId)
     .maybeSingle();
 
-  if (!row) {
+  if (!leader) {
     await auditConsultation({
       action: "payment_confirmed",
       status: "error",
@@ -613,20 +613,56 @@ export async function confirmConsultationPayment(input: {
     return { ok: false as const, error: "Reserva de consultoria não encontrada." };
   }
 
-  // Já confirmada anteriormente (webhook duplicado)
+  // Combo: uma compra pode gerar vários encontros (1h por dia).
+  let rows: any[] = [leader];
+  const group = (leader as any).booking_group as string | null;
+  if (group) {
+    const { data: groupRows } = await supabaseAdmin
+      .from("consultations")
+      .select("*")
+      .eq("booking_group", group)
+      .order("scheduled_at", { ascending: true });
+    if (groupRows?.length) rows = groupRows;
+  }
+
+  let leaderResult: {
+    ok: boolean;
+    alreadyConfirmed?: boolean;
+    meetLink?: string | null;
+    googleError?: string | null;
+    error?: string;
+  } | null = null;
+
+  for (const row of rows) {
+    const isLeader = row.id === leader.id;
+    const result = await confirmSingleConsultation(row, {
+      paymentId: input.paymentId,
+      // Só o encontro principal carrega o valor da compra.
+      amount: isLeader ? input.amount ?? null : null,
+    });
+    if (isLeader) leaderResult = result;
+  }
+
+  return (leaderResult ?? { ok: false as const, error: "Falha ao confirmar a reserva." }) as any;
+}
+
+/** Confirma um único encontro: status, Google Meet e e-mail. Idempotente. */
+async function confirmSingleConsultation(
+  row: any,
+  opts: { paymentId: string; amount?: number | null },
+) {
   if (row.status === "scheduled" || row.status === "completed") {
-    return { ok: true as const, alreadyConfirmed: true, meetLink: (row as any).meet_link ?? null };
+    return { ok: true as const, alreadyConfirmed: true, meetLink: row.meet_link ?? null };
   }
 
   if (row.status === "cancelled" || row.status === "no_show") {
-    // Pagamento chegou depois da expiração: reativa se o horário ainda estiver livre.
     const free = await isSlotFree(row.scheduled_at, row.ends_at);
     if (!free) {
       await auditConsultation({
         consultationId: row.id,
         action: "payment_confirmed",
         status: "warn",
-        details: { paymentId: input.paymentId, error: "horário indisponível após expiração da reserva" },
+        details: { paymentId: opts.paymentId, error: "horário indisponível após expiração da reserva" },
       });
       return {
         ok: false as const,
@@ -640,10 +676,10 @@ export async function confirmConsultationPayment(input: {
     .update({
       status: "scheduled",
       paid_at: new Date().toISOString(),
-      payment_id: input.paymentId,
+      payment_id: opts.paymentId,
       hold_expires_at: null,
       cancel_reason: null,
-      ...(input.amount ? { amount: input.amount } : {}),
+      ...(opts.amount ? { amount: opts.amount } : {}),
     } as never)
     .eq("id", row.id);
 
@@ -652,7 +688,7 @@ export async function confirmConsultationPayment(input: {
       consultationId: row.id,
       action: "payment_confirmed",
       status: "error",
-      details: { paymentId: input.paymentId, error: error.message },
+      details: { paymentId: opts.paymentId, error: error.message },
     });
     return { ok: false as const, error: error.message };
   }
@@ -660,7 +696,7 @@ export async function confirmConsultationPayment(input: {
   await auditConsultation({
     consultationId: row.id,
     action: "payment_confirmed",
-    details: { paymentId: input.paymentId, amount: input.amount ?? row.amount ?? null },
+    details: { paymentId: opts.paymentId, amount: opts.amount ?? row.amount ?? null },
   });
 
   const google = await attachGoogleMeeting(row as never);
