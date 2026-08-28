@@ -54,7 +54,7 @@ function slug(value: string) {
     .slice(0, 50);
 }
 
-export function generateConsultationReportPdf(c: any) {
+export function buildConsultationReportPdf(c: any) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const briefing = (c?.briefing_data ?? null) as any;
   let y = 0;
