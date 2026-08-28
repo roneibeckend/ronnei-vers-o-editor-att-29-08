@@ -36,8 +36,11 @@ export function pushSupported(): boolean {
 async function getRegistration(): Promise<ServiceWorkerRegistration> {
   const existing = await navigator.serviceWorker.getRegistration();
   if (existing) return existing;
-  return navigator.serviceWorker.register("/sw.js");
+  const registered = await registerAppServiceWorker();
+  if (!registered) throw new Error("Service Worker indisponível neste contexto.");
+  return registered;
 }
+
 
 export async function getPushStatus(): Promise<{
   supported: boolean;
