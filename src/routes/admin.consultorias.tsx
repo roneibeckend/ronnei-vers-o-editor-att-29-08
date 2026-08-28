@@ -426,6 +426,90 @@ function ScriptDialog({
                 O texto fica salvo e é reaproveitado automaticamente no próximo PDF.
               </p>
             </div>
+            <div className="space-y-2 rounded-lg border p-3">
+              <p className="text-sm font-medium">Enviar relatório por e-mail</p>
+              <label className="flex items-center gap-2 text-sm">
+                <Switch
+                  checked={toStudent}
+                  disabled={!consultation.client_email}
+                  onCheckedChange={(v) => {
+                    setToStudent(v);
+                    setConfirming(false);
+                  }}
+                />
+                Aluno {consultation.client_email ? `(${consultation.client_email})` : "(sem e-mail)"}
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Switch
+                  checked={toConsultant}
+                  disabled={!consultantEmail}
+                  onCheckedChange={(v) => {
+                    setToConsultant(v);
+                    setConfirming(false);
+                  }}
+                />
+                Consultor {consultantEmail ? `(${consultantEmail})` : "(sem e-mail)"}
+              </label>
+              <div className="space-y-1.5">
+                <Label htmlFor="report-extra">Outros e-mails (separados por vírgula)</Label>
+                <Input
+                  id="report-extra"
+                  value={extraEmails}
+                  onChange={(e) => {
+                    setExtraEmails(e.target.value);
+                    setConfirming(false);
+                  }}
+                  placeholder="equipe@exemplo.com, ronnei@exemplo.com"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="report-message">Mensagem (opcional)</Label>
+                <Textarea
+                  id="report-message"
+                  rows={3}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Segue o relatório da nossa reunião..."
+                />
+              </div>
+              {confirming && (
+                <p className="rounded-md bg-muted p-2 text-xs">
+                  Confirmar envio do PDF para:{" "}
+                  <strong>{uniqueRecipients.join(", ") || "nenhum destinatário"}</strong>
+                </p>
+              )}
+              <div className="flex justify-end">
+                {confirming ? (
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={email.isPending || save.isPending || !uniqueRecipients.length}
+                      onClick={handleSend}
+                    >
+                      {email.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Mail className="mr-2 h-4 w-4" />
+                      )}
+                      Confirmar envio
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!uniqueRecipients.length}
+                    onClick={() => setConfirming(true)}
+                  >
+                    <Mail className="mr-2 h-4 w-4" />
+                    Enviar por e-mail
+                  </Button>
+                )}
+              </div>
+            </div>
             <div className="flex flex-wrap justify-end gap-2">
               <Button variant="outline" disabled={save.isPending} onClick={() => handle(false)}>
                 Salvar roteiro
