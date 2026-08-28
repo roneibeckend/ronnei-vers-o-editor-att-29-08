@@ -613,13 +613,26 @@ function BookingDialog({
                   <span className="text-right font-medium">{product?.title}</span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">Data e hora</span>
-                  <span className="text-right font-medium">{dateBR(slot!)}</span>
+                  <span className="text-muted-foreground">
+                    {sessionsTotal > 1 ? `Encontros (${sessionsTotal})` : "Data e hora"}
+                  </span>
+                  <span className="space-y-0.5 text-right font-medium">
+                    {picked.map((iso) => (
+                      <span key={iso} className="block">
+                        {dateBR(iso)}
+                      </span>
+                    ))}
+                  </span>
                 </div>
                 <div className="flex justify-between gap-3">
                   <span className="text-muted-foreground">Duração</span>
-                  <span className="font-medium">{product?.duration_minutes} minutos</span>
+                  <span className="text-right font-medium">
+                    {sessionsTotal > 1
+                      ? `${product?.duration_minutes} min no total · ${sessionMinutes} min por encontro`
+                      : `${product?.duration_minutes} minutos`}
+                  </span>
                 </div>
+
                 <div className="flex justify-between gap-3">
                   <span className="text-muted-foreground">Briefing</span>
                   <span className="font-medium">Preenchido ✓</span>
