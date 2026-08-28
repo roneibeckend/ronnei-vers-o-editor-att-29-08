@@ -236,6 +236,64 @@ export function ConsultationManageDialog({
     onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar ao cliente."),
   });
 
+  /* ------------------- Combo: relatório final consolidado ------------------- */
+
+  const groupFn = useServerFn(getConsultationGroup);
+  const comboEmailFn = useServerFn(sendConsultationComboReport);
+  const isCombo = Number(consultation?.sessions_total ?? 1) > 1 || Boolean(consultation?.booking_group);
+
+  const group = useQuery({
+    queryKey: ["consultation-group", consultation?.id],
+    queryFn: () => groupFn({ data: { id: consultation.id } }),
+    enabled: Boolean(consultation?.id) && isCombo,
+  });
+
+  /** Aplica as edições em tela na sessão atual, para o PDF sair atualizado. */
+  const groupSessions = () =>
+    ((group.data as any)?.sessions ?? []).map((s: any) =>
+      s.id === consultation?.id
+        ? { ...s, prep_data: prep, meeting_summary: meetingSummary, action_plan: actionPlan }
+        : s,
+    );
+
+  const downloadCombo = () => {
+    const sessions = groupSessions();
+    if (!sessions.length) return toast.error("Encontros do combo ainda não carregados.");
+    const pdf = buildConsultationComboReportPdf(sessions);
+    saveBlob(pdf.blob, pdf.filename);
+  };
+
+  const downloadSessions = () => {
+    const sessions = groupSessions();
+    if (!sessions.length) return toast.error("Encontros do combo ainda não carregados.");
+    buildConsultationSessionPdfs(sessions).forEach((pdf, i) => {
+      window.setTimeout(() => saveBlob(pdf.blob, pdf.filename), i * 400);
+    });
+  };
+
+  const sendCombo = useMutation({
+    mutationFn: () => {
+      const sessions = groupSessions();
+      if (!sessions.length) throw new Error("Encontros do combo ainda não carregados.");
+      const consolidated = buildConsultationComboReportPdf(sessions);
+      const perSession = buildConsultationSessionPdfs(sessions);
+      const attachments = [
+        { filename: consolidated.filename, base64: consolidated.base64 },
+        ...perSession.slice(0, 7).map((p) => ({ filename: p.filename, base64: p.base64 })),
+      ];
+      return comboEmailFn({
+        data: { id: consultation.id, recipients: emailList(clientRecipients), attachments },
+      });
+    },
+    onSuccess: (r: any) => {
+      toast.success(`Relatório final enviado para ${(r?.recipients ?? []).join(", ")}`);
+      onSaved();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar o relatório final."),
+  });
+
+
+
   return (
     <Dialog open={Boolean(consultation)} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[88dvh] max-w-2xl overflow-y-auto">
