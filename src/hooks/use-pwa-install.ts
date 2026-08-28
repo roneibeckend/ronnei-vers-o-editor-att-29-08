@@ -1,9 +1,10 @@
 import {
-import { gtmPwaInstalled } from "@/lib/gtm";
   useCallback,
   useEffect,
   useState,
 } from "react";
+import { gtmPwaInstalled } from "@/lib/gtm";
+
 
 interface BeforeInstallPromptEvent
   extends Event {
