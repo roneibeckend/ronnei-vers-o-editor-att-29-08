@@ -495,6 +495,51 @@ const consultationAttendanceRequest: Builder = (d) =>
 
 
 
+const consultationNoShow: Builder = (d) =>
+  build({
+    subject: `😕 Não te encontramos na consultoria de ${val(d, ["date", "data"], "hoje")}`,
+    preview: "Sentimos sua falta. Veja como remarcar sua consultoria.",
+    heading: "😕 Sentimos sua falta",
+    subheading: "A reunião foi marcada como não comparecimento.",
+    greeting: `Fala, ${firstName(d)}!`,
+    blocks: [
+      { type: "details", title: "Reunião", rows: consultationRows(d) },
+      {
+        type: "text",
+        text: "Como não houve confirmação nem comparecimento, esse encontro foi encerrado como <strong>falta</strong>. Isso vale apenas para esta reunião — os demais encontros do seu pedido seguem normais.",
+      },
+      {
+        type: "text",
+        text: `Você ainda pode remarcar pela plataforma. Como a falta foi sem aviso prévio, a remarcação tem taxa de <strong>${val(d, ["fee_label", "taxa"], "R$ 29,90")}</strong>.`,
+        highlight: true,
+      },
+      { type: "text", text: "Se aconteceu algum imprevisto, fale com o suporte que a gente avalia o seu caso." },
+    ],
+    cta: { label: "Remarcar minha consultoria", url: link(d, ["link"], LINKS.dashboard) },
+  });
+
+const consultationCancelledByConsultant: Builder = (d) =>
+  build({
+    subject: `⚠️ Sua consultoria de ${val(d, ["date", "data"], "")} precisou ser cancelada`,
+    preview: "Precisamos remarcar sua consultoria. Escolha um novo horário.",
+    heading: "⚠️ Precisamos remarcar",
+    subheading: "O cancelamento partiu da nossa parte.",
+    greeting: `Fala, ${firstName(d)}!`,
+    blocks: [
+      { type: "details", title: "Reunião cancelada", rows: consultationRows(d) },
+      {
+        type: "text",
+        text: `Motivo: ${val(d, ["reason", "motivo"], "imprevisto na agenda do Ronnei")}.`,
+      },
+      {
+        type: "text",
+        text: "Você escolhe: <strong>remarcar sem nenhuma taxa</strong> pela plataforma, ou falar com o suporte para tratar outra solução.",
+        highlight: true,
+      },
+    ],
+    cta: { label: "Escolher novo horário", url: link(d, ["link"], LINKS.dashboard) },
+  });
+
 const consultationConfirmed: Builder = (d) =>
   build({
     subject: `✅ Consultoria confirmada — ${val(d, ["date", "data"], "veja os detalhes")}`,
@@ -644,6 +689,10 @@ export const EMAIL_TEMPLATES: Record<string, Builder> = {
   consultoria_confirmar_presenca: consultationAttendanceRequest,
   consultation_attendance_request: consultationAttendanceRequest,
   consultation_rescheduled: consultationRescheduled,
+  consultoria_falta: consultationNoShow,
+  consultation_no_show: consultationNoShow,
+  consultoria_cancelada_consultor: consultationCancelledByConsultant,
+  consultation_cancelled_by_consultant: consultationCancelledByConsultant,
 
   consultation_confirmed: consultationConfirmed,
   consultoria_lembrete_24h: consultationReminder24h,

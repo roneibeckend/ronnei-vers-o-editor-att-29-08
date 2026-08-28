@@ -698,26 +698,39 @@ export async function runConsultationReminders() {
 
 
 
-  // Reuniões que já passaram entram no fluxo completo de conclusão
-  // (materiais liberados + e-mail + auditoria).
+  // Reuniões que já passaram: quem confirmou presença entra no fluxo de
+  // conclusão; quem nunca confirmou vira falta (no_show) 30 min após o fim.
+  const { NO_SHOW_GRACE_MINUTES, isNoShowDue } = await import("@/lib/consultation-policy");
+
   const { data: finished } = await supabaseAdmin
     .from("consultations")
-    .select("id")
+    .select("*")
     .eq("status", "scheduled")
     .lt("ends_at", new Date(now - 15 * 60_000).toISOString());
 
-  for (const f of finished ?? []) {
+  let noShows = 0;
+  let completedCount = 0;
+
+  for (const f of (finished ?? []) as any[]) {
     try {
-      await completeConsultation(f.id, { actorRole: "system" });
+      if (isNoShowDue(f, now)) {
+        await markConsultationNoShow(f, { actorRole: "system" });
+        noShows++;
+      } else if (f.attendance_confirmed_at) {
+        await completeConsultation(f.id, { actorRole: "system" });
+        completedCount++;
+      }
+      // Sem confirmação e ainda dentro da tolerância: aguarda o próximo ciclo.
     } catch (err) {
       await auditConsultation({
         consultationId: f.id,
         action: "auto_completed",
         status: "error",
-        details: { error: (err as Error)?.message },
+        details: { error: (err as Error)?.message, graceMinutes: NO_SHOW_GRACE_MINUTES },
       });
     }
   }
+
 
   return {
     checked: upcoming?.length ?? 0,
@@ -729,7 +742,9 @@ export async function runConsultationReminders() {
     attendanceRequested,
     attendanceAlerts,
     expiredRescheduleFees: staleFees?.length ?? 0,
-    completed: finished?.length ?? 0,
+    completed: completedCount,
+    noShows,
+
   };
 }
 
@@ -885,4 +900,86 @@ async function confirmSingleConsultation(
     meetLink: google.ok ? google.meetLink : null,
     googleError: google.ok ? null : google.error,
   };
+}
+
+/* ------------------------ Falta e cancelamento ------------------------ */
+
+const SITE_URL = "https://ronneinaveia.com.br";
+
+/** Avisa o aluno que a reunião foi marcada como falta e como remarcar. */
+export async function sendConsultationNoShow(consultation: ConsultationRow, feeLabel: string) {
+  return sendConsultationEmail(
+    consultation,
+    "consultoria_falta",
+    { fee_label: feeLabel, link: `${SITE_URL}/app/consultorias` },
+    `consult-noshow-${consultation.id}`,
+  );
+}
+
+/** Avisa o aluno que o consultor cancelou: remarcar sem taxa ou falar com o suporte. */
+export async function sendConsultationCancelledByConsultant(
+  consultation: ConsultationRow,
+  reason?: string | null,
+) {
+  return sendConsultationEmail(
+    consultation,
+    "consultoria_cancelada_consultor",
+    { reason: reason || "imprevisto na agenda do Ronnei", link: `${SITE_URL}/app/consultorias` },
+    `consult-cancelled-consultant-${consultation.id}`,
+  );
+}
+
+/**
+ * Marca falta em um encontro específico (não afeta os outros do combo).
+ * Falta sem aviso queima a cortesia de remarcação; falta justificada não.
+ */
+export async function markConsultationNoShow(
+  row: any,
+  opts: { actorId?: string | null; actorRole?: string; excused?: boolean; reason?: string } = {},
+) {
+  const { formatFee } = await import("@/lib/consultation-policy");
+  const nowIso = new Date().toISOString();
+
+  const { error } = await supabaseAdmin
+    .from("consultations")
+    .update({
+      status: "no_show",
+      no_show_at: nowIso,
+      no_show_marked_by: opts.actorId ?? null,
+      no_show_excused: !!opts.excused,
+      cancel_reason: opts.reason ?? row.cancel_reason ?? null,
+    } as never)
+    .eq("id", row.id);
+
+  if (error) throw new Error(error.message);
+
+  if (row.google_event_id) {
+    try {
+      await cancelGoogleMeeting(row as never);
+    } catch {
+      /* o evento pode já ter passado — não bloqueia a marcação */
+    }
+  }
+
+  let notified = false;
+  if (!row.no_show_notified_at) {
+    const res = await sendConsultationNoShow({ ...row, status: "no_show" } as never, formatFee());
+    if (!(res as any)?.error) {
+      notified = true;
+      await supabaseAdmin
+        .from("consultations")
+        .update({ no_show_notified_at: nowIso } as never)
+        .eq("id", row.id);
+    }
+  }
+
+  await auditConsultation({
+    consultationId: row.id,
+    actorId: opts.actorId ?? null,
+    actorRole: opts.actorRole ?? "system",
+    action: "no_show",
+    details: { excused: !!opts.excused, notified, scheduled_at: row.scheduled_at },
+  });
+
+  return { noShow: true, notified };
 }

@@ -203,6 +203,10 @@ function ConsultationCard({ consultation, onChanged }: { consultation: any; onCh
 
   const isUpcoming = consultation.status === "scheduled";
   const isAwaitingPayment = consultation.status === "awaiting_payment";
+  const isNoShow = consultation.status === "no_show";
+  const cancelledByConsultant =
+    consultation.status === "cancelled" && consultation.cancelled_by === "admin";
+  const canReschedule = isUpcoming || isNoShow || cancelledByConsultant;
 
   return (
     <Card className="space-y-4 p-5">
@@ -272,6 +276,12 @@ function ConsultationCard({ consultation, onChanged }: { consultation: any; onCh
             </a>
           </Button>
         )}
+        {!isUpcoming && canReschedule && (
+          <Button size="sm" variant="outline" onClick={() => setRescheduling(true)}>
+            <Calendar className="mr-2 h-4 w-4" />
+            Escolher novo horário
+          </Button>
+        )}
         {isUpcoming && (
           <>
             <AttendanceButton consultation={consultation} onDone={onChanged} />
@@ -295,6 +305,21 @@ function ConsultationCard({ consultation, onChanged }: { consultation: any; onCh
           </>
         )}
       </div>
+
+      {isNoShow && (
+        <p className="rounded-md bg-amber-500/10 p-3 text-sm text-amber-600">
+          Este encontro foi marcado como falta. Você pode escolher um novo horário — como não houve aviso
+          prévio, a remarcação tem taxa. Se aconteceu um imprevisto, fale com o suporte.
+        </p>
+      )}
+
+      {cancelledByConsultant && (
+        <p className="rounded-md bg-amber-500/10 p-3 text-sm text-amber-600">
+          Precisamos cancelar este encontro
+          {consultation.cancel_reason ? ` (${consultation.cancel_reason})` : ""}. Você pode remarcar sem
+          nenhuma taxa ou falar com o suporte para tratar outra solução.
+        </p>
+      )}
 
       {isUpcoming && !consultation.briefing && (
         <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
@@ -434,8 +459,15 @@ function RescheduleDialog({
             {policy.requiresFee ? (
               <>
                 <CreditCard className="mr-1 inline h-4 w-4" />
-                Você já usou a remarcação de cortesia deste pedido. Esta remarcação tem taxa de{" "}
+                {policy.reason === "no_show"
+                  ? "Como você faltou sem avisar, esta remarcação tem taxa de "
+                  : "Você já usou a remarcação de cortesia deste pedido. Esta remarcação tem taxa de "}
                 <strong>{policy.feeLabel}</strong> — o novo horário fica reservado após o pagamento.
+              </>
+            ) : policy.reason === "consultant_cancelled" ? (
+              <>
+                <ShieldCheck className="mr-1 inline h-4 w-4" />
+                O cancelamento partiu da nossa parte — esta remarcação é <strong>gratuita</strong>.
               </>
             ) : (
               <>

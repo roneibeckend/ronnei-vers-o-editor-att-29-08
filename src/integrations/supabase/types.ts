@@ -861,6 +861,7 @@ export type Database = {
           briefing_submitted_at: string | null
           calendar_html_link: string | null
           cancel_reason: string | null
+          cancelled_by: string | null
           client_email: string | null
           client_name: string | null
           client_phone: string | null
@@ -881,7 +882,9 @@ export type Database = {
           meeting_script: string | null
           meeting_summary: string | null
           no_show_at: string | null
+          no_show_excused: boolean
           no_show_marked_by: string | null
+          no_show_notified_at: string | null
           paid_at: string | null
           payment_id: string | null
           payment_link_id: string | null
@@ -926,6 +929,7 @@ export type Database = {
           briefing_submitted_at?: string | null
           calendar_html_link?: string | null
           cancel_reason?: string | null
+          cancelled_by?: string | null
           client_email?: string | null
           client_name?: string | null
           client_phone?: string | null
@@ -946,7 +950,9 @@ export type Database = {
           meeting_script?: string | null
           meeting_summary?: string | null
           no_show_at?: string | null
+          no_show_excused?: boolean
           no_show_marked_by?: string | null
+          no_show_notified_at?: string | null
           paid_at?: string | null
           payment_id?: string | null
           payment_link_id?: string | null
@@ -991,6 +997,7 @@ export type Database = {
           briefing_submitted_at?: string | null
           calendar_html_link?: string | null
           cancel_reason?: string | null
+          cancelled_by?: string | null
           client_email?: string | null
           client_name?: string | null
           client_phone?: string | null
@@ -1011,7 +1018,9 @@ export type Database = {
           meeting_script?: string | null
           meeting_summary?: string | null
           no_show_at?: string | null
+          no_show_excused?: boolean
           no_show_marked_by?: string | null
+          no_show_notified_at?: string | null
           paid_at?: string | null
           payment_id?: string | null
           payment_link_id?: string | null

@@ -16,7 +16,7 @@ import {
   RESCHEDULE_FEE_BRL,
   RESCHEDULE_FEE_HOLD_MINUTES,
   formatFee,
-  rescheduleRequiresFee,
+  rescheduleFeeDecision,
 } from "@/lib/consultation-policy";
 
 const SITE = "https://ronneinaveia.com.br";
@@ -149,9 +149,30 @@ export async function orderRescheduleCount(row: { id: string; booking_group?: st
   return (data ?? []).reduce((sum: number, r: any) => sum + Number(r.reschedule_count ?? 0), 0);
 }
 
-/** A próxima remarcação deste encontro é paga? */
-export async function rescheduleNeedsFee(row: { id: string; booking_group?: string | null }) {
-  return rescheduleRequiresFee(await orderRescheduleCount(row));
+/**
+ * A próxima remarcação deste encontro é paga?
+ * Falta sem aviso queima a cortesia; cancelamento pelo consultor é sempre grátis.
+ */
+export async function rescheduleNeedsFee(row: {
+  id: string;
+  booking_group?: string | null;
+  status?: string | null;
+  no_show_excused?: boolean | null;
+  cancelled_by?: string | null;
+}) {
+  return (await rescheduleFeeInfo(row)).requiresFee;
+}
+
+/** Detalha a decisão de taxa (usada no painel do aluno). */
+export async function rescheduleFeeInfo(row: {
+  id: string;
+  booking_group?: string | null;
+  status?: string | null;
+  no_show_excused?: boolean | null;
+  cancelled_by?: string | null;
+}) {
+  const used = await orderRescheduleCount(row);
+  return { used, ...rescheduleFeeDecision(row, used) };
 }
 
 /**
@@ -177,9 +198,14 @@ export async function applyConsultationReschedule(
       ends_at: endIso,
       status: "scheduled",
       reschedule_count: Number(row.reschedule_count ?? 0) + 1,
+      cancelled_by: null,
+      cancel_reason: null,
+      no_show_at: null,
+      no_show_excused: false,
+      no_show_notified_at: null,
       attendance_confirmed_at: null,
       attendance_requested_at: null,
-      no_show_at: null,
+
       reminder_24h_sent_at: null,
       reminder_8h_sent_at: null,
       reminder_1h_sent_at: null,
