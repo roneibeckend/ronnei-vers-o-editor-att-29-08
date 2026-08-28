@@ -338,11 +338,14 @@ async function sendConsultationEmail(
       title: consultation.product_title,
       date: formatBR(consultation.scheduled_at),
       duration: `${consultation.duration_minutes} minutos`,
+      session_index: (consultation as any).session_index ?? null,
+      sessions_total: (consultation as any).sessions_total ?? null,
       meet_link: consultation.meet_link || DASH,
       link: consultation.meet_link || DASH,
       briefing_link: DASH,
       ...extra,
     },
+
   };
 
   try {
