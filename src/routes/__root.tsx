@@ -353,7 +353,12 @@ function RootComponent() {
       search.has("code") ||
       hash.has("access_token") ||
       ((search.has("token_hash") || search.has("token")) && search.has("type"));
-    if (!hasAuthPayload) return;
+    // O supabase-js pode já ter consumido o hash antes deste efeito; o script
+    // do <head> registra esse retorno em __RNV_AUTH_RETURN__.
+    const isAuthReturn =
+      hasAuthPayload || (window as any).__RNV_AUTH_RETURN__ === true;
+    if (!isAuthReturn) return;
+    (window as any).__RNV_AUTH_RETURN__ = false;
 
     let cancelled = false;
     (async () => {
@@ -364,6 +369,7 @@ function RootComponent() {
       queryClient.clear();
       router.navigate({ to: result.redirectTo, replace: true });
     })();
+
     return () => {
       cancelled = true;
     };
