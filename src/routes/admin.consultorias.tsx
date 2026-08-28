@@ -17,6 +17,7 @@ import {
   attachConsultationRecording,
   runConsultationRemindersNow,
   saveConsultationNotes,
+  sendConsultationReportEmail,
 } from "@/lib/consultations-admin.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -40,8 +41,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { generateConsultationReportPdf } from "@/lib/consultation-pdf";
-import { Loader2, Plus, Trash2, RefreshCw, Video, Bell, ShieldCheck, FileText } from "lucide-react";
+import { generateConsultationReportPdf, buildConsultationReportPdf } from "@/lib/consultation-pdf";
+import { useAuth } from "@/hooks/use-auth";
+import { Loader2, Plus, Trash2, RefreshCw, Video, Bell, ShieldCheck, FileText, Mail } from "lucide-react";
 
 export const Route = createFileRoute("/admin/consultorias")({
   head: () => ({
