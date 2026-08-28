@@ -50,3 +50,43 @@ export function shouldAlertUnconfirmed(
   const ahead = (+new Date(row.scheduled_at) - (now instanceof Date ? now.getTime() : now)) / 60_000;
   return ahead > 0 && ahead <= ATTENDANCE_ALERT_AHEAD_MINUTES;
 }
+
+/* ----------------------- Falta (no-show) e cancelamento ----------------------- */
+
+/** Tolerância após o fim da reunião antes de marcar falta automaticamente. */
+export const NO_SHOW_GRACE_MINUTES = 30;
+
+/**
+ * A reunião já pode ser marcada como falta?
+ * Regra: passou o fim + 30 min e o aluno nunca confirmou presença.
+ * Quem confirmou presença segue para conclusão normal (o Ronnei pode corrigir
+ * manualmente no admin caso o aluno não tenha aparecido mesmo assim).
+ */
+export function isNoShowDue(
+  row: { ends_at: string; attendance_confirmed_at?: string | null },
+  now: number | Date = Date.now(),
+) {
+  if (row.attendance_confirmed_at) return false;
+  const ms = now instanceof Date ? now.getTime() : now;
+  return ms >= +new Date(row.ends_at) + NO_SHOW_GRACE_MINUTES * 60_000;
+}
+
+/**
+ * Falta sem aviso queima a cortesia: a próxima remarcação é sempre paga.
+ * Falta justificada (cancelou/avisou antes) mantém a cortesia.
+ * Quando o cancelamento partiu do consultor, a remarcação é sempre gratuita.
+ */
+export function rescheduleFeeDecision(
+  row: {
+    status?: string | null;
+    no_show_excused?: boolean | null;
+    cancelled_by?: string | null;
+  },
+  usedInOrder: number,
+): { requiresFee: boolean; reason: "consultant_cancelled" | "no_show" | "courtesy" | "used_up" } {
+  if (row.cancelled_by === "admin") return { requiresFee: false, reason: "consultant_cancelled" };
+  if (row.status === "no_show" && !row.no_show_excused) return { requiresFee: true, reason: "no_show" };
+  return rescheduleRequiresFee(usedInOrder)
+    ? { requiresFee: true, reason: "used_up" }
+    : { requiresFee: false, reason: "courtesy" };
+}
