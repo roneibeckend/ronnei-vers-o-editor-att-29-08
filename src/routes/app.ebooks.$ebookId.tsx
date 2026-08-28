@@ -2,6 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { Lock, ChevronLeft, ChevronRight, Loader2, ShoppingCart, BookOpen, CheckCircle2, X, Play, ArrowDown, Award, Download } from "lucide-react";
 import { VideoPlayer } from "@/components/platform/VideoPlayer";
+import { LessonPlayer } from "@/components/platform/LessonPlayer";
 import ebookVideoCoverAsset from "@/assets/capa-video-ebook.png.asset.json";
 
 import { needsSignedUrl } from "@/lib/video-source";
@@ -45,7 +46,7 @@ export const Route = createFileRoute("/app/ebooks/$ebookId")({
     const ebookQuery = supabase
       .from("ebooks")
       .select(`
-        id, title, subtitle, description, price, cover_url, opening_video_url, payment_type, due_days, status,
+        id, title, subtitle, description, price, cover_url, opening_video_url, opening_video_provider, opening_video_id, opening_video_aspect, payment_type, due_days, status,
         modules:ebook_modules (
           id, title, order_index
         )
@@ -56,7 +57,7 @@ export const Route = createFileRoute("/app/ebooks/$ebookId")({
     // Busca os capítulos separadamente para evitar problemas com junções complexas
     const chaptersQuery = supabase
       .from("ebook_chapters")
-      .select(`id, title, content, video_url, reading_minutes, order_index, module_id`)
+      .select(`id, title, content, video_url, video_provider, video_id, video_aspect, reading_minutes, order_index, module_id`)
       .eq("ebook_id", params.ebookId);
 
     // Verifica matricula se o usuário estiver logado
@@ -86,7 +87,7 @@ export const Route = createFileRoute("/app/ebooks/$ebookId")({
         isEnrolled = true;
         const [refetchEbook, refetchChapters] = await Promise.all([
           supabase.from("ebooks").select(`modules:ebook_modules ( id, title, order_index )`).eq("id", params.ebookId).single(),
-          supabase.from("ebook_chapters").select(`id, title, content, video_url, reading_minutes, order_index, module_id`).eq("ebook_id", params.ebookId),
+          supabase.from("ebook_chapters").select(`id, title, content, video_url, video_provider, video_id, video_aspect, reading_minutes, order_index, module_id`).eq("ebook_id", params.ebookId),
         ]);
         if (refetchChapters.data) chapters = refetchChapters.data;
         if (refetchEbook.data?.modules) (ebook as any).modules = refetchEbook.data.modules;
@@ -782,15 +783,18 @@ function EbookReaderPage() {
                 {introNeedsSigning && !signedIntroUrl ? (
                   <div className="w-full h-full flex items-center justify-center"><Loader2 className="animate-spin text-fire" /></div>
                 ) : (
-                  <VideoPlayer
+                  <LessonPlayer
                     key={signedIntroUrl || ebook.opening_video_url}
                     videoId={`intro-${ebook.id}`}
-                    src={signedIntroUrl || ebook.opening_video_url}
+                    videoUrl={signedIntroUrl || ebook.opening_video_url}
+                    provider={(ebook as any).opening_video_provider}
+                    providerVideoId={(ebook as any).opening_video_id}
+                    aspect={(ebook as any).opening_video_aspect || "portrait"}
                     poster={ebookVideoCoverAsset.url}
                     preferPoster
                     isIntro={false}
-                    aspect="portrait"
                     fit="contain"
+                    frameless
                     className="!aspect-auto h-full w-full rounded-none sm:rounded-3xl"
                     autoStart
                     onEnded={() => {
@@ -844,12 +848,15 @@ function EbookReaderPage() {
                       {needsSignedUrl(activeChapter.video_url) && (isLoadingSignedChapter || !signedChapterUrl) ? (
                         <div className="w-full h-full flex items-center justify-center"><Loader2 className="animate-spin text-fire" /></div>
                       ) : (
-                        <VideoPlayer
+                        <LessonPlayer
                           videoId={`chapter-${activeChapter.id}`}
-                          src={signedChapterUrl || activeChapter.video_url}
+                          videoUrl={signedChapterUrl || activeChapter.video_url}
+                          provider={(activeChapter as any).video_provider}
+                          providerVideoId={(activeChapter as any).video_id}
+                          aspect={(activeChapter as any).video_aspect || "portrait"}
                           poster={ebookVideoCoverAsset.url}
                           preferPoster
-                          aspect="portrait"
+                          frameless
                           className="w-full h-full"
                         />
                       )}
