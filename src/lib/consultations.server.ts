@@ -766,7 +766,24 @@ export async function runConsultationReminders() {
   }
 
 
+  if (failed > 0) {
+    try {
+      const { raiseOpsAlert } = await import("@/lib/ops-alerts.server");
+      await raiseOpsAlert({
+        type: "consultation_reminders",
+        dedupKey: `consultation_reminders:${new Date(now).toISOString().slice(0, 13)}`,
+        title: "Lembretes de consultoria falharam",
+        message: `${failed} lembrete(s) não puderam ser enviados neste ciclo. Verifique Admin → Consultorias → Automações.`,
+        severity: "warning",
+        details: { failed, failures: failures.slice(0, 10) },
+      });
+    } catch (err) {
+      console.warn("[consultorias] falha ao emitir alerta de lembretes:", err);
+    }
+  }
+
   return {
+
     checked: upcoming?.length ?? 0,
     sent24h,
     sent8h,
