@@ -74,6 +74,7 @@ import { Route as ApiPublicOpsRecoveryRouteImport } from './routes/api/public/op
 import { Route as ApiPublicDriveVideoRouteImport } from './routes/api/public/drive-video'
 import { Route as ApiPublicDailyUpdatesReportRouteImport } from './routes/api/public/daily-updates-report'
 import { Route as ApiPublicDailyFinancialReportRouteImport } from './routes/api/public/daily-financial-report'
+import { Route as ApiPublicConsultoriaPresencaRouteImport } from './routes/api/public/consultoria-presenca'
 import { Route as ApiPublicConsultationRemindersRouteImport } from './routes/api/public/consultation-reminders'
 import { Route as ApiPublicConsultationRecordingsRouteImport } from './routes/api/public/consultation-recordings'
 import { Route as AdminRankingCampanhasRouteImport } from './routes/admin.ranking.campanhas'
@@ -409,6 +410,12 @@ const ApiPublicDailyFinancialReportRoute =
     path: '/api/public/daily-financial-report',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicConsultoriaPresencaRoute =
+  ApiPublicConsultoriaPresencaRouteImport.update({
+    id: '/api/public/consultoria-presenca',
+    path: '/api/public/consultoria-presenca',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicConsultationRemindersRoute =
   ApiPublicConsultationRemindersRouteImport.update({
     id: '/api/public/consultation-reminders',
@@ -505,6 +512,7 @@ export interface FileRoutesByFullPath {
   '/admin/ranking/campanhas': typeof AdminRankingCampanhasRoute
   '/api/public/consultation-recordings': typeof ApiPublicConsultationRecordingsRoute
   '/api/public/consultation-reminders': typeof ApiPublicConsultationRemindersRoute
+  '/api/public/consultoria-presenca': typeof ApiPublicConsultoriaPresencaRoute
   '/api/public/daily-financial-report': typeof ApiPublicDailyFinancialReportRoute
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
@@ -575,6 +583,7 @@ export interface FileRoutesByTo {
   '/admin/ranking/campanhas': typeof AdminRankingCampanhasRoute
   '/api/public/consultation-recordings': typeof ApiPublicConsultationRecordingsRoute
   '/api/public/consultation-reminders': typeof ApiPublicConsultationRemindersRoute
+  '/api/public/consultoria-presenca': typeof ApiPublicConsultoriaPresencaRoute
   '/api/public/daily-financial-report': typeof ApiPublicDailyFinancialReportRoute
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
@@ -650,6 +659,7 @@ export interface FileRoutesById {
   '/admin/ranking/campanhas': typeof AdminRankingCampanhasRoute
   '/api/public/consultation-recordings': typeof ApiPublicConsultationRecordingsRoute
   '/api/public/consultation-reminders': typeof ApiPublicConsultationRemindersRoute
+  '/api/public/consultoria-presenca': typeof ApiPublicConsultoriaPresencaRoute
   '/api/public/daily-financial-report': typeof ApiPublicDailyFinancialReportRoute
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
@@ -726,6 +736,7 @@ export interface FileRouteTypes {
     | '/admin/ranking/campanhas'
     | '/api/public/consultation-recordings'
     | '/api/public/consultation-reminders'
+    | '/api/public/consultoria-presenca'
     | '/api/public/daily-financial-report'
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
@@ -796,6 +807,7 @@ export interface FileRouteTypes {
     | '/admin/ranking/campanhas'
     | '/api/public/consultation-recordings'
     | '/api/public/consultation-reminders'
+    | '/api/public/consultoria-presenca'
     | '/api/public/daily-financial-report'
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
@@ -870,6 +882,7 @@ export interface FileRouteTypes {
     | '/admin/ranking/campanhas'
     | '/api/public/consultation-recordings'
     | '/api/public/consultation-reminders'
+    | '/api/public/consultoria-presenca'
     | '/api/public/daily-financial-report'
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
@@ -905,6 +918,7 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   ApiPublicConsultationRecordingsRoute: typeof ApiPublicConsultationRecordingsRoute
   ApiPublicConsultationRemindersRoute: typeof ApiPublicConsultationRemindersRoute
+  ApiPublicConsultoriaPresencaRoute: typeof ApiPublicConsultoriaPresencaRoute
   ApiPublicDailyFinancialReportRoute: typeof ApiPublicDailyFinancialReportRoute
   ApiPublicDailyUpdatesReportRoute: typeof ApiPublicDailyUpdatesReportRoute
   ApiPublicDriveVideoRoute: typeof ApiPublicDriveVideoRoute
@@ -1371,6 +1385,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicDailyFinancialReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/consultoria-presenca': {
+      id: '/api/public/consultoria-presenca'
+      path: '/api/public/consultoria-presenca'
+      fullPath: '/api/public/consultoria-presenca'
+      preLoaderRoute: typeof ApiPublicConsultoriaPresencaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/consultation-reminders': {
       id: '/api/public/consultation-reminders'
       path: '/api/public/consultation-reminders'
@@ -1585,6 +1606,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   ApiPublicConsultationRecordingsRoute: ApiPublicConsultationRecordingsRoute,
   ApiPublicConsultationRemindersRoute: ApiPublicConsultationRemindersRoute,
+  ApiPublicConsultoriaPresencaRoute: ApiPublicConsultoriaPresencaRoute,
   ApiPublicDailyFinancialReportRoute: ApiPublicDailyFinancialReportRoute,
   ApiPublicDailyUpdatesReportRoute: ApiPublicDailyUpdatesReportRoute,
   ApiPublicDriveVideoRoute: ApiPublicDriveVideoRoute,

@@ -211,7 +211,23 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
             throw new Error(`Falha ao registrar pagamento confirmado: ${paymentError.message}`);
           }
 
+          // TAXA DE REMARCAÇÃO: aplica o novo horário guardado na reserva.
+          if (productType === 'consultation_fee') {
+            const { applyPaidReschedule } = await import('@/lib/consultation-attendance.server');
+            const consultationId = (parsed as any).consultationId as string | null;
+            if (!consultationId) {
+              throw new Error('Referência da consultoria ausente na taxa de remarcação.');
+            }
+            const feeResult = await applyPaidReschedule(consultationId, paymentId);
+            return Response.json({
+              received: true,
+              processed: feeResult.ok,
+              type: 'consultation_fee',
+            });
+          }
+
           // CONSULTORIA: confirma a reserva, cria Calendar/Meet e envia o e-mail.
+
           if (productType === 'consultation') {
             const { confirmConsultationPayment } = await import('@/lib/consultations.server');
             const consultationId = (parsed as any).consultationId as string | null;

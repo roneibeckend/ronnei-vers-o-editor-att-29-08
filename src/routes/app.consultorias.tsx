@@ -14,6 +14,10 @@ import {
   submitConsultationBriefing,
   cancelMyConsultation,
   rescheduleMyConsultation,
+  confirmMyAttendance,
+  getMyReschedulePolicy,
+
+
 
 } from "@/lib/consultations.functions";
 import { Button } from "@/components/ui/button";
@@ -270,6 +274,7 @@ function ConsultationCard({ consultation, onChanged }: { consultation: any; onCh
         )}
         {isUpcoming && (
           <>
+            <AttendanceButton consultation={consultation} onDone={onChanged} />
             <Button size="sm" variant="outline" onClick={() => setEditing((v) => !v)}>
               <FileText className="mr-2 h-4 w-4" />
               {consultation.briefing ? "Editar briefing" : "Preencher briefing"}
@@ -317,6 +322,36 @@ function ConsultationCard({ consultation, onChanged }: { consultation: any; onCh
   );
 }
 
+/** Confirmação de presença em 1 clique (mesma ação do e-mail de 24h antes). */
+function AttendanceButton({ consultation, onDone }: { consultation: any; onDone: () => void }) {
+  const confirm = useServerFn(confirmMyAttendance);
+  const mutation = useMutation({
+    mutationFn: () => confirm({ data: { id: consultation.id } }),
+    onSuccess: () => {
+      toast.success("Presença confirmada. Nos vemos no horário marcado!");
+      onDone();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível confirmar."),
+  });
+
+  if (consultation.attendance_confirmed_at) {
+    return (
+      <Badge variant="secondary" className="gap-1 self-center">
+        <ShieldCheck className="h-3.5 w-3.5" />
+        Presença confirmada
+      </Badge>
+    );
+  }
+
+  return (
+    <Button size="sm" variant="secondary" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
+      {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+      Confirmar presença
+    </Button>
+  );
+}
+
+
 /** Reagenda um encontro específico mantendo a mesma compra. */
 function RescheduleDialog({
   consultation,
@@ -348,10 +383,22 @@ function RescheduleDialog({
     return Array.from(map.entries());
   }, [slots]);
 
+  const policyFn = useServerFn(getMyReschedulePolicy);
+  const { data: policy } = useQuery({
+    queryKey: ["reschedule-policy", consultation.id],
+    queryFn: () => policyFn({ data: { id: consultation.id } }),
+    enabled: open,
+  });
+
   const move = useMutation({
     mutationFn: (startIso: string) => reschedule({ data: { id: consultation.id, startIso } }),
-    onSuccess: () => {
-      toast.success("Encontro reagendado. Enviamos o novo horário e o link do Meet por e-mail.");
+    onSuccess: (result: any) => {
+      if (result?.requiresPayment) {
+        toast.info(`Taxa de ${result.amountLabel} gerada. Finalize o pagamento para confirmar o novo horário.`);
+        window.open(result.paymentUrl, "_blank", "noopener");
+      } else {
+        toast.success("Encontro reagendado. Enviamos o novo horário e o link do Meet por e-mail.");
+      }
       onClose();
       setDate(null);
       onDone();
@@ -377,6 +424,40 @@ function RescheduleDialog({
           {" · "}
           {consultation.duration_minutes} min. A compra e os demais encontros do combo permanecem os mesmos.
         </p>
+
+        {policy && (
+          <div
+            className={`rounded-md p-3 text-sm ${
+              policy.requiresFee ? "bg-amber-500/10 text-amber-600" : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {policy.requiresFee ? (
+              <>
+                <CreditCard className="mr-1 inline h-4 w-4" />
+                Você já usou a remarcação de cortesia deste pedido. Esta remarcação tem taxa de{" "}
+                <strong>{policy.feeLabel}</strong> — o novo horário fica reservado após o pagamento.
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="mr-1 inline h-4 w-4" />
+                Você ainda tem <strong>1 remarcação gratuita</strong> neste pedido. Da próxima em diante,
+                a remarcação tem taxa de <strong>{policy.feeLabel}</strong>.
+              </>
+            )}
+          </div>
+        )}
+
+        {policy?.pendingPaymentUrl && (
+          <a
+            href={policy.pendingPaymentUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="block rounded-md bg-primary/10 p-3 text-sm font-medium text-primary underline"
+          >
+            Há uma taxa de remarcação aguardando pagamento — finalizar agora
+          </a>
+        )}
+
 
         {isLoading ? (
           <div className="flex h-24 items-center justify-center">

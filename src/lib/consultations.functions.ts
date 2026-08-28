@@ -372,7 +372,7 @@ export const listMyConsultations = createServerFn({ method: "GET" })
     const { data } = await supabaseAdmin
       .from("consultations")
       .select(
-        "id, product_id, product_title, scheduled_at, ends_at, duration_minutes, status, hold_expires_at, payment_url, paid_at, briefing, briefing_data, meet_link, calendar_html_link, recording_url, recording_file_id, student_notes, action_plan, materials, materials_released_at, cancel_reason, completed_at, amount, created_at, booking_group, session_index, sessions_total",
+        "id, product_id, product_title, scheduled_at, ends_at, duration_minutes, status, hold_expires_at, payment_url, paid_at, briefing, briefing_data, meet_link, calendar_html_link, recording_url, recording_file_id, student_notes, action_plan, materials, materials_released_at, cancel_reason, completed_at, amount, created_at, booking_group, session_index, sessions_total, attendance_requested_at, attendance_confirmed_at, no_show_at, reschedule_count, pending_reschedule_at, pending_reschedule_payment_url, pending_reschedule_expires_at",
       )
       .eq("user_id", context.userId)
       .order("scheduled_at", { ascending: false });
@@ -380,9 +380,62 @@ export const listMyConsultations = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+/** Confirma a presença do aluno pela plataforma (mesma ação do e-mail). */
+export const confirmMyAttendance = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("consultations")
+      .select("id, user_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!row || row.user_id !== context.userId) throw new Error("Consultoria não encontrada.");
+
+    const { confirmAttendance } = await import("@/lib/consultation-attendance.server");
+    const result = await confirmAttendance(data.id, "student");
+    if (!result.ok) throw new Error(result.error);
+    return { confirmed: true };
+  });
+
+/** Política de remarcação do pedido: quantas cortesias restam e qual a taxa. */
+export const getMyReschedulePolicy = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("consultations")
+      .select("id, user_id, booking_group, pending_reschedule_at, pending_reschedule_payment_url")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!row || row.user_id !== context.userId) throw new Error("Consultoria não encontrada.");
+
+    const { orderRescheduleCount } = await import("@/lib/consultation-attendance.server");
+    const { freeReschedulesLeft, rescheduleRequiresFee, RESCHEDULE_FEE_BRL, formatFee } = await import(
+      "@/lib/consultation-policy"
+    );
+    const used = await orderRescheduleCount(row as never);
+
+    return {
+      used,
+      freeLeft: freeReschedulesLeft(used),
+      requiresFee: rescheduleRequiresFee(used),
+      fee: RESCHEDULE_FEE_BRL,
+      feeLabel: formatFee(),
+      pendingAt: (row as any).pending_reschedule_at ?? null,
+      pendingPaymentUrl: (row as any).pending_reschedule_payment_url ?? null,
+    };
+  });
+
 /**
  * Reagenda um encontro específico (inclusive de um combo) mantendo a mesma
  * compra: atualiza o horário, move o evento/Meet no Google e avisa o aluno.
+ *
+ * Política: a 1ª remarcação do pedido é gratuita (inclusive quando o aluno
+ * faltou). Da 2ª em diante geramos a taxa e só movemos o horário depois do
+ * pagamento aprovado (webhook).
  */
 export const rescheduleMyConsultation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -391,16 +444,12 @@ export const rescheduleMyConsultation = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const {
-      isSlotFree,
-      isWithinAvailability,
-      auditConsultation,
-      rescheduleGoogleMeeting,
-      sendConsultationRescheduled,
-      CONSULTATION_TZ,
-      MIN_LEAD_MINUTES,
-      MAX_MINUTES_PER_DAY,
-    } = await import("@/lib/consultations.server");
+    const { isSlotFree, isWithinAvailability, CONSULTATION_TZ, MIN_LEAD_MINUTES, MAX_MINUTES_PER_DAY } =
+      await import("@/lib/consultations.server");
+    const { applyConsultationReschedule, createRescheduleFeeCharge, rescheduleNeedsFee } = await import(
+      "@/lib/consultation-attendance.server"
+    );
+    const { RESCHEDULE_LEAD_HOURS } = await import("@/lib/consultation-policy");
 
     const { data: row } = await supabaseAdmin
       .from("consultations")
@@ -409,9 +458,17 @@ export const rescheduleMyConsultation = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (!row || row.user_id !== context.userId) throw new Error("Consultoria não encontrada.");
-    if (row.status !== "scheduled") throw new Error("Somente reuniões confirmadas podem ser reagendadas.");
-    if (+new Date(row.scheduled_at) - Date.now() < 12 * 3600_000) {
-      throw new Error("Reagendamentos só podem ser feitos com 12 horas de antecedência. Fale com o suporte.");
+
+    const isNoShow = row.status === "no_show";
+    if (!isNoShow && row.status !== "scheduled") {
+      throw new Error("Somente reuniões confirmadas podem ser reagendadas.");
+    }
+    // Quem faltou remarca a qualquer momento; quem vai remarcar antes precisa
+    // avisar com antecedência.
+    if (!isNoShow && +new Date(row.scheduled_at) - Date.now() < RESCHEDULE_LEAD_HOURS * 3600_000) {
+      throw new Error(
+        `Reagendamentos só podem ser feitos com ${RESCHEDULE_LEAD_HOURS} horas de antecedência. Fale com o suporte.`,
+      );
     }
 
     const start = new Date(data.startIso);
@@ -444,47 +501,28 @@ export const rescheduleMyConsultation = createServerFn({ method: "POST" })
     if (!(await isWithinAvailability(start.toISOString(), end.toISOString()))) {
       throw new Error("Escolha um horário dentro da grade de disponibilidade.");
     }
-    if (!(await isSlotFree(start.toISOString(), end.toISOString()))) {
+    if (!(await isSlotFree(start.toISOString(), end.toISOString(), row.id))) {
       throw new Error("Esse horário acabou de ser reservado. Escolha outro.");
     }
 
-    const previousIso = row.scheduled_at;
+    // Segunda remarcação em diante: gera a taxa e aguarda o pagamento.
+    if (await rescheduleNeedsFee(row as never)) {
+      return createRescheduleFeeCharge({
+        row,
+        userId: context.userId,
+        startIso: start.toISOString(),
+        endIso: end.toISOString(),
+      });
+    }
 
-    const { error } = await supabaseAdmin
-      .from("consultations")
-      .update({
-        scheduled_at: start.toISOString(),
-        ends_at: end.toISOString(),
-        // Novos lembretes precisam ser reenviados para o novo horário.
-        reminder_24h_sent_at: null,
-        reminder_8h_sent_at: null,
-        reminder_1h_sent_at: null,
-      } as never)
-      .eq("id", row.id);
-
-    if (error) throw new Error(`Falha ao reagendar: ${error.message}`);
-
-    const google = await rescheduleGoogleMeeting(row as never, start.toISOString(), end.toISOString());
-
-    const updated = {
-      ...(row as any),
-      scheduled_at: start.toISOString(),
-      ends_at: end.toISOString(),
-      meet_link: (google as any)?.meetLink ?? row.meet_link,
-    };
-
-    await sendConsultationRescheduled(updated as never, previousIso);
-
-    await auditConsultation({
-      consultationId: row.id,
+    const result = await applyConsultationReschedule(row, start.toISOString(), end.toISOString(), {
       actorId: context.userId,
       actorRole: "student",
-      action: "rescheduled",
-      details: { from: previousIso, to: start.toISOString(), google: (google as any)?.ok ?? null },
     });
 
-    return { rescheduled: true, scheduledAt: start.toISOString(), meetLink: updated.meet_link };
+    return { requiresPayment: false as const, ...result };
   });
+
 
 
 /** Envia/atualiza o briefing obrigatório antes da reunião. */

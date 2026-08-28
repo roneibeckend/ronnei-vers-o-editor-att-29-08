@@ -632,7 +632,55 @@ export const getConsultationAutomations = createServerFn({ method: "GET" })
     };
   });
 
+/* --------------------- Presença: pendentes de contato --------------------- */
+
+/** Alunos com encontro nas próximas 48h que ainda não confirmaram presença. */
+export const getAttendancePanel = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const now = Date.now();
+
+    const { data } = await supabaseAdmin
+      .from("consultations")
+      .select(
+        "id, client_name, client_email, client_phone, product_title, scheduled_at, duration_minutes, meet_link, attendance_requested_at, attendance_confirmed_at, reschedule_count, booking_group, session_index, sessions_total",
+      )
+      .eq("status", "scheduled")
+      .gte("scheduled_at", new Date(now).toISOString())
+      .lte("scheduled_at", new Date(now + 48 * 3600_000).toISOString())
+      .order("scheduled_at", { ascending: true });
+
+    const rows = data ?? [];
+    return {
+      pending: rows.filter((r: any) => !r.attendance_confirmed_at),
+      confirmed: rows.filter((r: any) => r.attendance_confirmed_at),
+      total: rows.length,
+    };
+  });
+
+/** Reenvia manualmente o pedido de confirmação de presença. */
+export const resendAttendanceRequest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("consultations")
+      .select("*")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!row) throw new Error("Consultoria não encontrada.");
+
+    const { requestAttendanceConfirmation } = await import("@/lib/consultation-attendance.server");
+    await requestAttendanceConfirmation(row as never);
+    return { sent: true };
+  });
+
 /* ------------------------- Gravações automáticas ------------------------- */
+
 
 /** Painel Admin → Consultorias → Gravações. */
 export const getConsultationRecordingsPanel = createServerFn({ method: "GET" })
