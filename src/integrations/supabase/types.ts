@@ -3645,6 +3645,7 @@ export type Database = {
         Args: { p_content: string; p_ticket_id: string }
         Returns: undefined
       }
+      trigger_consultation_reminders: { Args: never; Returns: undefined }
       trigger_daily_report: { Args: never; Returns: undefined }
       trigger_ops_recovery: { Args: never; Returns: undefined }
       update_expired_live_classes: { Args: never; Returns: undefined }
