@@ -293,9 +293,99 @@ function MeetingsTab({ consultations, onChanged }: { consultations: any[]; onCha
         onClose={() => setManaging(null)}
         onSaved={onChanged}
       />
+
+      <ScriptDialog
+        consultation={scriptFor}
+        onClose={() => setScriptFor(null)}
+        onSaved={onChanged}
+      />
     </div>
   );
 }
+
+/** Roteiro do Ronnei: edita, salva no banco e gera o PDF já com o texto. */
+function ScriptDialog({
+  consultation,
+  onClose,
+  onSaved,
+}: {
+  consultation: any | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [script, setScript] = useState("");
+  const [loadedId, setLoadedId] = useState<string | null>(null);
+  const saveNotes = useServerFn(saveConsultationNotes);
+
+  if (consultation && loadedId !== consultation.id) {
+    setLoadedId(consultation.id);
+    setScript(consultation.meeting_script ?? "");
+  }
+
+  const save = useMutation({
+    mutationFn: () => saveNotes({ data: { id: consultation.id, meetingScript: script } as any }),
+    onSuccess: (_r, _v, ctx: any) => {
+      onSaved();
+      if (ctx?.withPdf !== false) return;
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao salvar o roteiro."),
+  });
+
+  const handle = async (withPdf: boolean) => {
+    await save.mutateAsync();
+    if (withPdf) {
+      try {
+        generateConsultationReportPdf({ ...consultation, meeting_script: script });
+        toast.success("Relatório em PDF gerado com o roteiro.");
+      } catch {
+        toast.error("Não foi possível gerar o PDF.");
+      }
+    } else {
+      toast.success("Roteiro salvo.");
+    }
+    onClose();
+  };
+
+  return (
+    <Dialog open={Boolean(consultation)} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Roteiro da reunião</DialogTitle>
+        </DialogHeader>
+        {consultation && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {consultation.client_name || "Aluno"} · {dateBR(consultation.scheduled_at)}
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="meeting-script">Roteiro / análise para o Ronnei</Label>
+              <Textarea
+                id="meeting-script"
+                rows={12}
+                value={script}
+                onChange={(e) => setScript(e.target.value)}
+                placeholder="Pontos de análise, perguntas-chave, plano da conversa..."
+              />
+              <p className="text-xs text-muted-foreground">
+                O texto fica salvo e é reaproveitado automaticamente no próximo PDF.
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button variant="outline" disabled={save.isPending} onClick={() => handle(false)}>
+                Salvar roteiro
+              </Button>
+              <Button disabled={save.isPending} onClick={() => handle(true)}>
+                {save.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                Salvar e gerar PDF
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 function RecordingDialog({
   consultation,
