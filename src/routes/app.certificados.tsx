@@ -8,7 +8,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getStudentCertificates } from "@/lib/certificates-student.functions";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { gtmCertificateIssued } from "@/lib/gtm";
+import { gtmCertificateIssued, gtmCertificateDownloaded } from "@/lib/gtm";
 import { CertificateQrCode, CERT_VERIFY_DOMAIN, certificateVerifyUrl } from "@/components/platform/CertificateQrCode";
 
 
@@ -120,6 +120,17 @@ function CertificatesPage() {
   });
 
   const [preview, setPreview] = useState<{ cert: any; autoDownload?: boolean } | null>(null);
+  // Emissão: dispara uma única vez por certificado, quando ele passa a existir.
+  useEffect(() => {
+    certificates.forEach((c: any) => {
+      gtmCertificateIssued({
+        certificateId: String(c.id),
+        courseId: String(c.content_id ?? c.courseId ?? c.id),
+        courseName: c.course ?? c.title,
+      });
+    });
+  }, [certificates]);
+
   const unlockedCount = certificates.length;
   const totalHours = certificates.reduce((s: number, c: any) => s + c.hours, 0);
   
