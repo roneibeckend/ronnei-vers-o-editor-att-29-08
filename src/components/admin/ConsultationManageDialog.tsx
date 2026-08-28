@@ -49,6 +49,7 @@ export function ConsultationManageDialog({
 }) {
   const [adminNotes, setAdminNotes] = useState("");
   const [studentNotes, setStudentNotes] = useState("");
+  const [actionPlan, setActionPlan] = useState("");
   const [materials, setMaterials] = useState<Material[]>([]);
   const [when, setWhen] = useState("");
   const [notifyReschedule, setNotifyReschedule] = useState(true);
@@ -59,6 +60,7 @@ export function ConsultationManageDialog({
     if (!consultation) return;
     setAdminNotes(consultation.admin_notes ?? "");
     setStudentNotes(consultation.student_notes ?? "");
+    setActionPlan(consultation.action_plan ?? "");
     setMaterials(Array.isArray(consultation.materials) ? consultation.materials : []);
     setWhen(dateTimeLocal(consultation.scheduled_at));
     setMeetLink(consultation.meet_link ?? "");
@@ -82,6 +84,7 @@ export function ConsultationManageDialog({
           id: consultation.id,
           adminNotes,
           studentNotes,
+          actionPlan,
           materials: materials.filter((m) => m.title.trim() && m.url.trim()),
         },
       }),
@@ -155,7 +158,16 @@ export function ConsultationManageDialog({
                 rows={4}
                 value={studentNotes}
                 onChange={(e) => setStudentNotes(e.target.value)}
-                placeholder="Plano de ação, próximos passos, recomendações..."
+                placeholder="Recomendações e recado para o aluno..."
+              />
+            </div>
+            <div>
+              <Label>Plano de ação (enviado com a gravação)</Label>
+              <Textarea
+                rows={4}
+                value={actionPlan}
+                onChange={(e) => setActionPlan(e.target.value)}
+                placeholder="1. Ajustar CMV... 2. Revisar cardápio... 3. Testar combo..."
               />
             </div>
 
