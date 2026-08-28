@@ -742,7 +742,9 @@ export async function runConsultationReminders() {
     attendanceRequested,
     attendanceAlerts,
     expiredRescheduleFees: staleFees?.length ?? 0,
-    completed: finished?.length ?? 0,
+    completed: completedCount,
+    noShows,
+
   };
 }
 
