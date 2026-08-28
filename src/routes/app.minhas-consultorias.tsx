@@ -19,6 +19,7 @@ import {
   Paperclip,
   Loader2,
   MessageSquareQuote,
+  ListChecks,
 } from "lucide-react";
 import type { ConsultationBriefing } from "@/lib/consultation-briefing";
 
@@ -131,6 +132,15 @@ function ConsultationCard({ row }: { row: any }) {
               <ExternalLink className="mr-2 h-4 w-4" /> Adicionar ao Google Agenda
             </a>
           </Button>
+        </div>
+      ) : null}
+
+      {row.action_plan ? (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+          <p className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary">
+            <ListChecks className="h-3.5 w-3.5" /> Plano de ação
+          </p>
+          <p className="whitespace-pre-wrap text-sm">{row.action_plan}</p>
         </div>
       ) : null}
 
