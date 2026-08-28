@@ -11,6 +11,21 @@ export const CONSULTATION_TZ = "America/Sao_Paulo";
 const TZ_OFFSET = "-03:00";
 /** Antecedência mínima para o aluno agendar. */
 export const MIN_LEAD_MINUTES = 120;
+/** Tempo que a reserva não paga bloqueia o horário. */
+export const HOLD_MINUTES = 30;
+/** Status que ocupam a agenda. */
+export const BUSY_STATUSES = ["scheduled", "pending_payment", "awaiting_payment"] as const;
+
+/** Cancela reservas não pagas expiradas e libera os horários. */
+export async function expireConsultationHolds() {
+  try {
+    const { data } = await supabaseAdmin.rpc("expire_consultation_holds" as never);
+    return Number(data ?? 0);
+  } catch (err) {
+    console.warn("[consultorias] Falha ao expirar reservas:", (err as Error)?.message);
+    return 0;
+  }
+}
 
 export type ConsultationRow = {
   id: string;
@@ -89,6 +104,7 @@ function slotDate(dateStr: string, time: string) {
 export type Slot = { startIso: string; endIso: string; label: string; date: string; time: string };
 
 export async function computeAvailableSlots(durationMinutes: number, days = 30): Promise<Slot[]> {
+  await expireConsultationHolds();
   const [{ data: availability }, { data: blocks }, { data: booked }] = await Promise.all([
     supabaseAdmin.from("consultation_availability").select("*").eq("active", true),
     supabaseAdmin
@@ -98,7 +114,7 @@ export async function computeAvailableSlots(durationMinutes: number, days = 30):
     supabaseAdmin
       .from("consultations")
       .select("scheduled_at, ends_at, status")
-      .in("status", ["scheduled", "pending_payment"])
+      .in("status", BUSY_STATUSES as unknown as string[])
       .gte("ends_at", new Date().toISOString()),
   ]);
 
@@ -150,11 +166,12 @@ export async function computeAvailableSlots(durationMinutes: number, days = 30):
 
 /** Reconfirma que o horário continua livre (evita corrida entre dois alunos). */
 export async function isSlotFree(startIso: string, endIso: string) {
+  await expireConsultationHolds();
   const [{ data: conflicts }, { data: blocked }] = await Promise.all([
     supabaseAdmin
       .from("consultations")
       .select("id")
-      .in("status", ["scheduled", "pending_payment"])
+      .in("status", BUSY_STATUSES as unknown as string[])
       .lt("scheduled_at", endIso)
       .gt("ends_at", startIso)
       .limit(1),
