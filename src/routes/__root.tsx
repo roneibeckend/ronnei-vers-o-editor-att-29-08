@@ -318,10 +318,38 @@ function RootComponent() {
       unsubAfter();
     };
   }, [router]);
-  
+  // Rede de segurança do login social: se o Supabase devolver o código/tokens
+  // em uma rota que não é /auth/callback (acontece quando o Site URL do projeto
+  // sobrescreve o redirectTo), concluímos a sessão aqui e levamos para /app.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const path = window.location.pathname;
+    if (path.startsWith("/auth/callback") || path.startsWith("/inicio")) return;
 
+    const search = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const hasAuthPayload =
+      search.has("code") ||
+      hash.has("access_token") ||
+      ((search.has("token_hash") || search.has("token")) && search.has("type"));
+    if (!hasAuthPayload) return;
+
+    let cancelled = false;
+    (async () => {
+      const { completeAuthFromUrl } = await import("@/lib/auth-callback");
+      const result = await completeAuthFromUrl();
+      if (cancelled || result.status !== "success") return;
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      router.navigate({ to: result.redirectTo, replace: true });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [queryClient, router]);
 
   useAffiliateTracking();
+
 
   return (
     <QueryClientProvider client={queryClient}>
