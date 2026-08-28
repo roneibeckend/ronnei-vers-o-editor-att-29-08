@@ -563,7 +563,7 @@ function BookingDialog({
                   <Button
                     key={s.startIso}
                     variant={s.startIso === suggested ? "default" : "outline"}
-                    onClick={() => setSlot(s.startIso)}
+                    onClick={() => pickTime(s.startIso)}
                   >
                     {s.time}
                   </Button>
