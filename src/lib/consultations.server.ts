@@ -557,3 +557,94 @@ export async function runConsultationReminders() {
 }
 
 
+
+/* --------------------- Confirmação de pagamento --------------------- */
+
+/**
+ * Converte uma reserva `awaiting_payment` em consultoria confirmada.
+ * Somente aqui criamos o evento no Google Calendar/Meet, enviamos o e-mail
+ * de confirmação e contabilizamos a receita.
+ * Idempotente: reprocessar o mesmo pagamento não duplica nada.
+ */
+export async function confirmConsultationPayment(input: {
+  consultationId: string;
+  paymentId: string;
+  amount?: number | null;
+  userId?: string | null;
+}) {
+  const { data: row } = await supabaseAdmin
+    .from("consultations")
+    .select("*")
+    .eq("id", input.consultationId)
+    .maybeSingle();
+
+  if (!row) {
+    await auditConsultation({
+      action: "payment_confirmed",
+      status: "error",
+      details: { consultationId: input.consultationId, paymentId: input.paymentId, error: "reserva não encontrada" },
+    });
+    return { ok: false as const, error: "Reserva de consultoria não encontrada." };
+  }
+
+  // Já confirmada anteriormente (webhook duplicado)
+  if (row.status === "scheduled" || row.status === "completed") {
+    return { ok: true as const, alreadyConfirmed: true, meetLink: (row as any).meet_link ?? null };
+  }
+
+  if (row.status === "cancelled" || row.status === "no_show") {
+    // Pagamento chegou depois da expiração: reativa se o horário ainda estiver livre.
+    const free = await isSlotFree(row.scheduled_at, row.ends_at);
+    if (!free) {
+      await auditConsultation({
+        consultationId: row.id,
+        action: "payment_confirmed",
+        status: "warn",
+        details: { paymentId: input.paymentId, error: "horário indisponível após expiração da reserva" },
+      });
+      return {
+        ok: false as const,
+        error: "Pagamento recebido, mas o horário reservado expirou. É necessário reagendar.",
+      };
+    }
+  }
+
+  const { error } = await supabaseAdmin
+    .from("consultations")
+    .update({
+      status: "scheduled",
+      paid_at: new Date().toISOString(),
+      payment_id: input.paymentId,
+      hold_expires_at: null,
+      cancel_reason: null,
+      ...(input.amount ? { amount: input.amount } : {}),
+    } as never)
+    .eq("id", row.id);
+
+  if (error) {
+    await auditConsultation({
+      consultationId: row.id,
+      action: "payment_confirmed",
+      status: "error",
+      details: { paymentId: input.paymentId, error: error.message },
+    });
+    return { ok: false as const, error: error.message };
+  }
+
+  await auditConsultation({
+    consultationId: row.id,
+    action: "payment_confirmed",
+    details: { paymentId: input.paymentId, amount: input.amount ?? row.amount ?? null },
+  });
+
+  const google = await attachGoogleMeeting(row as never);
+  const withMeet = { ...row, status: "scheduled", meet_link: google.ok ? google.meetLink : null };
+  await sendConsultationConfirmation(withMeet as never);
+
+  return {
+    ok: true as const,
+    alreadyConfirmed: false,
+    meetLink: google.ok ? google.meetLink : null,
+    googleError: google.ok ? null : google.error,
+  };
+}
