@@ -351,3 +351,24 @@ export async function syncConsultationRecordings(options: { fileId?: string } = 
     driveError,
   };
 }
+
+/** Vínculo manual (admin): entrega o arquivo do Drive na consultoria escolhida. */
+export async function deliverRecordingToConsultation(fileId: string, consultationId: string, reason: string) {
+  const { data: row } = await supabaseAdmin
+    .from("consultation_recordings")
+    .select("*")
+    .eq("file_id", fileId)
+    .maybeSingle();
+  if (!row) throw new Error("Gravação não encontrada no registro.");
+
+  const { data: consultation } = await supabaseAdmin
+    .from("consultations")
+    .select(
+      "id, user_id, product_title, client_name, client_email, scheduled_at, ends_at, status, google_event_id, meet_link, recording_url",
+    )
+    .eq("id", consultationId)
+    .maybeSingle();
+  if (!consultation) throw new Error("Consultoria não encontrada.");
+
+  return deliverRecording(row as RecordingRow, consultation as Candidate, reason);
+}
