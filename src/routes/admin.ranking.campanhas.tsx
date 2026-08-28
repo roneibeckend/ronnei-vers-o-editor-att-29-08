@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Trophy, Plus, Calendar, Clock, Award, Loader2 } from "lucide-react";
-import { getCampaigns, createCampaign, finishCampaign, getCampaignWinners } from "@/lib/campaigns.functions";
+import { getAllCampaigns, createCampaign, finishCampaign, getCampaignWinners } from "@/lib/campaigns.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/admin/ranking/campanhas")({
 
 function AdminCampaigns() {
   const queryClient = useQueryClient();
-  const fetchCampaigns = useServerFn(getCampaigns);
+  const fetchCampaigns = useServerFn(getAllCampaigns);
   const addCampaign = useServerFn(createCampaign);
   const endCampaign = useServerFn(finishCampaign);
   const fetchWinners = useServerFn(getCampaignWinners);
