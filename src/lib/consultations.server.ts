@@ -385,9 +385,41 @@ export async function rescheduleGoogleMeeting(
       status: "error",
       details: { error: message },
     });
+    await alertGoogleFailure(consultation, "reagendar o evento", message);
     return { ok: false as const, error: message };
   }
 }
+
+/**
+ * Emite alerta operacional (painel + push + e-mail ao admin) quando a
+ * integração do Google falha em uma consultoria específica.
+ */
+async function alertGoogleFailure(
+  consultation: ConsultationRow,
+  action: string,
+  message: string,
+) {
+  try {
+    const { raiseOpsAlert } = await import("@/lib/ops-alerts.server");
+    await raiseOpsAlert({
+      type: "google_consultation",
+      dedupKey: `google_consultation:${consultation.id}:${action}`,
+      title: "Falha na integração Google (consultoria)",
+      message: `Não foi possível ${action} da consultoria de ${consultation.client_name || consultation.client_email || "aluno"} (${consultation.product_title}): ${message}. Use Admin → Consultorias → Automações para reprocessar.`,
+      severity: "critical",
+      details: {
+        consultationId: consultation.id,
+        scheduledAt: consultation.scheduled_at,
+        clientEmail: consultation.client_email,
+        error: message,
+      },
+    });
+  } catch (err) {
+    console.warn("[consultorias] falha ao emitir alerta do Google:", err);
+  }
+}
+
+
 
 
 
