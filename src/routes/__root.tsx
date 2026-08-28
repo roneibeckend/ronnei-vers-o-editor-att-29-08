@@ -358,12 +358,32 @@ function RootComponent() {
     gtmPageView();
     installClientLogger();
 
+    // Cliques em WhatsApp/Instagram (delegado: cobre todas as rotas, sem duplicar).
+    const onClick = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement | null)?.closest?.("a[href]") as
+        | HTMLAnchorElement
+        | null;
+      if (!anchor) return;
+      const href = anchor.href || "";
+      if (/wa\.me|api\.whatsapp\.com|whatsapp:/i.test(href)) {
+        gtmSocialClick("whatsapp", window.location.pathname);
+      } else if (/instagram\.com/i.test(href)) {
+        gtmSocialClick("instagram", window.location.pathname);
+      }
+    };
+    document.addEventListener("click", onClick, true);
+
+    const onInstalled = () => gtmPwaInstalled("installed");
+    window.addEventListener("appinstalled", onInstalled);
 
     return () => {
       unsubBefore();
       unsubAfter();
+      document.removeEventListener("click", onClick, true);
+      window.removeEventListener("appinstalled", onInstalled);
     };
   }, [router]);
+
   // Rede de segurança do login social: se o Supabase devolver o código/tokens
   // em uma rota que não é /auth/callback (acontece quando o Site URL do projeto
   // sobrescreve o redirectTo), concluímos a sessão aqui e levamos para /app.
