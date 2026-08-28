@@ -751,3 +751,69 @@ export const reprocessConsultationRecording = createServerFn({ method: "POST" })
     });
     return result;
   });
+
+/* ---------------- Envio do relatório em PDF por e-mail ---------------- */
+
+/**
+ * Envia o relatório da reunião (PDF gerado no navegador do admin) por e-mail
+ * para os destinatários escolhidos (aluno, consultor e/ou e-mails extras).
+ */
+export const sendConsultationReportEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        recipients: z.array(z.string().trim().email().max(160)).min(1).max(10),
+        message: z.string().trim().max(2000).optional(),
+        filename: z.string().trim().min(4).max(120),
+        pdfBase64: z.string().min(100).max(8_000_000),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { auditConsultation, formatBR } = await import("@/lib/consultations.server");
+    const { sendResendEmail } = await import("@/lib/resend.server");
+
+    const { data: row } = await supabaseAdmin
+      .from("consultations")
+      .select("id, client_name, product_title, scheduled_at, duration_minutes")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!row) throw new Error("Consultoria não encontrada.");
+
+    const recipients = Array.from(new Set(data.recipients.map((e) => e.toLowerCase())));
+    const when = formatBR(row.scheduled_at);
+    const html = `<!DOCTYPE html><html><body style="margin:0;background:#f5f5f6;font-family:Arial,Helvetica,sans-serif;color:#1a1a1c;">
+  <div style="max-width:560px;margin:0 auto;padding:28px 24px;background:#ffffff;">
+    <h1 style="font-size:20px;margin:0 0 12px;">Relatório da consultoria</h1>
+    <p style="font-size:14px;line-height:1.6;margin:0 0 8px;">
+      <strong>Aluno:</strong> ${row.client_name || "Aluno"}<br/>
+      <strong>Produto:</strong> ${row.product_title}<br/>
+      <strong>Data:</strong> ${when} (${row.duration_minutes} min)
+    </p>
+    ${data.message ? `<p style="font-size:14px;line-height:1.6;white-space:pre-line;margin:16px 0 0;">${data.message.replace(/[<>]/g, "")}</p>` : ""}
+    <p style="font-size:13px;color:#6b6b70;margin:20px 0 0;">O relatório completo está em anexo (PDF).</p>
+  </div>
+</body></html>`;
+
+    await sendResendEmail({
+      to: recipients,
+      subject: `Relatório da consultoria — ${row.client_name || "Aluno"} · ${when}`,
+      html,
+      tags: [{ name: "tipo", value: "relatorio_consultoria" }],
+      attachments: [{ filename: data.filename, content: data.pdfBase64 }],
+    });
+
+    await auditConsultation({
+      consultationId: data.id,
+      actorId: context.userId,
+      actorRole: "admin",
+      action: "report_emailed",
+      details: { recipients, filename: data.filename },
+    });
+
+    return { sent: true, recipients };
+  });
