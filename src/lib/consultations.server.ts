@@ -224,11 +224,10 @@ export async function isSlotFree(startIso: string, endIso: string) {
   const [{ data: conflicts }, { data: blocked }] = await Promise.all([
     supabaseAdmin
       .from("consultations")
-      .select("id")
+      .select("id, status, hold_expires_at")
       .in("status", [...BUSY_STATUSES])
       .lt("scheduled_at", endIso)
-      .gt("ends_at", startIso)
-      .limit(1),
+      .gt("ends_at", startIso),
     supabaseAdmin
       .from("consultation_blocks")
       .select("id")
@@ -236,7 +235,14 @@ export async function isSlotFree(startIso: string, endIso: string) {
       .gt("ends_at", startIso)
       .limit(1),
   ]);
-  return !conflicts?.length && !blocked?.length;
+
+  // Blindagem: hold vencido de reserva não paga não conta como conflito.
+  const nowIso = new Date().toISOString();
+  const realConflicts = (conflicts ?? []).filter(
+    (c: any) =>
+      c.status !== "awaiting_payment" || !c.hold_expires_at || c.hold_expires_at >= nowIso,
+  );
+  return !realConflicts.length && !blocked?.length;
 }
 
 /**
