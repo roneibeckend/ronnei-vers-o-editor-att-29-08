@@ -46,8 +46,26 @@ export async function expireConsultationHolds() {
     const { data } = await supabaseAdmin.rpc("expire_consultation_holds" as never);
     return Number(data ?? 0);
   } catch (err) {
-    console.warn("[consultorias] Falha ao expirar reservas:", (err as Error)?.message);
-    return 0;
+    // Blindagem: se o RPC falhar (rede/instabilidade), expira direto pela tabela
+    // para que os horários nunca fiquem presos esperando o cron.
+    console.warn("[consultorias] RPC falhou, expirando holds diretamente:", (err as Error)?.message);
+    try {
+      const { data } = await supabaseAdmin
+        .from("consultations")
+        .update({
+          status: "cancelled",
+          cancel_reason: "Reserva expirada sem pagamento",
+          hold_expires_at: null,
+        } as never)
+        .eq("status", "awaiting_payment")
+        .not("hold_expires_at", "is", null)
+        .lt("hold_expires_at", new Date().toISOString())
+        .select("id");
+      return data?.length ?? 0;
+    } catch (fallbackErr) {
+      console.warn("[consultorias] Falha ao expirar reservas:", (fallbackErr as Error)?.message);
+      return 0;
+    }
   }
 }
 
