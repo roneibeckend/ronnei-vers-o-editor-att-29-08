@@ -31,6 +31,7 @@ import {
   testGoogleIntegration,
   listGoogleCalendars,
   saveGoogleOAuthClient,
+  testDriveRecordingsFolder,
 } from "@/lib/google-integration.functions";
 
 const ORANGE = "#ff6a00";
@@ -87,6 +88,7 @@ export function GoogleIntegrationPanel() {
   const runTest = useServerFn(testGoogleIntegration);
   const fetchCalendars = useServerFn(listGoogleCalendars);
   const saveClient = useServerFn(saveGoogleOAuthClient);
+  const testFolder = useServerFn(testDriveRecordingsFolder);
 
   const { data, isLoading } = useQuery({
     queryKey: ["google-integration"],
@@ -105,6 +107,7 @@ export function GoogleIntegrationPanel() {
   const [calendars, setCalendars] = useState<{ id: string; summary: string; primary: boolean }[] | null>(null);
   const [testResult, setTestResult] = useState<any>(null);
   const [clientForm, setClientForm] = useState({ clientId: "", clientSecret: "" });
+  const [folderResult, setFolderResult] = useState<any>(null);
 
   useEffect(() => {
     if (!data?.settings) return;
@@ -170,6 +173,22 @@ export function GoogleIntegrationPanel() {
     onError: (err: any) => toast.error(err?.message || "Falha ao desconectar."),
   });
 
+  const folderMutation = useMutation({
+    mutationFn: () => testFolder({ data: { folder: form.drive_recordings_folder_id.trim() || null } }),
+    onSuccess: (result: any) => {
+      setFolderResult(result);
+      if (result?.ok) {
+        toast.success(`Pasta “${result.folderName}” acessível — ${result.fileCount} arquivo(s) listados.`);
+      } else {
+        toast.error(result?.error || "Não foi possível ler a pasta.");
+      }
+    },
+    onError: (err: any) => {
+      setFolderResult({ ok: false, error: err?.message || "Falha ao testar a pasta." });
+      toast.error(err?.message || "Falha ao testar a pasta.");
+    },
+  });
+
   const saveMutation = useMutation({
     mutationFn: () =>
       saveSettings({
@@ -179,8 +198,16 @@ export function GoogleIntegrationPanel() {
           default_duration_minutes: Number(form.default_duration_minutes),
         },
       }),
-    onSuccess: () => {
-      toast.success("Configurações salvas.");
+    onSuccess: (result: any) => {
+      if (result?.folderCheck?.ok) {
+        setFolderResult(result.folderCheck);
+        setForm((f) => ({ ...f, drive_recordings_folder_id: result.folderId ?? f.drive_recordings_folder_id }));
+        toast.success(
+          `Configurações salvas. Pasta “${result.folderCheck.folderName}” validada (${result.folderCheck.fileCount} arquivo(s) lidos).`,
+        );
+      } else {
+        toast.success("Configurações salvas.");
+      }
       queryClient.invalidateQueries({ queryKey: ["google-integration"] });
     },
     onError: (err: any) => toast.error(err?.message || "Falha ao salvar."),
@@ -502,16 +529,103 @@ export function GoogleIntegrationPanel() {
                 className="bg-black/60 border-white/10 text-white"
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
               <Label className="text-[10px] font-bold uppercase tracking-widest text-white/50">
-                Pasta do Drive para gravações (ID)
+                Pasta de gravações do Drive
               </Label>
-              <Input
-                value={form.drive_recordings_folder_id}
-                onChange={(e) => setForm((f) => ({ ...f, drive_recordings_folder_id: e.target.value }))}
-                placeholder="opcional"
-                className="bg-black/60 border-white/10 text-white"
-              />
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  value={form.drive_recordings_folder_id}
+                  onChange={(e) => setForm((f) => ({ ...f, drive_recordings_folder_id: e.target.value }))}
+                  placeholder="https://drive.google.com/drive/folders/XXXX  ou  apenas o ID"
+                  className="bg-black/60 border-white/10 text-white"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={folderMutation.isPending}
+                  onClick={() => folderMutation.mutate()}
+                  className="border-white/15 bg-white/5 text-white hover:bg-white/10 shrink-0"
+                >
+                  {folderMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <HardDrive className="mr-2 h-4 w-4" />
+                  )}
+                  Testar pasta de gravações
+                </Button>
+              </div>
+              <p className="text-[11px] text-white/40">
+                Cole a URL completa da pasta no Google Drive ou somente o ID. Ao salvar, o acesso e a leitura da pasta
+                são validados com a conta Google conectada.
+              </p>
+
+              {folderResult && (
+                <Alert
+                  className={
+                    folderResult.ok
+                      ? "border-emerald-500/30 bg-emerald-500/10"
+                      : "border-red-500/30 bg-red-500/10"
+                  }
+                >
+                  {folderResult.ok ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4 text-red-400" />
+                  )}
+                  <AlertTitle className="text-white">
+                    {folderResult.ok
+                      ? `Pasta acessível: ${folderResult.folderName}`
+                      : "Falha ao acessar a pasta"}
+                  </AlertTitle>
+                  <AlertDescription className="text-white/70">
+                    {folderResult.ok ? (
+                      <div className="mt-2 space-y-2">
+                        <p className="text-[11px] text-white/50">
+                          ID: <span className="font-mono">{folderResult.folderId}</span>
+                          {folderResult.folderLink && (
+                            <>
+                              {" · "}
+                              <a
+                                href={folderResult.folderLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="underline"
+                              >
+                                abrir no Drive
+                              </a>
+                            </>
+                          )}
+                        </p>
+                        {folderResult.files?.length ? (
+                          <ul className="space-y-1">
+                            {folderResult.files.map((file: any) => (
+                              <li
+                                key={file.id}
+                                className="rounded-md border border-white/10 bg-black/40 px-3 py-2 text-xs"
+                              >
+                                <div className="font-semibold text-white">{file.name}</div>
+                                <div className="text-[11px] text-white/50">
+                                  {file.createdTime
+                                    ? new Date(file.createdTime).toLocaleString("pt-BR")
+                                    : "sem data"}{" "}
+                                  · ID: <span className="font-mono">{file.id}</span>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-xs text-white/50">
+                            Nenhum arquivo encontrado na pasta (leitura autorizada).
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      folderResult.error
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           </div>
 
