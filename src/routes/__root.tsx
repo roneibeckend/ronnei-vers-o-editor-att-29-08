@@ -290,7 +290,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <HeadContent />
       </head>
       <body className="antialiased overflow-x-hidden selection:bg-primary/30">
+        {/* Google Tag Manager (noscript) */}
+        <noscript
+          dangerouslySetInnerHTML={{
+            __html: `<iframe src="https://www.googletagmanager.com/ns.html?id=GTM-M376JTZP"
+height="0" width="0" style="display:none;visibility:hidden"></iframe>`,
+          }}
+        />
         <script
+
           dangerouslySetInnerHTML={{
             __html: `
               // Script de Resiliência Visual: Detecta se o CSS principal falhou ou se há erros de chunk precoces
