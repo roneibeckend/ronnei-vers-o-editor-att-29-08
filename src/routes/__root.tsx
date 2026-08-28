@@ -193,7 +193,28 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="pt-BR" className="dark">
       <head>
         <script
+          data-rnv-auth-return
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function () {
+                try {
+                  var s = new URLSearchParams(location.search);
+                  var h = new URLSearchParams(location.hash.replace(/^#/, ""));
+                  // Marcado ANTES do supabase-js consumir o hash da URL, para
+                  // sabermos que esta carga de página é um retorno de login social.
+                  window.__RNV_AUTH_RETURN__ =
+                    s.has("code") || h.has("access_token") ||
+                    ((s.has("token_hash") || s.has("token")) && s.has("type"));
+                } catch (e) {
+                  window.__RNV_AUTH_RETURN__ = false;
+                }
+              })();
+            `,
+          }}
+        />
+        <script
           data-rnv-pwa-bootstrap
+
           dangerouslySetInnerHTML={{
             __html: `
               (function () {
