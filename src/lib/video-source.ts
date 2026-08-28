@@ -93,9 +93,12 @@ export function resolveLessonVideo(input: {
     (provider === 'auto' && (Boolean(id) || url.includes('mediadelivery.net')));
 
   if (isBunny) {
-    const src = buildBunnyEmbedUrl(id || url);
+    // A URL completa contém o libraryId, então tem prioridade sobre o ID puro.
+    const fromUrl = url.includes('mediadelivery.net') || url.includes('b-cdn.net') ? url : '';
+    const src = buildBunnyEmbedUrl(fromUrl || id) || buildBunnyEmbedUrl(id);
     if (src) return { kind: 'bunny', src, aspect, needsSigning: false };
   }
+
 
   if (!url) return { kind: 'none', src: '', aspect, needsSigning: false };
   if (isExternalVideoUrl(url)) return { kind: 'external', src: url, aspect, needsSigning: false };
