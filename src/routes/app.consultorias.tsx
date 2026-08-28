@@ -341,7 +341,7 @@ function BookingDialog({
   onClose: () => void;
   onBooked: () => void;
 }) {
-  const [slot, setSlot] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [visibleDays, setVisibleDays] = useState(3);
   const [expandedTimes, setExpandedTimes] = useState(false);
@@ -350,6 +350,10 @@ function BookingDialog({
   const reserve = useServerFn(reserveConsultation);
   const fetchReservation = useServerFn(getConsultationReservation);
 
+  // Combo: no máximo 1 hora por dia, então uma consultoria de 3h vira 3 encontros.
+  const sessionMinutes = Math.min(product?.duration_minutes ?? 60, 60);
+  const sessionsTotal = Math.max(1, Math.ceil((product?.duration_minutes ?? 60) / 60));
+
   const { data: slots, isLoading } = useQuery({
     queryKey: ["consultation-slots", product?.duration_minutes],
     queryFn: () => getConsultationSlots({ data: { durationMinutes: product.duration_minutes } }),
@@ -357,12 +361,17 @@ function BookingDialog({
   });
 
   const reset = () => {
-    setSlot(null);
+    setPicked([]);
     setSelectedDate(null);
     setBriefing(null);
     setReservation(null);
     setExpandedTimes(false);
   };
+
+  const pickedDates = useMemo(
+    () => new Set(picked.map((iso) => (slots ?? []).find((s: any) => s.startIso === iso)?.date)),
+    [picked, slots],
+  );
 
   const grouped = useMemo(() => {
     const map = new Map<string, any[]>();
@@ -371,8 +380,8 @@ function BookingDialog({
       list.push(s);
       map.set(s.date, list);
     }
-    return Array.from(map.entries()).filter(([, list]) => list.length > 0);
-  }, [slots]);
+    return Array.from(map.entries()).filter(([date, list]) => list.length > 0 && !pickedDates.has(date));
+  }, [slots, pickedDates]);
 
   const dayList = grouped.slice(0, visibleDays);
   const activeDay = grouped.find(([d]) => d === selectedDate);
@@ -385,10 +394,16 @@ function BookingDialog({
       new Date(`${date}T12:00:00-03:00`),
     );
 
+  const pickTime = (iso: string) => {
+    setPicked((prev) => [...prev, iso].sort());
+    setSelectedDate(null);
+    setExpandedTimes(false);
+  };
+
   // 6. Enviar para checkout — cria a reserva temporária e o link de pagamento.
   const submit = useMutation({
     mutationFn: () =>
-      reserve({ data: { productId: product.id, startIso: slot!, briefingData: briefing ?? undefined } }),
+      reserve({ data: { productId: product.id, startIsos: picked, briefingData: briefing ?? undefined } }),
     onSuccess: (res: any) => {
       setReservation(res);
       onBooked();
@@ -417,7 +432,9 @@ function BookingDialog({
   const holdDeadline = liveReservation?.holdExpiresAt ?? reservation?.holdExpiresAt ?? null;
   const paymentUrl = liveReservation?.paymentUrl ?? reservation?.paymentUrl ?? null;
 
-  const step = reservation ? 5 : briefing ? 4 : slot ? 3 : selectedDate ? 2 : 1;
+  const complete = picked.length >= sessionsTotal;
+  const step = reservation ? 5 : briefing ? 4 : complete ? 3 : selectedDate ? 2 : 1;
+
 
   return (
     <Dialog
