@@ -39,7 +39,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus, Trash2, RefreshCw, Video, Bell, ShieldCheck } from "lucide-react";
+import { generateConsultationReportPdf } from "@/lib/consultation-pdf";
+import { Loader2, Plus, Trash2, RefreshCw, Video, Bell, ShieldCheck, FileText } from "lucide-react";
 
 export const Route = createFileRoute("/admin/consultorias")({
   head: () => ({
@@ -247,6 +248,21 @@ function MeetingsTab({ consultations, onChanged }: { consultations: any[]; onCha
             <Button size="sm" variant="outline" onClick={() => setRecordingFor(c)}>
               Gravação
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                try {
+                  generateConsultationReportPdf(c);
+                  toast.success("Relatório em PDF gerado.");
+                } catch {
+                  toast.error("Não foi possível gerar o PDF.");
+                }
+              }}
+            >
+              <FileText className="mr-2 h-4 w-4" /> Relatório PDF
+            </Button>
+
             <Button size="sm" onClick={() => setManaging(c)}>
               Gerenciar
             </Button>
