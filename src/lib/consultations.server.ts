@@ -211,6 +211,34 @@ export async function isSlotFree(startIso: string, endIso: string) {
   return !conflicts?.length && !blocked?.length;
 }
 
+/**
+ * Confere se o horário está dentro da grade de disponibilidade oficial
+ * (mesma regra usada para gerar os slots: janela do dia + intervalo).
+ * Impede que o reagendamento/reserva contorne a grade com horários arbitrários.
+ */
+export async function isWithinAvailability(startIso: string, endIso: string) {
+  const dateStr = spDateParts(new Date(startIso));
+  const weekday = new Date(`${dateStr}T12:00:00${TZ_OFFSET}`).getUTCDay();
+  const { data: rules } = await supabaseAdmin
+    .from("consultation_availability")
+    .select("start_time, end_time, slot_interval_minutes")
+    .eq("active", true)
+    .eq("weekday", weekday);
+  if (!rules?.length) return false;
+
+  const start = +new Date(startIso);
+  const end = +new Date(endIso);
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return false;
+
+  return rules.some((rule: any) => {
+    const windowStart = +slotDate(dateStr, rule.start_time as string);
+    const windowEnd = +slotDate(dateStr, rule.end_time as string);
+    const step = Math.max(15, rule.slot_interval_minutes || 30) * 60_000;
+    if (start < windowStart || end > windowEnd) return false;
+    return (start - windowStart) % step === 0;
+  });
+}
+
 /* --------------------------- Google Calendar --------------------------- */
 
 export async function attachGoogleMeeting(consultation: ConsultationRow) {
