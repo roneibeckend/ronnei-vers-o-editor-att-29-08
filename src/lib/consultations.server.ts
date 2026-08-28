@@ -227,7 +227,7 @@ export async function computeAvailableSlots(rawDurationMinutes: number, days = 3
 }
 
 /** Reconfirma que o horário continua livre (evita corrida entre dois alunos). */
-export async function isSlotFree(startIso: string, endIso: string) {
+export async function isSlotFree(startIso: string, endIso: string, ignoreConsultationId?: string) {
   await expireConsultationHolds();
   const [{ data: conflicts }, { data: blocked }] = await Promise.all([
     supabaseAdmin
@@ -248,7 +248,8 @@ export async function isSlotFree(startIso: string, endIso: string) {
   const nowIso = new Date().toISOString();
   const realConflicts = (conflicts ?? []).filter(
     (c: any) =>
-      c.status !== "awaiting_payment" || !c.hold_expires_at || c.hold_expires_at >= nowIso,
+      c.id !== ignoreConsultationId &&
+      (c.status !== "awaiting_payment" || !c.hold_expires_at || c.hold_expires_at >= nowIso),
   );
   return !realConflicts.length && !blocked?.length;
 }
@@ -448,6 +449,21 @@ export async function sendConsultationRescheduled(
   );
 }
 
+/** Pede a confirmação de presença (botão de 1 clique, sem login). */
+export async function sendConsultationAttendanceRequest(
+  consultation: ConsultationRow,
+  confirmUrl: string,
+) {
+  return sendConsultationEmail(
+    consultation,
+    "consultoria_confirmar_presenca",
+    { confirm_url: confirmUrl, link: confirmUrl },
+    `consult-attendance-${consultation.id}-${consultation.scheduled_at}`,
+  );
+}
+
+
+
 export async function sendConsultationConfirmation(consultation: ConsultationRow) {
 
   const res = await sendConsultationEmail(
@@ -636,6 +652,51 @@ export async function runConsultationReminders() {
     }
   }
 
+  /* --- Confirmação de presença: pedido 24h antes e alerta 4h antes --- */
+  let attendanceRequested = 0;
+  let attendanceAlerts = 0;
+  const { shouldRequestAttendance, shouldAlertUnconfirmed } = await import(
+    "@/lib/consultation-policy"
+  );
+  const { requestAttendanceConfirmation, alertUnconfirmedAttendance } = await import(
+    "@/lib/consultation-attendance.server"
+  );
+
+  for (const row of (upcoming ?? []) as any[]) {
+    try {
+      if (shouldRequestAttendance(row, now)) {
+        await requestAttendanceConfirmation(row);
+        attendanceRequested++;
+      } else if (shouldAlertUnconfirmed(row, now)) {
+        const alerted = await alertUnconfirmedAttendance(row);
+        if (alerted?.created) attendanceAlerts++;
+      }
+    } catch (err) {
+      await auditConsultation({
+        consultationId: row.id,
+        action: "attendance_check_failed",
+        status: "error",
+        details: { error: (err as Error)?.message },
+      });
+    }
+  }
+
+  // Remarcações pendentes cuja taxa não foi paga a tempo voltam atrás.
+  const { data: staleFees } = await supabaseAdmin
+    .from("consultations")
+    .update({
+      pending_reschedule_at: null,
+      pending_reschedule_ends_at: null,
+      pending_reschedule_payment_id: null,
+      pending_reschedule_payment_url: null,
+      pending_reschedule_expires_at: null,
+    } as never)
+    .not("pending_reschedule_expires_at", "is", null)
+    .lt("pending_reschedule_expires_at", new Date(now).toISOString())
+    .select("id");
+
+
+
 
   // Reuniões que já passaram entram no fluxo completo de conclusão
   // (materiais liberados + e-mail + auditoria).
@@ -665,6 +726,9 @@ export async function runConsultationReminders() {
     sent1h,
     failed,
     failures,
+    attendanceRequested,
+    attendanceAlerts,
+    expiredRescheduleFees: staleFees?.length ?? 0,
     completed: finished?.length ?? 0,
   };
 }

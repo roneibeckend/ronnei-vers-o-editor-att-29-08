@@ -853,6 +853,8 @@ export type Database = {
           action_plan: string | null
           admin_notes: string | null
           amount: number | null
+          attendance_confirmed_at: string | null
+          attendance_requested_at: string | null
           booking_group: string | null
           briefing: string | null
           briefing_data: Json | null
@@ -878,10 +880,17 @@ export type Database = {
           meet_link: string | null
           meeting_script: string | null
           meeting_summary: string | null
+          no_show_at: string | null
+          no_show_marked_by: string | null
           paid_at: string | null
           payment_id: string | null
           payment_link_id: string | null
           payment_url: string | null
+          pending_reschedule_at: string | null
+          pending_reschedule_ends_at: string | null
+          pending_reschedule_expires_at: string | null
+          pending_reschedule_payment_id: string | null
+          pending_reschedule_payment_url: string | null
           prep_data: Json | null
           prep_generated_at: string | null
           prep_sent_at: string | null
@@ -894,6 +903,7 @@ export type Database = {
           reminder_24h_sent_at: string | null
           reminder_8h_sent_at: string | null
           reschedule_count: number
+          reschedule_fee_paid_at: string | null
           rescheduled_from: string | null
           scheduled_at: string
           session_index: number
@@ -908,6 +918,8 @@ export type Database = {
           action_plan?: string | null
           admin_notes?: string | null
           amount?: number | null
+          attendance_confirmed_at?: string | null
+          attendance_requested_at?: string | null
           booking_group?: string | null
           briefing?: string | null
           briefing_data?: Json | null
@@ -933,10 +945,17 @@ export type Database = {
           meet_link?: string | null
           meeting_script?: string | null
           meeting_summary?: string | null
+          no_show_at?: string | null
+          no_show_marked_by?: string | null
           paid_at?: string | null
           payment_id?: string | null
           payment_link_id?: string | null
           payment_url?: string | null
+          pending_reschedule_at?: string | null
+          pending_reschedule_ends_at?: string | null
+          pending_reschedule_expires_at?: string | null
+          pending_reschedule_payment_id?: string | null
+          pending_reschedule_payment_url?: string | null
           prep_data?: Json | null
           prep_generated_at?: string | null
           prep_sent_at?: string | null
@@ -949,6 +968,7 @@ export type Database = {
           reminder_24h_sent_at?: string | null
           reminder_8h_sent_at?: string | null
           reschedule_count?: number
+          reschedule_fee_paid_at?: string | null
           rescheduled_from?: string | null
           scheduled_at: string
           session_index?: number
@@ -963,6 +983,8 @@ export type Database = {
           action_plan?: string | null
           admin_notes?: string | null
           amount?: number | null
+          attendance_confirmed_at?: string | null
+          attendance_requested_at?: string | null
           booking_group?: string | null
           briefing?: string | null
           briefing_data?: Json | null
@@ -988,10 +1010,17 @@ export type Database = {
           meet_link?: string | null
           meeting_script?: string | null
           meeting_summary?: string | null
+          no_show_at?: string | null
+          no_show_marked_by?: string | null
           paid_at?: string | null
           payment_id?: string | null
           payment_link_id?: string | null
           payment_url?: string | null
+          pending_reschedule_at?: string | null
+          pending_reschedule_ends_at?: string | null
+          pending_reschedule_expires_at?: string | null
+          pending_reschedule_payment_id?: string | null
+          pending_reschedule_payment_url?: string | null
           prep_data?: Json | null
           prep_generated_at?: string | null
           prep_sent_at?: string | null
@@ -1004,6 +1033,7 @@ export type Database = {
           reminder_24h_sent_at?: string | null
           reminder_8h_sent_at?: string | null
           reschedule_count?: number
+          reschedule_fee_paid_at?: string | null
           rescheduled_from?: string | null
           scheduled_at?: string
           session_index?: number

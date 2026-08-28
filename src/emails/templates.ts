@@ -471,6 +471,29 @@ const consultationRescheduled: Builder = (d) =>
     cta: { label: "Entrar na reunião (Google Meet)", url: link(d, ["meet_link", "link"], LINKS.dashboard) },
   });
 
+const consultationAttendanceRequest: Builder = (d) =>
+  build({
+    subject: `❓ Confirma sua presença na consultoria de ${val(d, ["date", "data"], "amanhã")}?`,
+    preview: "Confirme sua presença em 1 clique para garantir o horário.",
+    heading: "❓ Você confirma presença?",
+    subheading: "É só 1 clique — assim o Ronnei chega preparado.",
+    greeting: `Fala, ${firstName(d)}!`,
+    blocks: [
+      { type: "details", title: "Sua consultoria", rows: consultationRows(d) },
+      {
+        type: "text",
+        text: "Clique no botão abaixo para <strong>confirmar sua presença</strong>. Se não conseguir comparecer, remarque pela plataforma — a <strong>primeira remarcação é gratuita</strong>.",
+      },
+      {
+        type: "text",
+        text: "Se não tivermos sua confirmação, vamos te chamar para verificar antes do horário.",
+        highlight: true,
+      },
+    ],
+    cta: { label: "Confirmar minha presença", url: link(d, ["confirm_url", "link"], LINKS.dashboard) },
+  });
+
+
 
 const consultationConfirmed: Builder = (d) =>
   build({
@@ -618,6 +641,8 @@ const consultationCompleted: Builder = (d) =>
 export const EMAIL_TEMPLATES: Record<string, Builder> = {
   consultoria_confirmada: consultationConfirmed,
   consultoria_reagendada: consultationRescheduled,
+  consultoria_confirmar_presenca: consultationAttendanceRequest,
+  consultation_attendance_request: consultationAttendanceRequest,
   consultation_rescheduled: consultationRescheduled,
 
   consultation_confirmed: consultationConfirmed,
