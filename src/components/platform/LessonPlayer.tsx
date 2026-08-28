@@ -156,10 +156,13 @@ export function LessonPlayer({
 function BunnyFrame({
   src,
   title,
+  unmuteOnPlay,
   onEnded,
 }: {
   src: string;
   title?: string;
+  /** Quando o embed iniciou mudo por causa do autoplay mobile, desmuta no 1º `playing`. */
+  unmuteOnPlay?: boolean;
   onEnded?: () => void;
 }) {
   const ref = useRef<HTMLIFrameElement>(null);
