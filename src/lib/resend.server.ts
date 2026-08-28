@@ -148,6 +148,8 @@ export async function sendResendEmail(params: {
   from?: string;
   reply_to?: string;
   tags?: { name: string; value: string }[];
+  /** Anexos (ex.: relatório em PDF). `content` em base64. */
+  attachments?: { filename: string; content: string }[];
 }) {
   try {
     const config = await getResendConfig();
