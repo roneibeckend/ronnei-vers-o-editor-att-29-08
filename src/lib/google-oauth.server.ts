@@ -52,13 +52,22 @@ async function loadClient(): Promise<{ clientId: string; clientSecret: string } 
       .maybeSingle();
 
     if (data?.client_id && data?.client_secret_ciphertext) {
-      clientCache = {
-        clientId: data.client_id,
-        clientSecret: decryptToken(data.client_secret_ciphertext),
-      };
-      return clientCache;
+      try {
+        clientCache = {
+          clientId: data.client_id,
+          clientSecret: decryptToken(data.client_secret_ciphertext),
+        };
+        return clientCache;
+      } catch (err) {
+        console.warn("[google] client secret não pôde ser descriptografado:", err);
+        throw new Error(
+          "As credenciais salvas foram criptografadas com outra chave (GOOGLE_TOKEN_ENC_KEY mudou). " +
+            "Salve novamente o Client ID e o Client Secret em Admin → Integrações → Google e reconecte a conta.",
+        );
+      }
     }
   } catch (err) {
+    if (err instanceof Error && err.message.includes("GOOGLE_TOKEN_ENC_KEY mudou")) throw err;
     console.warn("[google] falha ao carregar client OAuth do banco:", err);
   }
 
