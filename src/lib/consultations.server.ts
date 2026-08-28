@@ -904,6 +904,8 @@ async function confirmSingleConsultation(
 
 /* ------------------------ Falta e cancelamento ------------------------ */
 
+const SITE_URL = "https://ronneinaveia.com.br";
+
 /** Avisa o aluno que a reunião foi marcada como falta e como remarcar. */
 export async function sendConsultationNoShow(consultation: ConsultationRow, feeLabel: string) {
   return sendConsultationEmail(
