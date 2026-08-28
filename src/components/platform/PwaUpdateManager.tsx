@@ -27,8 +27,11 @@ export function PwaUpdateManager() {
 
       // Polling para atualizações em background a cada 1 hora
       const interval = setInterval(() => {
-        navigator.serviceWorker.ready.then(reg => reg.update());
+        navigator.serviceWorker.ready
+          .then(reg => reg.update())
+          .catch(() => { /* ignora falhas de update */ });
       }, 60 * 60 * 1000);
+
 
       return () => clearInterval(interval);
     }
