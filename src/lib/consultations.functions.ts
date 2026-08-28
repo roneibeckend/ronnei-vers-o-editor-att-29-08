@@ -26,8 +26,12 @@ export const getConsultationSlots = createServerFn({ method: "GET" })
     return computeAvailableSlots(data.durationMinutes);
   });
 
-/** Agenda uma consultoria, cria o evento no Calendar com Meet e envia a confirmação. */
-export const bookConsultation = createServerFn({ method: "POST" })
+/**
+ * Cria a RESERVA da consultoria (status `awaiting_payment`) e gera o checkout.
+ * Nada de Google Calendar/Meet, e-mail ou receita antes do pagamento aprovado.
+ * O horário fica bloqueado por 30 minutos.
+ */
+export const reserveConsultation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z
@@ -43,12 +47,14 @@ export const bookConsultation = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const {
       isSlotFree,
-      attachGoogleMeeting,
-      sendConsultationConfirmation,
       auditConsultation,
+      expireConsultationHolds,
       CONSULTATION_TZ,
       MIN_LEAD_MINUTES,
+      HOLD_MINUTES,
     } = await import("@/lib/consultations.server");
+
+    await expireConsultationHolds();
 
     const { data: product } = await supabaseAdmin
       .from("consultation_products")
@@ -61,7 +67,7 @@ export const bookConsultation = createServerFn({ method: "POST" })
 
     const briefing = data.briefingData ? formatBriefingText(data.briefingData) : "";
     if (product.briefing_required && !data.briefingData) {
-      throw new Error("Preencha o briefing antes de agendar.");
+      throw new Error("Preencha o briefing antes de reservar.");
     }
 
     const start = new Date(data.startIso);
@@ -75,11 +81,24 @@ export const bookConsultation = createServerFn({ method: "POST" })
       throw new Error("Este horário acabou de ser reservado. Escolha outro.");
     }
 
+    // Uma reserva ativa por vez: descarta reservas anteriores não pagas do aluno.
+    await supabaseAdmin
+      .from("consultations")
+      .update({
+        status: "cancelled",
+        cancel_reason: "Substituída por nova reserva",
+        hold_expires_at: null,
+      } as never)
+      .eq("user_id", context.userId)
+      .eq("status", "awaiting_payment");
+
     const { data: profile } = await supabaseAdmin
       .from("profiles")
       .select("name, email, phone")
       .eq("id", context.userId)
       .maybeSingle();
+
+    const holdExpiresAt = new Date(Date.now() + HOLD_MINUTES * 60_000).toISOString();
 
     const { data: created, error } = await supabaseAdmin
       .from("consultations")
@@ -94,34 +113,132 @@ export const bookConsultation = createServerFn({ method: "POST" })
         ends_at: end.toISOString(),
         duration_minutes: product.duration_minutes,
         timezone: CONSULTATION_TZ,
-        status: "scheduled",
+        status: "awaiting_payment",
+        hold_expires_at: holdExpiresAt,
         briefing: briefing || null,
         briefing_data: (data.briefingData ?? null) as never,
         briefing_submitted_at: briefing ? new Date().toISOString() : null,
         amount: product.price,
-      })
+      } as never)
       .select("*")
       .single();
 
-    if (error) throw new Error(`Falha ao agendar: ${error.message}`);
+    if (error) throw new Error(`Falha ao reservar: ${error.message}`);
 
     await auditConsultation({
       consultationId: created.id,
       actorId: context.userId,
       actorRole: "student",
-      action: "booked",
-      details: { productId: product.id, startIso: start.toISOString() },
+      action: "reserved",
+      details: { productId: product.id, startIso: start.toISOString(), holdExpiresAt },
     });
 
-    const google = await attachGoogleMeeting(created as never);
-    const withMeet = { ...created, meet_link: google.ok ? google.meetLink : null };
-    await sendConsultationConfirmation(withMeet as never);
+    // Checkout no Asaas vinculado à reserva
+    let paymentUrl: string | null = null;
+    let paymentLinkId: string | null = null;
+    try {
+      const { asaasFetchJson, asaasHeaders, asaasErrorMessage, getAsaasConfig, buildExternalReference } =
+        await import("@/lib/asaas.server");
+      const { apiKey, baseUrl } = await getAsaasConfig();
+
+      const name = `Consultoria ${product.duration_minutes} min`
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^\w\s-]/g, "")
+        .trim();
+
+      const response = await asaasFetchJson(`${baseUrl}/paymentLinks`, {
+        method: "POST",
+        headers: asaasHeaders(apiKey),
+        body: JSON.stringify({
+          name: name || `Consultoria ${product.id}`,
+          description: `${product.title} — reserva para ${start.toISOString()}`.slice(0, 450),
+          value: Number(product.price),
+          billingType: "UNDEFINED",
+          chargeType: "DETACHED",
+          dueDateLimitDays: 1,
+          notificationEnabled: true,
+          externalReference: buildExternalReference({
+            productType: "consultation",
+            productId: product.id,
+            userId: context.userId,
+            consultationId: created.id,
+          }),
+        }),
+      });
+
+      if (!response.ok || !response.json) throw new Error(asaasErrorMessage(response));
+      paymentUrl = response.json.url as string;
+      paymentLinkId = response.json.id as string;
+
+      await supabaseAdmin
+        .from("consultations")
+        .update({ payment_url: paymentUrl, payment_link_id: paymentLinkId } as never)
+        .eq("id", created.id);
+
+      await auditConsultation({
+        consultationId: created.id,
+        actorId: context.userId,
+        actorRole: "student",
+        action: "checkout_created",
+        details: { paymentLinkId },
+      });
+    } catch (err) {
+      const message = (err as Error)?.message ?? "Falha ao gerar o checkout.";
+      await auditConsultation({
+        consultationId: created.id,
+        actorId: context.userId,
+        actorRole: "student",
+        action: "checkout_created",
+        status: "error",
+        details: { error: message },
+      });
+      // Libera o horário na hora: sem checkout não há como pagar.
+      await supabaseAdmin
+        .from("consultations")
+        .update({ status: "cancelled", cancel_reason: "Falha ao gerar checkout", hold_expires_at: null } as never)
+        .eq("id", created.id);
+      throw new Error(message);
+    }
 
     return {
       id: created.id,
-      meetLink: google.ok ? google.meetLink : null,
-      googleError: google.ok ? null : google.error,
+      status: "awaiting_payment" as const,
+      holdExpiresAt,
+      paymentUrl,
+      amount: Number(product.price),
       scheduledAt: created.scheduled_at,
+      durationMinutes: product.duration_minutes,
+      productTitle: product.title,
+    };
+  });
+
+/** Estado da reserva (usado para o contador e o polling pós-checkout). */
+export const getConsultationReservation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { expireConsultationHolds } = await import("@/lib/consultations.server");
+    await expireConsultationHolds();
+
+    const { data: row } = await supabaseAdmin
+      .from("consultations")
+      .select("id, user_id, status, hold_expires_at, payment_url, meet_link, scheduled_at, amount, cancel_reason")
+      .eq("id", data.id)
+      .maybeSingle();
+
+    if (!row || row.user_id !== context.userId) throw new Error("Reserva não encontrada.");
+
+    return {
+      id: row.id,
+      status: row.status,
+      holdExpiresAt: (row as any).hold_expires_at ?? null,
+      paymentUrl: (row as any).payment_url ?? null,
+      meetLink: row.meet_link,
+      scheduledAt: row.scheduled_at,
+      amount: Number(row.amount ?? 0),
+      cancelReason: (row as any).cancel_reason ?? null,
     };
   });
 
@@ -133,7 +250,7 @@ export const listMyConsultations = createServerFn({ method: "GET" })
     const { data } = await supabaseAdmin
       .from("consultations")
       .select(
-        "id, product_id, product_title, scheduled_at, ends_at, duration_minutes, status, briefing, briefing_data, meet_link, calendar_html_link, recording_url, recording_file_id, student_notes, action_plan, materials, materials_released_at, cancel_reason, completed_at, amount, created_at",
+        "id, product_id, product_title, scheduled_at, ends_at, duration_minutes, status, hold_expires_at, payment_url, paid_at, briefing, briefing_data, meet_link, calendar_html_link, recording_url, recording_file_id, student_notes, action_plan, materials, materials_released_at, cancel_reason, completed_at, amount, created_at",
       )
       .eq("user_id", context.userId)
       .order("scheduled_at", { ascending: false });
@@ -158,7 +275,7 @@ export const submitConsultationBriefing = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (!row || row.user_id !== context.userId) throw new Error("Consultoria não encontrada.");
-    if (!["scheduled", "pending_payment"].includes(row.status)) {
+    if (!["scheduled", "pending_payment", "awaiting_payment"].includes(row.status)) {
       throw new Error("Esta consultoria já foi realizada ou cancelada.");
     }
 
@@ -200,6 +317,27 @@ export const cancelMyConsultation = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (!row || row.user_id !== context.userId) throw new Error("Consultoria não encontrada.");
+
+    // Reserva não paga: pode ser descartada a qualquer momento, liberando o horário.
+    if (row.status === "awaiting_payment") {
+      await supabaseAdmin
+        .from("consultations")
+        .update({
+          status: "cancelled",
+          cancel_reason: data.reason || "Reserva cancelada pelo aluno",
+          hold_expires_at: null,
+        } as never)
+        .eq("id", data.id);
+
+      await auditConsultation({
+        consultationId: data.id,
+        actorId: context.userId,
+        actorRole: "student",
+        action: "reservation_cancelled",
+      });
+      return { cancelled: true };
+    }
+
     if (row.status !== "scheduled") throw new Error("Esta consultoria não pode ser cancelada.");
     if (+new Date(row.scheduled_at) - Date.now() < 12 * 3600_000) {
       throw new Error("Cancelamentos só podem ser feitos com 12 horas de antecedência. Fale com o suporte.");

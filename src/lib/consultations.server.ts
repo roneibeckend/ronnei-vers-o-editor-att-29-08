@@ -11,6 +11,21 @@ export const CONSULTATION_TZ = "America/Sao_Paulo";
 const TZ_OFFSET = "-03:00";
 /** Antecedência mínima para o aluno agendar. */
 export const MIN_LEAD_MINUTES = 120;
+/** Tempo que a reserva não paga bloqueia o horário. */
+export const HOLD_MINUTES = 30;
+/** Status que ocupam a agenda. */
+export const BUSY_STATUSES = ["scheduled", "pending_payment", "awaiting_payment"] as const;
+
+/** Cancela reservas não pagas expiradas e libera os horários. */
+export async function expireConsultationHolds() {
+  try {
+    const { data } = await supabaseAdmin.rpc("expire_consultation_holds" as never);
+    return Number(data ?? 0);
+  } catch (err) {
+    console.warn("[consultorias] Falha ao expirar reservas:", (err as Error)?.message);
+    return 0;
+  }
+}
 
 export type ConsultationRow = {
   id: string;
@@ -89,6 +104,7 @@ function slotDate(dateStr: string, time: string) {
 export type Slot = { startIso: string; endIso: string; label: string; date: string; time: string };
 
 export async function computeAvailableSlots(durationMinutes: number, days = 30): Promise<Slot[]> {
+  await expireConsultationHolds();
   const [{ data: availability }, { data: blocks }, { data: booked }] = await Promise.all([
     supabaseAdmin.from("consultation_availability").select("*").eq("active", true),
     supabaseAdmin
@@ -98,7 +114,7 @@ export async function computeAvailableSlots(durationMinutes: number, days = 30):
     supabaseAdmin
       .from("consultations")
       .select("scheduled_at, ends_at, status")
-      .in("status", ["scheduled", "pending_payment"])
+      .in("status", [...BUSY_STATUSES])
       .gte("ends_at", new Date().toISOString()),
   ]);
 
@@ -150,11 +166,12 @@ export async function computeAvailableSlots(durationMinutes: number, days = 30):
 
 /** Reconfirma que o horário continua livre (evita corrida entre dois alunos). */
 export async function isSlotFree(startIso: string, endIso: string) {
+  await expireConsultationHolds();
   const [{ data: conflicts }, { data: blocked }] = await Promise.all([
     supabaseAdmin
       .from("consultations")
       .select("id")
-      .in("status", ["scheduled", "pending_payment"])
+      .in("status", [...BUSY_STATUSES])
       .lt("scheduled_at", endIso)
       .gt("ends_at", startIso)
       .limit(1),
@@ -540,3 +557,94 @@ export async function runConsultationReminders() {
 }
 
 
+
+/* --------------------- Confirmação de pagamento --------------------- */
+
+/**
+ * Converte uma reserva `awaiting_payment` em consultoria confirmada.
+ * Somente aqui criamos o evento no Google Calendar/Meet, enviamos o e-mail
+ * de confirmação e contabilizamos a receita.
+ * Idempotente: reprocessar o mesmo pagamento não duplica nada.
+ */
+export async function confirmConsultationPayment(input: {
+  consultationId: string;
+  paymentId: string;
+  amount?: number | null;
+  userId?: string | null;
+}) {
+  const { data: row } = await supabaseAdmin
+    .from("consultations")
+    .select("*")
+    .eq("id", input.consultationId)
+    .maybeSingle();
+
+  if (!row) {
+    await auditConsultation({
+      action: "payment_confirmed",
+      status: "error",
+      details: { consultationId: input.consultationId, paymentId: input.paymentId, error: "reserva não encontrada" },
+    });
+    return { ok: false as const, error: "Reserva de consultoria não encontrada." };
+  }
+
+  // Já confirmada anteriormente (webhook duplicado)
+  if (row.status === "scheduled" || row.status === "completed") {
+    return { ok: true as const, alreadyConfirmed: true, meetLink: (row as any).meet_link ?? null };
+  }
+
+  if (row.status === "cancelled" || row.status === "no_show") {
+    // Pagamento chegou depois da expiração: reativa se o horário ainda estiver livre.
+    const free = await isSlotFree(row.scheduled_at, row.ends_at);
+    if (!free) {
+      await auditConsultation({
+        consultationId: row.id,
+        action: "payment_confirmed",
+        status: "warn",
+        details: { paymentId: input.paymentId, error: "horário indisponível após expiração da reserva" },
+      });
+      return {
+        ok: false as const,
+        error: "Pagamento recebido, mas o horário reservado expirou. É necessário reagendar.",
+      };
+    }
+  }
+
+  const { error } = await supabaseAdmin
+    .from("consultations")
+    .update({
+      status: "scheduled",
+      paid_at: new Date().toISOString(),
+      payment_id: input.paymentId,
+      hold_expires_at: null,
+      cancel_reason: null,
+      ...(input.amount ? { amount: input.amount } : {}),
+    } as never)
+    .eq("id", row.id);
+
+  if (error) {
+    await auditConsultation({
+      consultationId: row.id,
+      action: "payment_confirmed",
+      status: "error",
+      details: { paymentId: input.paymentId, error: error.message },
+    });
+    return { ok: false as const, error: error.message };
+  }
+
+  await auditConsultation({
+    consultationId: row.id,
+    action: "payment_confirmed",
+    details: { paymentId: input.paymentId, amount: input.amount ?? row.amount ?? null },
+  });
+
+  const google = await attachGoogleMeeting(row as never);
+  const withMeet = { ...row, status: "scheduled", meet_link: google.ok ? google.meetLink : null };
+  await sendConsultationConfirmation(withMeet as never);
+
+  return {
+    ok: true as const,
+    alreadyConfirmed: false,
+    meetLink: google.ok ? google.meetLink : null,
+    googleError: google.ok ? null : google.error,
+  };
+}

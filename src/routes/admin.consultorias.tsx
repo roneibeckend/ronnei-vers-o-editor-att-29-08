@@ -73,6 +73,7 @@ const dateBR = (iso: string) =>
   }).format(new Date(iso));
 
 const STATUS_LABEL: Record<string, string> = {
+  awaiting_payment: "Reserva aguardando pagamento",
   pending_payment: "Aguardando pagamento",
   scheduled: "Agendada",
   completed: "Realizada",

@@ -217,7 +217,7 @@ export const setConsultationStatus = createServerFn({ method: "POST" })
     z
       .object({
         id: z.string().uuid(),
-        status: z.enum(["pending_payment", "scheduled", "completed", "cancelled", "no_show"]),
+        status: z.enum(["awaiting_payment", "pending_payment", "scheduled", "completed", "cancelled", "no_show"]),
         notes: z.string().trim().max(2000).optional(),
       })
       .parse(data),
@@ -487,7 +487,8 @@ export const getConsultationStats = createServerFn({ method: "GET" })
       completed,
       cancelled: all.filter((r) => r.status === "cancelled").length,
       noShow,
-      pendingPayment: all.filter((r) => r.status === "pending_payment").length,
+      // Reservas não pagas nunca entram na receita (paidStatuses acima).
+      pendingPayment: all.filter((r) => r.status === "pending_payment" || r.status === "awaiting_payment").length,
       revenueTotal: revenue(all),
       revenuePeriod: revenue(inPeriod),
       attendanceRate: attendance,

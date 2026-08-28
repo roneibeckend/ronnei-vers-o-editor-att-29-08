@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { runConsultationReminders } from "@/lib/consultations.server";
+import { runConsultationReminders, expireConsultationHolds } from "@/lib/consultations.server";
 
 const JOB = "consultation_reminders";
 const LOCK_MINUTES = 5;
@@ -70,6 +70,7 @@ export const Route = createFileRoute("/api/public/consultation-reminders")({
         );
 
         try {
+          const expiredHolds = await expireConsultationHolds();
           const result = await runConsultationReminders();
           await supabaseAdmin
             .from("ops_job_runs")
@@ -80,7 +81,7 @@ export const Route = createFileRoute("/api/public/consultation-reminders")({
               last_run_at: new Date().toISOString(),
             })
             .eq("job", JOB);
-          return Response.json({ ok: true, ...result });
+          return Response.json({ ok: true, expiredHolds, ...result });
         } catch (err) {
           const message = (err as Error)?.message || "Erro desconhecido";
           await supabaseAdmin

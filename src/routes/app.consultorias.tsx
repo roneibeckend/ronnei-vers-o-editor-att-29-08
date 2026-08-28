@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import {
   listConsultationProducts,
   getConsultationSlots,
-  bookConsultation,
+  reserveConsultation,
+  getConsultationReservation,
   listMyConsultations,
   submitConsultationBriefing,
   cancelMyConsultation,
@@ -20,7 +21,8 @@ import { ConsultationBriefingSummary } from "@/components/platform/ConsultationB
 import type { ConsultationBriefing } from "@/lib/consultation-briefing";
 import { consultationCalendarUrl } from "@/lib/google-calendar-link";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Calendar, Clock, Loader2, Video, FileText, History, ExternalLink, PlayCircle } from "lucide-react";
+import { Calendar, Clock, Loader2, Video, FileText, History, ExternalLink, PlayCircle, CreditCard, Timer, ShieldCheck } from "lucide-react";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/app/consultorias")({
   head: () => ({
@@ -57,6 +59,7 @@ const dateBR = (iso: string) =>
   }).format(new Date(iso));
 
 const STATUS_LABEL: Record<string, string> = {
+  awaiting_payment: "Aguardando pagamento",
   pending_payment: "Aguardando pagamento",
   scheduled: "Agendada",
   completed: "Realizada",
@@ -190,6 +193,7 @@ function ConsultationCard({ consultation, onChanged }: { consultation: any; onCh
   });
 
   const isUpcoming = consultation.status === "scheduled";
+  const isAwaitingPayment = consultation.status === "awaiting_payment";
 
   return (
     <Card className="space-y-4 p-5">
@@ -201,10 +205,38 @@ function ConsultationCard({ consultation, onChanged }: { consultation: any; onCh
             {dateBR(consultation.scheduled_at)} · {consultation.duration_minutes} min
           </p>
         </div>
-        <Badge variant={isUpcoming ? "default" : "secondary"}>
+        <Badge variant={isUpcoming ? "default" : isAwaitingPayment ? "outline" : "secondary"}>
           {STATUS_LABEL[consultation.status] ?? consultation.status}
         </Badge>
       </div>
+
+      {isAwaitingPayment && (
+        <div className="space-y-3">
+          <HoldCountdown deadline={consultation.hold_expires_at} />
+          <p className="text-sm text-muted-foreground">
+            Conclua o pagamento para confirmar a reunião. Sem o pagamento, o horário volta para a agenda.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {consultation.payment_url && (
+              <Button asChild size="sm">
+                <a href={consultation.payment_url} target="_blank" rel="noreferrer">
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Pagar agora
+                </a>
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-destructive"
+              disabled={drop.isPending}
+              onClick={() => drop.mutate()}
+            >
+              Cancelar reserva
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {isUpcoming && consultation.meet_link && (
@@ -269,6 +301,37 @@ function ConsultationCard({ consultation, onChanged }: { consultation: any; onCh
   );
 }
 
+function useCountdown(deadline: string | null | undefined) {
+  const [left, setLeft] = useState(() => (deadline ? +new Date(deadline) - Date.now() : 0));
+
+  useEffect(() => {
+    if (!deadline) return;
+    setLeft(+new Date(deadline) - Date.now());
+    const id = setInterval(() => setLeft(+new Date(deadline) - Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [deadline]);
+
+  const total = Math.max(0, Math.floor(left / 1000));
+  const mm = String(Math.floor(total / 60)).padStart(2, "0");
+  const ss = String(total % 60).padStart(2, "0");
+  return { expired: deadline ? left <= 0 : false, label: `${mm}:${ss}`, msLeft: left };
+}
+
+function HoldCountdown({ deadline }: { deadline: string | null | undefined }) {
+  const { expired, label } = useCountdown(deadline);
+  if (!deadline) return null;
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold ${
+        expired ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"
+      }`}
+    >
+      <Timer className="h-4 w-4" />
+      {expired ? "Reserva expirada — o horário foi liberado." : `Horário reservado por ${label}`}
+    </div>
+  );
+}
+
 function BookingDialog({
   product,
   onClose,
@@ -282,13 +345,24 @@ function BookingDialog({
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [visibleDays, setVisibleDays] = useState(3);
   const [expandedTimes, setExpandedTimes] = useState(false);
-  const book = useServerFn(bookConsultation);
+  const [briefing, setBriefing] = useState<ConsultationBriefing | null>(null);
+  const [reservation, setReservation] = useState<any | null>(null);
+  const reserve = useServerFn(reserveConsultation);
+  const fetchReservation = useServerFn(getConsultationReservation);
 
   const { data: slots, isLoading } = useQuery({
     queryKey: ["consultation-slots", product?.duration_minutes],
     queryFn: () => getConsultationSlots({ data: { durationMinutes: product.duration_minutes } }),
     enabled: Boolean(product),
   });
+
+  const reset = () => {
+    setSlot(null);
+    setSelectedDate(null);
+    setBriefing(null);
+    setReservation(null);
+    setExpandedTimes(false);
+  };
 
   const grouped = useMemo(() => {
     const map = new Map<string, any[]>();
@@ -297,7 +371,6 @@ function BookingDialog({
       list.push(s);
       map.set(s.date, list);
     }
-    // Oculta dias totalmente lotados (sem horários)
     return Array.from(map.entries()).filter(([, list]) => list.length > 0);
   }, [slots]);
 
@@ -312,38 +385,67 @@ function BookingDialog({
       new Date(`${date}T12:00:00-03:00`),
     );
 
+  // 6. Enviar para checkout — cria a reserva temporária e o link de pagamento.
   const submit = useMutation({
-    mutationFn: (value?: ConsultationBriefing) =>
-      book({ data: { productId: product.id, startIso: slot!, briefingData: value } }),
+    mutationFn: () =>
+      reserve({ data: { productId: product.id, startIso: slot!, briefingData: briefing ?? undefined } }),
     onSuccess: (res: any) => {
-      toast.success(
-        res?.meetLink
-          ? "Consultoria agendada! O link do Google Meet foi enviado por e-mail."
-          : "Consultoria agendada! Você receberá o link da reunião por e-mail.",
-      );
-      setSlot(null);
-      setSelectedDate(null);
+      setReservation(res);
       onBooked();
-      onClose();
+      if (res?.paymentUrl) window.open(res.paymentUrl, "_blank", "noopener");
     },
-    onError: (e: any) => toast.error(e?.message ?? "Falha ao agendar."),
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao criar a reserva."),
   });
 
-  const step = slot ? 3 : selectedDate ? 2 : 1;
+  // 7. Após pagamento aprovado — o webhook confirma; aqui apenas acompanhamos.
+  const { data: liveReservation } = useQuery({
+    queryKey: ["consultation-reservation", reservation?.id],
+    queryFn: () => fetchReservation({ data: { id: reservation.id } }),
+    enabled: Boolean(reservation?.id),
+    refetchInterval: 5000,
+  });
+
+  useEffect(() => {
+    if (liveReservation?.status === "scheduled") {
+      toast.success("Pagamento aprovado! Sua consultoria está confirmada e o link do Meet foi enviado por e-mail.");
+      onBooked();
+      reset();
+      onClose();
+    }
+  }, [liveReservation?.status]);
+
+  const holdDeadline = liveReservation?.holdExpiresAt ?? reservation?.holdExpiresAt ?? null;
+  const paymentUrl = liveReservation?.paymentUrl ?? reservation?.paymentUrl ?? null;
+
+  const step = reservation ? 5 : briefing ? 4 : slot ? 3 : selectedDate ? 2 : 1;
 
   return (
-    <Dialog open={Boolean(product)} onOpenChange={(o) => !o && onClose()}>
+    <Dialog
+      open={Boolean(product)}
+      onOpenChange={(o) => {
+        if (!o) {
+          reset();
+          onClose();
+        }
+      }}
+    >
       <DialogContent className="max-h-[90dvh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{product?.title}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5">
-          {isLoading ? (
+          {step <= 4 && (
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Etapa {step} de 4 · {["Data", "Horário", "Briefing", "Resumo"][step - 1]}
+            </p>
+          )}
+
+          {isLoading && step === 1 ? (
             <div className="flex h-24 items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
             </div>
-          ) : grouped.length === 0 ? (
+          ) : grouped.length === 0 && step === 1 ? (
             <p className="text-sm text-muted-foreground">
               Nenhum horário disponível no momento. Tente novamente em alguns dias.
             </p>
@@ -432,7 +534,7 @@ function BookingDialog({
                 </Button>
               )}
             </div>
-          ) : (
+          ) : step === 3 ? (
             <div>
               <div className="mb-3 flex items-center justify-between gap-2">
                 <p className="min-w-0 truncate text-sm font-semibold">
@@ -447,10 +549,92 @@ function BookingDialog({
                 Responda em etapas curtas para o Ronnei chegar preparado na sua reunião.
               </p>
               <ConsultationBriefingForm
-                submitting={submit.isPending}
-                submitLabel="Confirmar agendamento"
-                onSubmit={(value) => submit.mutate(value)}
+                submitLabel="Revisar reserva"
+                onSubmit={(value) => setBriefing(value)}
               />
+            </div>
+          ) : step === 4 ? (
+            <div className="space-y-4">
+              <Card className="space-y-2 p-4 text-sm">
+                <p className="font-display text-base font-bold">Resumo da reserva</p>
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">Consultoria</span>
+                  <span className="text-right font-medium">{product?.title}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">Data e hora</span>
+                  <span className="text-right font-medium">{dateBR(slot!)}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">Duração</span>
+                  <span className="font-medium">{product?.duration_minutes} minutos</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">Briefing</span>
+                  <span className="font-medium">Preenchido ✓</span>
+                </div>
+                <div className="flex justify-between gap-3 border-t pt-2">
+                  <span className="text-muted-foreground">Total</span>
+                  <span className="font-display text-lg font-bold">{money(product?.price)}</span>
+                </div>
+              </Card>
+
+              <p className="flex items-start gap-2 text-xs text-muted-foreground">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                Ao continuar, o horário fica reservado por 30 minutos para você concluir o pagamento. A reunião só
+                é confirmada (com Google Meet e e-mail) após a aprovação.
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                <Button className="flex-1" disabled={submit.isPending} onClick={() => submit.mutate()}>
+                  {submit.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CreditCard className="mr-2 h-4 w-4" />
+                  )}
+                  Reservar e pagar
+                </Button>
+                <Button variant="outline" onClick={() => setBriefing(null)}>
+                  Editar briefing
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <HoldCountdown deadline={holdDeadline} />
+
+              <Card className="space-y-2 p-4 text-sm">
+                <p className="font-display text-base font-bold">Reserva criada</p>
+                <p className="text-muted-foreground">
+                  {product?.title} · {dateBR(reservation.scheduledAt)}
+                </p>
+                <p className="font-display text-lg font-bold">{money(reservation.amount)}</p>
+              </Card>
+
+              {paymentUrl && (
+                <Button asChild className="w-full">
+                  <a href={paymentUrl} target="_blank" rel="noreferrer">
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Abrir pagamento
+                  </a>
+                </Button>
+              )}
+
+              <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Aguardando a confirmação do pagamento. Pode deixar esta tela aberta.
+              </p>
+
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={() => {
+                  reset();
+                  onClose();
+                }}
+              >
+                Fechar (a reserva continua ativa)
+              </Button>
             </div>
           )}
         </div>
