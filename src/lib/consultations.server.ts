@@ -3,6 +3,8 @@
 // e-mails de confirmação/lembrete/gravação e auditoria completa.
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { dueReminderWindows } from "@/lib/consultation-reminders";
+
 
 export const CONSULTATION_TZ = "America/Sao_Paulo";
 /** São Paulo não usa horário de verão desde 2019. */
@@ -464,23 +466,36 @@ export async function runConsultationReminders() {
   let sent24h = 0;
   let sent8h = 0;
   let sent1h = 0;
+  let failed = 0;
+  const failures: { consultationId: string; window: string; error: string }[] = [];
 
   for (const row of (upcoming ?? []) as ConsultationRow[]) {
-    const minutesAhead = (+new Date(row.scheduled_at) - now) / 60_000;
-
-    if (!(row as any).reminder_24h_sent_at && minutesAhead <= 24 * 60 && minutesAhead > 8 * 60) {
-      await sendConsultationReminder(row, "24h");
-      sent24h++;
-    }
-    if (!row.reminder_8h_sent_at && minutesAhead <= 8 * 60 && minutesAhead > 60) {
-      await sendConsultationReminder(row, "8h");
-      sent8h++;
-    }
-    if (!row.reminder_1h_sent_at && minutesAhead <= 60 && minutesAhead > 0) {
-      await sendConsultationReminder(row, "1h");
-      sent1h++;
+    for (const window of dueReminderWindows(row as never, now)) {
+      try {
+        await sendConsultationReminder(row, window);
+        if (window === "24h") sent24h++;
+        else if (window === "8h") sent8h++;
+        else sent1h++;
+        await auditConsultation({
+          consultationId: row.id,
+          action: `reminder_${window}_sent`,
+          status: "ok",
+          details: { scheduled_at: row.scheduled_at, window },
+        });
+      } catch (err) {
+        failed++;
+        const message = (err as Error)?.message || "Erro desconhecido";
+        failures.push({ consultationId: row.id, window, error: message });
+        await auditConsultation({
+          consultationId: row.id,
+          action: `reminder_${window}_failed`,
+          status: "error",
+          details: { scheduled_at: row.scheduled_at, window, error: message },
+        });
+      }
     }
   }
+
 
   // Reuniões que já passaram entram no fluxo completo de conclusão
   // (materiais liberados + e-mail + auditoria).
@@ -508,7 +523,10 @@ export async function runConsultationReminders() {
     sent24h,
     sent8h,
     sent1h,
+    failed,
+    failures,
     completed: finished?.length ?? 0,
   };
 }
+
 
