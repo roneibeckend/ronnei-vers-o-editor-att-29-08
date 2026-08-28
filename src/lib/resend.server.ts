@@ -173,7 +173,8 @@ export async function sendResendEmail(params: {
         tags: params.tags?.map((t) => ({
           name: sanitizeTag(t.name),
           value: sanitizeTag(t.value)
-        }))
+        })),
+        attachments: params.attachments?.length ? params.attachments : undefined
       })
     });
 
