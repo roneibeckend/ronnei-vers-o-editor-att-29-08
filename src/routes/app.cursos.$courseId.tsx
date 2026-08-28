@@ -25,6 +25,7 @@ import { generateCertificate } from "@/lib/certificates-student.functions";
 import { motion, AnimatePresence } from "framer-motion";
 import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
 
+import { LessonPlayer } from "@/components/platform/LessonPlayer";
 
 
 const VideoPlayer = lazy(() => 
@@ -51,9 +52,9 @@ export const Route = createFileRoute("/app/cursos/$courseId")({
       .from("courses")
       .select(`
         id, title, description, price, teacher_name, cover_url, payment_type, due_days, status, intro_video_url,
-        modules (
-          id, title, video_url, order_index,
-          lessons (id, title, video_url, duration, order_index, module_id)
+        modules:course_modules (
+          id, title, video_url, video_aspect, order_index,
+          lessons:course_lessons (id, title, video_url, video_provider, video_id, video_aspect, duration:duration_minutes, order_index, module_id)
         )
       `)
       .eq("id", params.courseId)
@@ -599,17 +600,18 @@ function CoursePage() {
           >
             <div ref={lessonTopRef} className="scroll-mt-24" />
             {isLoadingSignedUrl ? (
-              <div className="aspect-[9/16] max-h-[70vh] w-full max-w-[400px] mx-auto rounded-2xl bg-white/5 animate-pulse" />
+              <div className="aspect-video w-full rounded-2xl bg-white/5 animate-pulse" />
             ) : (
-              <Suspense fallback={<div className="aspect-[9/16] max-h-[70vh] w-full max-w-[400px] mx-auto rounded-2xl bg-white/5 animate-pulse" />}>
-                <VideoPlayer
-                  videoId={active.id}
-                  src={signedLessonUrl || active.video_url || ""}
-                  poster={course.cover_url || ""}
-                  title={active.title}
-                  className="w-full"
-                />
-              </Suspense>
+              <LessonPlayer
+                videoId={active.id}
+                title={active.title}
+                poster={course.cover_url || ""}
+                videoUrl={signedLessonUrl || active.video_url || ""}
+                provider={(active as any).video_provider}
+                providerVideoId={(active as any).video_id}
+                aspect={(active as any).video_aspect}
+                className="w-full"
+              />
             )}
 
 
