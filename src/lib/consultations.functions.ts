@@ -123,7 +123,7 @@ export const reserveConsultation = createServerFn({ method: "POST" })
         client_phone: data.phone || (profile as any)?.phone || null,
         scheduled_at: start.toISOString(),
         ends_at: end.toISOString(),
-        duration_minutes: product.duration_minutes,
+        duration_minutes: meetingMinutes,
         timezone: CONSULTATION_TZ,
         status: "awaiting_payment",
         hold_expires_at: holdExpiresAt,
