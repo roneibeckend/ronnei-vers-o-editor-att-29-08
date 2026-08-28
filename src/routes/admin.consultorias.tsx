@@ -18,6 +18,8 @@ import {
   runConsultationRemindersNow,
   saveConsultationNotes,
   sendConsultationReportEmail,
+  applyAvailabilityPreset,
+  previewAvailableSlots,
 } from "@/lib/consultations-admin.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -32,6 +34,7 @@ import { ConsultationReports } from "@/components/admin/ConsultationReports";
 import { ConsultationAutomations } from "@/components/admin/ConsultationAutomations";
 import { ConsultationRecordings } from "@/components/admin/ConsultationRecordings";
 import { ConsultationAttendance } from "@/components/admin/ConsultationAttendance";
+import { ConsultationGoogleSync } from "@/components/admin/ConsultationGoogleSync";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -169,8 +172,9 @@ function AdminConsultationsPage() {
         <TabsContent value="presenca" className="mt-4">
           <ConsultationAttendance />
         </TabsContent>
-        <TabsContent value="automacoes" className="mt-4">
+        <TabsContent value="automacoes" className="mt-4 space-y-5">
           <ConsultationAutomations />
+          <ConsultationGoogleSync />
         </TabsContent>
         <TabsContent value="auditoria" className="mt-4">
           <AuditTab audit={data?.audit ?? []} />
