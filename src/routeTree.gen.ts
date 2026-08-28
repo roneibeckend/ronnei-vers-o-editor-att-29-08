@@ -77,6 +77,7 @@ import { Route as ApiPublicDailyFinancialReportRouteImport } from './routes/api/
 import { Route as ApiPublicConsultoriaPresencaRouteImport } from './routes/api/public/consultoria-presenca'
 import { Route as ApiPublicConsultationRemindersRouteImport } from './routes/api/public/consultation-reminders'
 import { Route as ApiPublicConsultationRecordingsRouteImport } from './routes/api/public/consultation-recordings'
+import { Route as ApiPublicTmpDriveCheckRouteImport } from './routes/api/public/_tmp-drive-check'
 import { Route as AdminRankingCampanhasRouteImport } from './routes/admin.ranking.campanhas'
 import { Route as AdminAlunosStudentIdRouteImport } from './routes/admin.alunos_.$studentId'
 import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
@@ -428,6 +429,11 @@ const ApiPublicConsultationRecordingsRoute =
     path: '/api/public/consultation-recordings',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicTmpDriveCheckRoute = ApiPublicTmpDriveCheckRouteImport.update({
+  id: '/api/public/_tmp-drive-check',
+  path: '/api/public',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRankingCampanhasRoute = AdminRankingCampanhasRouteImport.update({
   id: '/campanhas',
   path: '/campanhas',
@@ -510,6 +516,7 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/admin/alunos/$studentId': typeof AdminAlunosStudentIdRoute
   '/admin/ranking/campanhas': typeof AdminRankingCampanhasRoute
+  '/api/public': typeof ApiPublicTmpDriveCheckRoute
   '/api/public/consultation-recordings': typeof ApiPublicConsultationRecordingsRoute
   '/api/public/consultation-reminders': typeof ApiPublicConsultationRemindersRoute
   '/api/public/consultoria-presenca': typeof ApiPublicConsultoriaPresencaRoute
@@ -581,6 +588,7 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/admin/alunos/$studentId': typeof AdminAlunosStudentIdRoute
   '/admin/ranking/campanhas': typeof AdminRankingCampanhasRoute
+  '/api/public': typeof ApiPublicTmpDriveCheckRoute
   '/api/public/consultation-recordings': typeof ApiPublicConsultationRecordingsRoute
   '/api/public/consultation-reminders': typeof ApiPublicConsultationRemindersRoute
   '/api/public/consultoria-presenca': typeof ApiPublicConsultoriaPresencaRoute
@@ -657,6 +665,7 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/admin/alunos_/$studentId': typeof AdminAlunosStudentIdRoute
   '/admin/ranking/campanhas': typeof AdminRankingCampanhasRoute
+  '/api/public/_tmp-drive-check': typeof ApiPublicTmpDriveCheckRoute
   '/api/public/consultation-recordings': typeof ApiPublicConsultationRecordingsRoute
   '/api/public/consultation-reminders': typeof ApiPublicConsultationRemindersRoute
   '/api/public/consultoria-presenca': typeof ApiPublicConsultoriaPresencaRoute
@@ -734,6 +743,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/admin/alunos/$studentId'
     | '/admin/ranking/campanhas'
+    | '/api/public'
     | '/api/public/consultation-recordings'
     | '/api/public/consultation-reminders'
     | '/api/public/consultoria-presenca'
@@ -805,6 +815,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/admin/alunos/$studentId'
     | '/admin/ranking/campanhas'
+    | '/api/public'
     | '/api/public/consultation-recordings'
     | '/api/public/consultation-reminders'
     | '/api/public/consultoria-presenca'
@@ -880,6 +891,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/admin/alunos_/$studentId'
     | '/admin/ranking/campanhas'
+    | '/api/public/_tmp-drive-check'
     | '/api/public/consultation-recordings'
     | '/api/public/consultation-reminders'
     | '/api/public/consultoria-presenca'
@@ -916,6 +928,7 @@ export interface RootRouteChildren {
   VerificarCertificadoRoute: typeof VerificarCertificadoRoute
   ApiMaterialDownloadRoute: typeof ApiMaterialDownloadRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  ApiPublicTmpDriveCheckRoute: typeof ApiPublicTmpDriveCheckRoute
   ApiPublicConsultationRecordingsRoute: typeof ApiPublicConsultationRecordingsRoute
   ApiPublicConsultationRemindersRoute: typeof ApiPublicConsultationRemindersRoute
   ApiPublicConsultoriaPresencaRoute: typeof ApiPublicConsultoriaPresencaRoute
@@ -1406,6 +1419,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicConsultationRecordingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/_tmp-drive-check': {
+      id: '/api/public/_tmp-drive-check'
+      path: '/api/public'
+      fullPath: '/api/public'
+      preLoaderRoute: typeof ApiPublicTmpDriveCheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/ranking/campanhas': {
       id: '/admin/ranking/campanhas'
       path: '/campanhas'
@@ -1604,6 +1624,7 @@ const rootRouteChildren: RootRouteChildren = {
   VerificarCertificadoRoute: VerificarCertificadoRoute,
   ApiMaterialDownloadRoute: ApiMaterialDownloadRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  ApiPublicTmpDriveCheckRoute: ApiPublicTmpDriveCheckRoute,
   ApiPublicConsultationRecordingsRoute: ApiPublicConsultationRecordingsRoute,
   ApiPublicConsultationRemindersRoute: ApiPublicConsultationRemindersRoute,
   ApiPublicConsultoriaPresencaRoute: ApiPublicConsultoriaPresencaRoute,
