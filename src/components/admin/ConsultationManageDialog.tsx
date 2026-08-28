@@ -72,6 +72,11 @@ export function ConsultationManageDialog({
   const [notifyReschedule, setNotifyReschedule] = useState(true);
   const [meetLink, setMeetLink] = useState("");
   const [notifyLink, setNotifyLink] = useState(false);
+  const [prep, setPrep] = useState<any | null>(null);
+  const [prepRecipients, setPrepRecipients] = useState("");
+  const [meetingNotes, setMeetingNotes] = useState("");
+  const [meetingSummary, setMeetingSummary] = useState("");
+  const [clientRecipients, setClientRecipients] = useState("");
 
   useEffect(() => {
     if (!consultation) return;
@@ -81,7 +86,13 @@ export function ConsultationManageDialog({
     setMaterials(Array.isArray(consultation.materials) ? consultation.materials : []);
     setWhen(dateTimeLocal(consultation.scheduled_at));
     setMeetLink(consultation.meet_link ?? "");
+    setPrep(consultation.prep_data ?? null);
+    setMeetingNotes(consultation.admin_notes ?? "");
+    setMeetingSummary(consultation.meeting_summary ?? "");
+    setClientRecipients(consultation.client_email ?? "");
+    setPrepRecipients("");
   }, [consultation]);
+
 
   const saveNotesFn = useServerFn(saveConsultationNotes);
   const rescheduleFn = useServerFn(rescheduleConsultation);
