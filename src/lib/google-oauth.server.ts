@@ -9,7 +9,9 @@ export const GOOGLE_SCOPES = [
   "email",
   "profile",
   "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/calendar.readonly",
   "https://www.googleapis.com/auth/drive.file",
+  "https://www.googleapis.com/auth/drive.readonly",
 ] as const;
 
 export const GOOGLE_CALLBACK_PATH = "/api/public/google/oauth/callback";
