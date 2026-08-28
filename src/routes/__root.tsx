@@ -16,6 +16,8 @@ import { useAffiliateTracking } from "../hooks/use-affiliate-tracking";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { initPixel, trackEvent } from "../lib/pixel";
+import { gtmPageView } from "../lib/gtm";
+
 import { installClientLogger, logClient } from "../lib/client-logger";
 
 function NotFoundComponent() {
