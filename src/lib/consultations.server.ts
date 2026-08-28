@@ -650,6 +650,8 @@ export async function confirmConsultationPayment(input: {
     error?: string;
   } | null = null;
 
+  const failedSessions: { id: string; scheduledAt: string; error: string }[] = [];
+
   for (const row of rows) {
     const isLeader = row.id === leader.id;
     const result = await confirmSingleConsultation(row, {
@@ -658,10 +660,33 @@ export async function confirmConsultationPayment(input: {
       amount: isLeader ? input.amount ?? null : null,
     });
     if (isLeader) leaderResult = result;
+    if (!result.ok) {
+      failedSessions.push({
+        id: row.id,
+        scheduledAt: row.scheduled_at,
+        error: (result as any).error ?? "Falha ao confirmar encontro.",
+      });
+    }
   }
 
-  return (leaderResult ?? { ok: false as const, error: "Falha ao confirmar a reserva." }) as any;
+  // Encontros do combo que falharam precisam de atenção manual — não podem
+  // ficar invisíveis só porque o encontro principal deu certo.
+  if (failedSessions.length) {
+    await auditConsultation({
+      consultationId: leader.id,
+      action: "payment_confirmed",
+      status: "warn",
+      details: { paymentId: input.paymentId, bookingGroup: group, failedSessions },
+    });
+  }
+
+  return {
+    ...(leaderResult ?? { ok: false as const, error: "Falha ao confirmar a reserva." }),
+    sessions: rows.length,
+    failedSessions,
+  } as any;
 }
+
 
 /** Confirma um único encontro: status, Google Meet e e-mail. Idempotente. */
 async function confirmSingleConsultation(
