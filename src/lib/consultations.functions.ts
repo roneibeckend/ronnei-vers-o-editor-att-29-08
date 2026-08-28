@@ -279,7 +279,14 @@ export const reserveConsultation = createServerFn({ method: "POST" })
       amount: Number(product.price),
       scheduledAt: created.scheduled_at,
       durationMinutes: meetingMinutes,
-      sessions: rows.map((r) => ({ id: r.id, scheduledAt: r.scheduled_at })),
+      sessions: rows.map((r, i) => ({
+        id: r.id,
+        scheduledAt: r.scheduled_at,
+        endsAt: r.ends_at,
+        index: i + 1,
+        durationMinutes: meetingMinutes,
+      })),
+
       sessionsTotal: totalSessions,
       productTitle: product.title,
     };
