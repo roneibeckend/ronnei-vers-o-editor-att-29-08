@@ -7,7 +7,12 @@ import {
   saveConsultationNotes,
   setConsultationMeetLink,
   getConsultationHistory,
+  generateConsultationPrepFn,
+  sendConsultationPrepEmailFn,
+  generateConsultationOutcome,
+  sendConsultationOutcomeToClient,
 } from "@/lib/consultations-admin.functions";
+import { buildConsultationReportPdf } from "@/lib/consultation-pdf";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +21,19 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Plus, Trash2, CalendarClock, Link2, StickyNote, History } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  CalendarClock,
+  Link2,
+  StickyNote,
+  History,
+  Sparkles,
+  Send,
+  ClipboardCheck,
+} from "lucide-react";
+
 
 type Material = { title: string; url: string };
 
