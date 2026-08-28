@@ -108,6 +108,23 @@ export function buildConsultationReportPdf(c: any) {
     y += Math.max(lines.length * 5, 5) + 2;
   };
 
+  const paragraphs = (text: string) => {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(30, 30, 34);
+    text.split(/\n/).forEach((paragraph) => {
+      if (!paragraph.trim()) {
+        y += 3;
+        return;
+      }
+      doc.splitTextToSize(paragraph, CW).forEach((line: string) => {
+        ensure(6);
+        doc.text(line, MX, y);
+        y += 5;
+      });
+    });
+  };
+
   sectionTitle("Dados da reunião");
   row("Aluno", c?.client_name || "Aluno");
   row("E-mail", c?.client_email || "—");
@@ -118,8 +135,32 @@ export function buildConsultationReportPdf(c: any) {
   row("Valor", money(c?.amount));
   if (c?.meet_link) row("Link do Meet", String(c.meet_link));
 
+  // Preparação automática (resumo executivo + dados identificados)
+  const prep = (c?.prep_data ?? null) as
+    | { executiveSummary?: string[]; identified?: { label: string; value: string }[]; alerts?: string[] }
+    | null;
+
+  if (prep?.executiveSummary?.length) {
+    y += 4;
+    sectionTitle("Resumo executivo");
+    paragraphs(prep.executiveSummary.join("\n"));
+  }
+
+  if (prep?.identified?.length) {
+    y += 4;
+    sectionTitle("Dados identificados");
+    prep.identified.forEach((item) => row(item.label, item.value));
+  }
+
+  if (prep?.alerts?.length) {
+    y += 4;
+    sectionTitle("Pontos de atenção");
+    paragraphs(prep.alerts.map((a) => `• ${a}`).join("\n"));
+  }
+
   y += 4;
   sectionTitle("Briefing preenchido pelo aluno");
+
 
   if (briefing && typeof briefing === "object") {
     ORDER.forEach((key) => {
@@ -167,20 +208,7 @@ export function buildConsultationReportPdf(c: any) {
   sectionTitle(script ? "Roteiro / análise" : "Roteiro / análise (preencher)");
 
   if (script) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(30, 30, 34);
-    script.split(/\n/).forEach((paragraph) => {
-      if (!paragraph.trim()) {
-        y += 3;
-        return;
-      }
-      doc.splitTextToSize(paragraph, CW).forEach((line: string) => {
-        ensure(6);
-        doc.text(line, MX, y);
-        y += 5;
-      });
-    });
+    paragraphs(script);
   } else {
     doc.setDrawColor(215, 215, 220);
     for (let i = 0; i < 10; i += 1) {
@@ -189,6 +217,23 @@ export function buildConsultationReportPdf(c: any) {
       y += 9;
     }
   }
+
+  // Pós-reunião: resumo da consultoria e plano de ação entregues ao cliente.
+  const summary = String(c?.meeting_summary ?? "").trim();
+  if (summary) {
+    y += 6;
+    sectionTitle("Resumo da consultoria");
+    paragraphs(summary);
+  }
+
+  const actionPlan = String(c?.action_plan ?? "").trim();
+  if (actionPlan) {
+    y += 6;
+    sectionTitle("Plano de ação");
+    paragraphs(actionPlan);
+  }
+
+
 
   // Rodapé em todas as páginas
   const total = (doc as any).getNumberOfPages();

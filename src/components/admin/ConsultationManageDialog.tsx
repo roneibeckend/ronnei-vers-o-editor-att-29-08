@@ -7,7 +7,12 @@ import {
   saveConsultationNotes,
   setConsultationMeetLink,
   getConsultationHistory,
+  generateConsultationPrepFn,
+  sendConsultationPrepEmailFn,
+  generateConsultationOutcome,
+  sendConsultationOutcomeToClient,
 } from "@/lib/consultations-admin.functions";
+import { buildConsultationReportPdf } from "@/lib/consultation-pdf";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +21,19 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Plus, Trash2, CalendarClock, Link2, StickyNote, History } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  CalendarClock,
+  Link2,
+  StickyNote,
+  History,
+  Sparkles,
+  Send,
+  ClipboardCheck,
+} from "lucide-react";
+
 
 type Material = { title: string; url: string };
 
@@ -55,6 +72,11 @@ export function ConsultationManageDialog({
   const [notifyReschedule, setNotifyReschedule] = useState(true);
   const [meetLink, setMeetLink] = useState("");
   const [notifyLink, setNotifyLink] = useState(false);
+  const [prep, setPrep] = useState<any | null>(null);
+  const [prepRecipients, setPrepRecipients] = useState("");
+  const [meetingNotes, setMeetingNotes] = useState("");
+  const [meetingSummary, setMeetingSummary] = useState("");
+  const [clientRecipients, setClientRecipients] = useState("");
 
   useEffect(() => {
     if (!consultation) return;
@@ -64,7 +86,13 @@ export function ConsultationManageDialog({
     setMaterials(Array.isArray(consultation.materials) ? consultation.materials : []);
     setWhen(dateTimeLocal(consultation.scheduled_at));
     setMeetLink(consultation.meet_link ?? "");
+    setPrep(consultation.prep_data ?? null);
+    setMeetingNotes(consultation.admin_notes ?? "");
+    setMeetingSummary(consultation.meeting_summary ?? "");
+    setClientRecipients(consultation.client_email ?? "");
+    setPrepRecipients("");
   }, [consultation]);
+
 
   const saveNotesFn = useServerFn(saveConsultationNotes);
   const rescheduleFn = useServerFn(rescheduleConsultation);
@@ -85,6 +113,7 @@ export function ConsultationManageDialog({
           adminNotes,
           studentNotes,
           actionPlan,
+          meetingSummary,
           materials: materials.filter((m) => m.title.trim() && m.url.trim()),
         },
       }),
@@ -122,6 +151,83 @@ export function ConsultationManageDialog({
     onError: (e: any) => toast.error(e?.message ?? "Falha ao salvar o link."),
   });
 
+  /* ------------------- Preparação automática ------------------- */
+
+  const prepFn = useServerFn(generateConsultationPrepFn);
+  const prepEmailFn = useServerFn(sendConsultationPrepEmailFn);
+  const outcomeFn = useServerFn(generateConsultationOutcome);
+  const clientReportFn = useServerFn(sendConsultationOutcomeToClient);
+
+  const emailList = (value: string) =>
+    value
+      .split(/[,\s;]+/)
+      .map((e) => e.trim())
+      .filter((e) => e.includes("@"));
+
+  /** PDF atual da reunião, já com preparação/resumo, para anexar nos e-mails. */
+  const currentPdf = (extra?: Record<string, unknown>) =>
+    buildConsultationReportPdf({ ...consultation, prep_data: prep, ...extra });
+
+  const generatePrep = useMutation({
+    mutationFn: () => prepFn({ data: { id: consultation.id } }),
+    onSuccess: (r: any) => {
+      setPrep(r?.prep ?? null);
+      toast.success("Preparação da reunião gerada.");
+      onSaved();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao gerar a preparação."),
+  });
+
+  const sendPrep = useMutation({
+    mutationFn: () => {
+      const pdf = currentPdf();
+      const recipients = emailList(prepRecipients);
+      return prepEmailFn({
+        data: {
+          id: consultation.id,
+          ...(recipients.length ? { recipients } : {}),
+          filename: pdf.filename,
+          pdfBase64: pdf.base64,
+        },
+      });
+    },
+    onSuccess: (r: any) => {
+      toast.success(`Preparação enviada para ${(r?.recipients ?? []).join(", ")}`);
+      onSaved();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar a preparação."),
+  });
+
+  const generateOutcome = useMutation({
+    mutationFn: () => outcomeFn({ data: { id: consultation.id, notes: meetingNotes, save: true } }),
+    onSuccess: (r: any) => {
+      setMeetingSummary(r?.summary ?? "");
+      setActionPlan(r?.actionPlan ?? "");
+      toast.success("Resumo e plano de ação gerados.");
+      onSaved();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao gerar o resumo."),
+  });
+
+  const sendClientReport = useMutation({
+    mutationFn: () => {
+      const pdf = currentPdf({ meeting_summary: meetingSummary, action_plan: actionPlan });
+      return clientReportFn({
+        data: {
+          id: consultation.id,
+          recipients: emailList(clientRecipients),
+          filename: pdf.filename,
+          pdfBase64: pdf.base64,
+        },
+      });
+    },
+    onSuccess: (r: any) => {
+      toast.success(`Enviado para ${(r?.recipients ?? []).join(", ")}`);
+      onSaved();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar ao cliente."),
+  });
+
   return (
     <Dialog open={Boolean(consultation)} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[88dvh] max-w-2xl overflow-y-auto">
@@ -131,8 +237,14 @@ export function ConsultationManageDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="notas">
+        <Tabs defaultValue="preparacao">
           <TabsList className="flex-wrap">
+            <TabsTrigger value="preparacao">
+              <Sparkles className="mr-1.5 h-4 w-4" /> Preparação
+            </TabsTrigger>
+            <TabsTrigger value="pos">
+              <ClipboardCheck className="mr-1.5 h-4 w-4" /> Pós-reunião
+            </TabsTrigger>
             <TabsTrigger value="notas">
               <StickyNote className="mr-1.5 h-4 w-4" /> Notas e materiais
             </TabsTrigger>
@@ -146,6 +258,183 @@ export function ConsultationManageDialog({
               <History className="mr-1.5 h-4 w-4" /> Histórico
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="preparacao" className="mt-4 space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" disabled={generatePrep.isPending} onClick={() => generatePrep.mutate()}>
+                {generatePrep.isPending ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-1.5 h-4 w-4" />
+                )}
+                {prep ? "Regenerar preparação" : "Gerar preparação"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!prep || sendPrep.isPending}
+                onClick={() => sendPrep.mutate()}
+              >
+                {sendPrep.isPending ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-1.5 h-4 w-4" />
+                )}
+                Enviar dossiê por e-mail
+              </Button>
+            </div>
+
+            <div>
+              <Label className="text-xs">Destinatários (vazio = admins da plataforma)</Label>
+              <Input
+                value={prepRecipients}
+                onChange={(e) => setPrepRecipients(e.target.value)}
+                placeholder="ronnei@exemplo.com, outro@exemplo.com"
+              />
+            </div>
+
+            {consultation?.prep_sent_at && (
+              <p className="text-xs text-muted-foreground">
+                Dossiê enviado em {dateBR(consultation.prep_sent_at)}.
+              </p>
+            )}
+
+            {!prep ? (
+              <p className="text-sm text-muted-foreground">
+                Nenhuma preparação gerada. O sistema também gera e envia automaticamente até 12h antes da
+                reunião.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Resumo executivo
+                  </p>
+                  {(prep.executiveSummary ?? []).map((p: string, i: number) => (
+                    <p key={i} className="text-sm leading-relaxed">
+                      {p}
+                    </p>
+                  ))}
+                </div>
+
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Dados identificados
+                  </p>
+                  <div className="rounded-md border">
+                    {(prep.identified ?? []).map((item: any, i: number) => (
+                      <div key={i} className="flex gap-3 border-b px-3 py-1.5 text-sm last:border-b-0">
+                        <span className="w-40 shrink-0 text-muted-foreground">{item.label}</span>
+                        <span className="break-words">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Roteiro sugerido
+                  </p>
+                  {(prep.script ?? []).map((block: any, i: number) => (
+                    <div key={i} className="mb-2">
+                      <p className="text-sm font-semibold">
+                        {block.title}{" "}
+                        <span className="font-normal text-muted-foreground">({block.minutes} min)</span>
+                      </p>
+                      <ul className="ml-4 list-disc text-sm text-muted-foreground">
+                        {(block.bullets ?? []).map((b: string, j: number) => (
+                          <li key={j}>{b}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+
+                {(prep.alerts ?? []).length > 0 && (
+                  <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3">
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-destructive">
+                      Pontos de atenção
+                    </p>
+                    <ul className="ml-4 list-disc text-sm">
+                      {prep.alerts.map((a: string, i: number) => (
+                        <li key={i}>{a}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="pos" className="mt-4 space-y-4">
+            <div>
+              <Label>Observações da reunião</Label>
+              <Textarea
+                rows={6}
+                value={meetingNotes}
+                onChange={(e) => setMeetingNotes(e.target.value)}
+                placeholder="Anote o que foi conversado, decisões e tarefas (uma por linha)..."
+              />
+            </div>
+            <Button
+              className="w-full"
+              disabled={meetingNotes.trim().length < 5 || generateOutcome.isPending}
+              onClick={() => generateOutcome.mutate()}
+            >
+              {generateOutcome.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="mr-2 h-4 w-4" />
+              )}
+              Gerar resumo e plano de ação
+            </Button>
+
+            <div>
+              <Label>Resumo da consultoria (enviado ao cliente)</Label>
+              <Textarea rows={6} value={meetingSummary} onChange={(e) => setMeetingSummary(e.target.value)} />
+            </div>
+            <div>
+              <Label>Plano de ação</Label>
+              <Textarea rows={5} value={actionPlan} onChange={(e) => setActionPlan(e.target.value)} />
+            </div>
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={notes.isPending}
+              onClick={() => notes.mutate()}
+            >
+              {notes.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Salvar alterações
+            </Button>
+
+            <div>
+              <Label className="text-xs">Enviar para</Label>
+              <Input
+                value={clientRecipients}
+                onChange={(e) => setClientRecipients(e.target.value)}
+                placeholder="cliente@exemplo.com"
+              />
+            </div>
+            <Button
+              className="w-full"
+              disabled={!meetingSummary.trim() || !clientRecipients.includes("@") || sendClientReport.isPending}
+              onClick={() => sendClientReport.mutate()}
+            >
+              {sendClientReport.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
+              Enviar resumo + PDF final ao cliente
+            </Button>
+            {consultation?.client_report_sent_at && (
+              <p className="text-xs text-muted-foreground">
+                Enviado ao cliente em {dateBR(consultation.client_report_sent_at)}.
+              </p>
+            )}
+          </TabsContent>
+
+
 
           <TabsContent value="notas" className="mt-4 space-y-4">
             <div>

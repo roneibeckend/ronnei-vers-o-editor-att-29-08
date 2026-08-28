@@ -342,6 +342,7 @@ export const saveConsultationNotes = createServerFn({ method: "POST" })
         adminNotes: z.string().trim().max(5000).nullable().optional(),
         studentNotes: z.string().trim().max(5000).nullable().optional(),
         actionPlan: z.string().trim().max(5000).nullable().optional(),
+        meetingSummary: z.string().trim().max(10000).nullable().optional(),
         meetingScript: z.string().trim().max(20000).nullable().optional(),
         materials: z
           .array(
@@ -364,6 +365,7 @@ export const saveConsultationNotes = createServerFn({ method: "POST" })
     if (data.adminNotes !== undefined) patch["admin_notes"] = data.adminNotes || null;
     if (data.studentNotes !== undefined) patch["student_notes"] = data.studentNotes || null;
     if (data.actionPlan !== undefined) patch["action_plan"] = data.actionPlan || null;
+    if (data.meetingSummary !== undefined) patch["meeting_summary"] = data.meetingSummary || null;
     if (data.meetingScript !== undefined) patch["meeting_script"] = data.meetingScript || null;
     if (data.materials !== undefined) {
       patch["materials"] = data.materials;
@@ -814,6 +816,156 @@ export const sendConsultationReportEmail = createServerFn({ method: "POST" })
       actorRole: "admin",
       action: "report_emailed",
       details: { recipients, filename: data.filename },
+    });
+
+    return { sent: true, recipients };
+  });
+
+/* ------------------- Preparação automática da reunião ------------------- */
+
+/** Gera (ou regenera) resumo executivo, dados identificados e roteiro sugerido. */
+export const generateConsultationPrepFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { generateConsultationPrep } = await import("@/lib/consultation-prep.server");
+    const { prep, row } = await generateConsultationPrep(data.id, context.userId);
+    return { prep, meetingScript: (row as any).meeting_script ?? null };
+  });
+
+/** Envia a preparação (dossiê) por e-mail ao Ronnei / consultores. */
+export const sendConsultationPrepEmailFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        recipients: z.array(z.string().trim().email().max(160)).max(10).optional(),
+        filename: z.string().trim().min(4).max(120).optional(),
+        pdfBase64: z.string().min(100).max(8_000_000).optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { sendConsultationPrepEmail } = await import("@/lib/consultation-prep.server");
+    const result = await sendConsultationPrepEmail({
+      consultationId: data.id,
+      recipients: data.recipients,
+      pdf: data.filename && data.pdfBase64 ? { filename: data.filename, base64: data.pdfBase64 } : null,
+      actorId: context.userId,
+    });
+    if ("error" in result && result.error) throw new Error(result.error);
+    return result;
+  });
+
+/* ------------------------- Pós-reunião ------------------------- */
+
+/** Gera resumo da consultoria + plano de ação a partir das observações. */
+export const generateConsultationOutcome = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ id: z.string().uuid(), notes: z.string().trim().min(5).max(10000), save: z.boolean().default(true) }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { auditConsultation } = await import("@/lib/consultations.server");
+    const { loadConsultationDossier } = await import("@/lib/consultation-prep.server");
+    const { buildConsultationOutcome } = await import("@/lib/consultation-prep");
+
+    const { row, dossier } = await loadConsultationDossier(data.id);
+    const outcome = buildConsultationOutcome({
+      notes: data.notes,
+      dossier,
+      prep: ((row as any).prep_data as any) ?? null,
+    });
+
+    if (data.save) {
+      await supabaseAdmin
+        .from("consultations")
+        .update({
+          admin_notes: data.notes,
+          meeting_summary: outcome.summary,
+          action_plan: outcome.actionPlan,
+        } as never)
+        .eq("id", data.id);
+      await auditConsultation({
+        consultationId: data.id,
+        actorId: context.userId,
+        actorRole: "admin",
+        action: "outcome_generated",
+      });
+    }
+
+    return outcome;
+  });
+
+/** Envia ao cliente o resumo da consultoria, o plano de ação e o PDF final. */
+export const sendConsultationOutcomeToClient = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        recipients: z.array(z.string().trim().email().max(160)).min(1).max(5),
+        filename: z.string().trim().min(4).max(120),
+        pdfBase64: z.string().min(100).max(8_000_000),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { auditConsultation, formatBR } = await import("@/lib/consultations.server");
+    const { sendResendEmail } = await import("@/lib/resend.server");
+
+    const { data: row } = await supabaseAdmin
+      .from("consultations")
+      .select("id, client_name, product_title, scheduled_at, meeting_summary, action_plan")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!row) throw new Error("Consultoria não encontrada.");
+    if (!String(row.meeting_summary ?? "").trim()) {
+      throw new Error("Gere o resumo da consultoria antes de enviar ao cliente.");
+    }
+
+    const clean = (v: unknown) => String(v ?? "").replace(/[<>]/g, "");
+    const recipients = Array.from(new Set(data.recipients.map((e) => e.toLowerCase())));
+    const when = formatBR(row.scheduled_at);
+    const plan = String(row.action_plan ?? "").trim();
+
+    const html = `<!DOCTYPE html><html><body style="margin:0;background:#f5f5f6;font-family:Arial,Helvetica,sans-serif;color:#1a1a1c;">
+  <div style="max-width:580px;margin:0 auto;padding:28px 24px;background:#ffffff;">
+    <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#ff6a00;margin:0 0 6px;font-weight:bold;">Ronnei na Veia</p>
+    <h1 style="font-size:20px;margin:0 0 6px;">Resumo da sua consultoria</h1>
+    <p style="font-size:13px;color:#6b6b70;margin:0 0 18px;">${clean(row.product_title)} · ${clean(when)}</p>
+    <p style="font-size:14px;line-height:1.65;white-space:pre-line;margin:0;">${clean(row.meeting_summary)}</p>
+    ${plan ? `<h2 style="font-size:15px;margin:22px 0 8px;">Seu plano de ação</h2><p style="font-size:14px;line-height:1.7;white-space:pre-line;margin:0;">${clean(plan)}</p>` : ""}
+    <p style="font-size:13px;color:#6b6b70;margin:22px 0 0;">O relatório completo em PDF está em anexo. Qualquer dúvida, é só responder este e-mail.</p>
+  </div>
+</body></html>`;
+
+    await sendResendEmail({
+      to: recipients,
+      subject: `Resumo e plano de ação da sua consultoria — ${clean(when)}`,
+      html,
+      tags: [{ name: "tipo", value: "resumo_consultoria_cliente" }],
+      attachments: [{ filename: data.filename, content: data.pdfBase64 }],
+    });
+
+    await supabaseAdmin
+      .from("consultations")
+      .update({ client_report_sent_at: new Date().toISOString() } as never)
+      .eq("id", data.id);
+
+    await auditConsultation({
+      consultationId: data.id,
+      actorId: context.userId,
+      actorRole: "admin",
+      action: "client_report_emailed",
+      details: { recipients },
     });
 
     return { sent: true, recipients };
