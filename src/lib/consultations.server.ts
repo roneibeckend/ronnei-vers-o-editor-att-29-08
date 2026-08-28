@@ -114,7 +114,7 @@ export async function computeAvailableSlots(durationMinutes: number, days = 30):
     supabaseAdmin
       .from("consultations")
       .select("scheduled_at, ends_at, status")
-      .in("status", BUSY_STATUSES as unknown as string[])
+      .in("status", [...BUSY_STATUSES])
       .gte("ends_at", new Date().toISOString()),
   ]);
 
@@ -171,7 +171,7 @@ export async function isSlotFree(startIso: string, endIso: string) {
     supabaseAdmin
       .from("consultations")
       .select("id")
-      .in("status", BUSY_STATUSES as unknown as string[])
+      .in("status", [...BUSY_STATUSES])
       .lt("scheduled_at", endIso)
       .gt("ends_at", startIso)
       .limit(1),

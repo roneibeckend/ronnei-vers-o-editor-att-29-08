@@ -239,11 +239,12 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
               .eq('status', 'processing');
 
             if (!result.ok) {
-              await logSystemError({
-                source: 'webhook_asaas',
-                message: `Falha ao confirmar consultoria: ${(result as any).error}`,
-                details: { eventId, paymentId, consultationId, userId },
-              });
+              await logSystemError(
+                'webhook_asaas',
+                'Falha ao confirmar consultoria paga',
+                new Error(String((result as any).error ?? 'erro desconhecido')),
+                { eventId, paymentId, consultationId, userId },
+              );
             }
 
             try {
