@@ -521,7 +521,10 @@ export async function runConsultationReminders() {
     sent24h,
     sent8h,
     sent1h,
+    failed,
+    failures,
     completed: finished?.length ?? 0,
   };
 }
+
 
