@@ -617,6 +617,9 @@ const consultationCompleted: Builder = (d) =>
 /** Nomes canônicos + aliases usados no código atual da plataforma. */
 export const EMAIL_TEMPLATES: Record<string, Builder> = {
   consultoria_confirmada: consultationConfirmed,
+  consultoria_reagendada: consultationRescheduled,
+  consultation_rescheduled: consultationRescheduled,
+
   consultation_confirmed: consultationConfirmed,
   consultoria_lembrete_24h: consultationReminder24h,
   consultoria_lembrete_8h: consultationReminder8h,
