@@ -254,7 +254,8 @@ export function usePwaInstall() {
             "accepted"
           ) {
             setIsInstalling(false);
-            gtmPwaInstalled("accepted");
+            // O evento pwa_install é disparado apenas no listener global
+            // `appinstalled` (src/routes/__root.tsx) para evitar duplicidade.
 
             // Não fingimos que o WebAPK
             // terminou. A partir daqui a

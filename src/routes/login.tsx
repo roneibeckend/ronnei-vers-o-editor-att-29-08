@@ -124,7 +124,7 @@ function LoginPage() {
       const redirectTo = urlParams.get('redirectTo');
       const { authCallbackUrl } = await import("@/lib/auth-callback");
       const callback = authCallbackUrl(redirectTo ?? undefined);
-      gtmLogin("google");
+      gtmRememberAuthMethod("google");
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -157,7 +157,7 @@ function LoginPage() {
       const redirectTo = urlParams.get('redirectTo');
       const { authCallbackUrl } = await import("@/lib/auth-callback");
       const callback = authCallbackUrl(redirectTo ?? undefined);
-      gtmLogin("google");
+      gtmRememberAuthMethod("apple");
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "apple",
         options: { redirectTo: callback },
@@ -182,7 +182,7 @@ function LoginPage() {
       const redirectTo = urlParams.get('redirectTo');
       const { authCallbackUrl } = await import("@/lib/auth-callback");
       const callback = authCallbackUrl(redirectTo ?? undefined);
-      gtmLogin("google");
+      gtmRememberAuthMethod("facebook");
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "facebook",
         options: { redirectTo: callback },
