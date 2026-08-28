@@ -180,9 +180,21 @@ function BunnyFrame({
       );
     };
 
+    let unmuted = false;
+
     const subscribe = () => {
       post({ method: 'addEventListener', value: 'ended', listener: 'lp-ended' });
       post({ method: 'addEventListener', value: 'ready', listener: 'lp-ready' });
+      if (unmuteOnPlay) {
+        post({ method: 'addEventListener', value: 'playing', listener: 'lp-playing' });
+      }
+    };
+
+    const unmute = () => {
+      if (unmuted) return;
+      unmuted = true;
+      post({ method: 'unmute' });
+      post({ method: 'setVolume', value: 1 });
     };
 
     const onMessage = (event: MessageEvent) => {
