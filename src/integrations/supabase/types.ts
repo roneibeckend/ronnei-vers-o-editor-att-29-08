@@ -780,8 +780,77 @@ export type Database = {
         }
         Relationships: []
       }
+      consultation_recordings: {
+        Row: {
+          attempts: number
+          consultation_id: string | null
+          created_at: string
+          drive_created_time: string | null
+          error_message: string | null
+          file_id: string
+          file_name: string
+          id: string
+          match_reason: string | null
+          mime_type: string | null
+          next_attempt_at: string | null
+          notified_at: string | null
+          shared_at: string | null
+          size_bytes: number | null
+          status: string
+          updated_at: string
+          web_view_link: string | null
+        }
+        Insert: {
+          attempts?: number
+          consultation_id?: string | null
+          created_at?: string
+          drive_created_time?: string | null
+          error_message?: string | null
+          file_id: string
+          file_name: string
+          id?: string
+          match_reason?: string | null
+          mime_type?: string | null
+          next_attempt_at?: string | null
+          notified_at?: string | null
+          shared_at?: string | null
+          size_bytes?: number | null
+          status?: string
+          updated_at?: string
+          web_view_link?: string | null
+        }
+        Update: {
+          attempts?: number
+          consultation_id?: string | null
+          created_at?: string
+          drive_created_time?: string | null
+          error_message?: string | null
+          file_id?: string
+          file_name?: string
+          id?: string
+          match_reason?: string | null
+          mime_type?: string | null
+          next_attempt_at?: string | null
+          notified_at?: string | null
+          shared_at?: string | null
+          size_bytes?: number | null
+          status?: string
+          updated_at?: string
+          web_view_link?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultation_recordings_consultation_id_fkey"
+            columns: ["consultation_id"]
+            isOneToOne: false
+            referencedRelation: "consultations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consultations: {
         Row: {
+          action_plan: string | null
           admin_notes: string | null
           amount: number | null
           briefing: string | null
@@ -823,6 +892,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          action_plan?: string | null
           admin_notes?: string | null
           amount?: number | null
           briefing?: string | null
@@ -864,6 +934,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          action_plan?: string | null
           admin_notes?: string | null
           amount?: number | null
           briefing?: string | null
@@ -3645,6 +3716,7 @@ export type Database = {
         Args: { p_content: string; p_ticket_id: string }
         Returns: undefined
       }
+      trigger_consultation_recordings: { Args: never; Returns: undefined }
       trigger_consultation_reminders: { Args: never; Returns: undefined }
       trigger_daily_report: { Args: never; Returns: undefined }
       trigger_ops_recovery: { Args: never; Returns: undefined }
