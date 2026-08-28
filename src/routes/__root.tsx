@@ -72,17 +72,24 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   }, [error]);
 
   const handleReset = async () => {
-    // Tentar recarregar a página inteira para limpar o cache do navegador e manifestos antigos
+    // Recarrega limpando os caches do app (mantém o SW de push registrado).
     if (typeof window !== 'undefined') {
-      if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        for (const registration of registrations) {
-          await registration.unregister();
+      if (typeof caches !== 'undefined') {
+        try {
+          const keys = await caches.keys();
+          await Promise.allSettled(
+            keys
+              .filter((key) => key.startsWith('rnv-') || key.startsWith('ronnei-'))
+              .map((key) => caches.delete(key)),
+          );
+        } catch {
+          /* ignora */
         }
       }
       window.location.reload();
       return;
     }
+
     await queryClient.resetQueries();
     router.invalidate();
     reset();
