@@ -798,9 +798,6 @@ export type Database = {
           size_bytes: number | null
           status: string
           updated_at: string
-          video_aspect: string
-          video_id: string | null
-          video_provider: string
           web_view_link: string | null
         }
         Insert: {
@@ -820,9 +817,6 @@ export type Database = {
           size_bytes?: number | null
           status?: string
           updated_at?: string
-          video_aspect?: string
-          video_id?: string | null
-          video_provider?: string
           web_view_link?: string | null
         }
         Update: {
@@ -842,9 +836,6 @@ export type Database = {
           size_bytes?: number | null
           status?: string
           updated_at?: string
-          video_aspect?: string
-          video_id?: string | null
-          video_provider?: string
           web_view_link?: string | null
         }
         Relationships: [
