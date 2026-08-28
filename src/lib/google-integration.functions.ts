@@ -104,7 +104,25 @@ export const saveGoogleSettings = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { getGoogleSettings } = await import("@/lib/google-calendar.server");
+    const { parseDriveFolderId, checkRecordingsFolder } = await import("@/lib/google-drive.server");
     const current = await getGoogleSettings();
+
+    // Aceita URL completa do Drive ou apenas o ID, e valida acesso/leitura antes de salvar.
+    const rawFolder = (data.drive_recordings_folder_id ?? "").trim();
+    let folderId: string | null = null;
+    let folderCheck: Awaited<ReturnType<typeof checkRecordingsFolder>> | null = null;
+    if (rawFolder) {
+      folderId = parseDriveFolderId(rawFolder);
+      if (!folderId) {
+        throw new Error(
+          "Pasta de gravações inválida. Cole a URL completa do Drive (drive.google.com/drive/folders/...) ou apenas o ID.",
+        );
+      }
+      folderCheck = await checkRecordingsFolder(folderId);
+      if (!folderCheck.ok) {
+        throw new Error(`Pasta de gravações: ${folderCheck.error}`);
+      }
+    }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
@@ -113,7 +131,7 @@ export const saveGoogleSettings = createServerFn({ method: "POST" })
         calendar_id: data.calendar_id,
         timezone: data.timezone,
         default_duration_minutes: data.default_duration_minutes,
-        drive_recordings_folder_id: data.drive_recordings_folder_id || null,
+        drive_recordings_folder_id: folderId,
         create_meet_links: data.create_meet_links,
         send_calendar_invites: data.send_calendar_invites,
         enabled: data.enabled,
@@ -121,7 +139,19 @@ export const saveGoogleSettings = createServerFn({ method: "POST" })
       .eq("id", current.id);
 
     if (error) throw new Error(`Falha ao salvar: ${error.message}`);
-    return { saved: true };
+    return { saved: true, folderId, folderCheck };
+  });
+
+/** Testa a pasta de gravações: valida acesso e lista os últimos 5 arquivos. */
+export const testDriveRecordingsFolder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ folder: z.string().max(500).nullable().optional() }).parse(data ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { checkRecordingsFolder } = await import("@/lib/google-drive.server");
+    return checkRecordingsFolder(data.folder ?? null, 5);
   });
 
 /** Cria e apaga um evento de teste, devolvendo o link do Meet gerado. */
