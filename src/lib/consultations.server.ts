@@ -32,12 +32,20 @@ export async function studentMinutesOnDay(userId: string, dateIso: string) {
   const dayEnd = new Date(`${dateStr}T23:59:59${TZ_OFFSET}`).toISOString();
   const { data } = await supabaseAdmin
     .from("consultations")
-    .select("duration_minutes")
+    .select("duration_minutes, status, hold_expires_at")
     .eq("user_id", userId)
     .in("status", [...BUSY_STATUSES])
     .gte("scheduled_at", dayStart)
     .lte("scheduled_at", dayEnd);
-  return (data ?? []).reduce((sum, r: any) => sum + (r.duration_minutes || 0), 0);
+
+  const nowIso = new Date().toISOString();
+  // Blindagem: hold vencido de reserva não paga não consome o limite diário.
+  return (data ?? [])
+    .filter(
+      (r: any) =>
+        r.status !== "awaiting_payment" || !r.hold_expires_at || r.hold_expires_at >= nowIso,
+    )
+    .reduce((sum, r: any) => sum + (r.duration_minutes || 0), 0);
 }
 
 /** Cancela reservas não pagas expiradas e libera os horários. */
