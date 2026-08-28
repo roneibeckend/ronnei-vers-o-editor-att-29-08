@@ -290,6 +290,22 @@ export async function exchangeCodeAndStore(code: string, redirectUri: string, us
     );
   }
 
+  const grantedScopes = String(payload.scope ?? "").split(" ").filter(Boolean);
+  const hasCalendarListScope = grantedScopes.includes("https://www.googleapis.com/auth/calendar.readonly") ||
+    grantedScopes.includes("https://www.googleapis.com/auth/calendar");
+  const hasDriveReadScope = grantedScopes.includes("https://www.googleapis.com/auth/drive.readonly") ||
+    grantedScopes.includes("https://www.googleapis.com/auth/drive");
+  if (!hasCalendarListScope || !hasDriveReadScope) {
+    const missing = [
+      hasCalendarListScope ? null : "Google Calendar (leitura de agendas)",
+      hasDriveReadScope ? null : "Google Drive (leitura de arquivos)",
+    ].filter((scope): scope is string => Boolean(scope));
+    throw new Error(
+      `O Google não concedeu todas as permissões solicitadas: ${missing.join(" e ")}. ` +
+        "Adicione esses escopos na tela de consentimento do Google Cloud e conecte novamente aceitando todas as opções.",
+    );
+  }
+
   // Identifica a conta conectada
   let email: string | null = null;
   let name: string | null = null;
@@ -313,7 +329,7 @@ export async function exchangeCodeAndStore(code: string, redirectUri: string, us
     account_email: email,
     account_name: name,
     refresh_token_ciphertext: encryptToken(payload.refresh_token),
-    scopes: String(payload.scope ?? "").split(" ").filter(Boolean),
+    scopes: grantedScopes,
     status: "connected",
     last_refresh_at: new Date().toISOString(),
     connected_by: userId,
