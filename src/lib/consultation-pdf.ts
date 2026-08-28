@@ -161,14 +161,33 @@ export function generateConsultationReportPdf(c: any) {
     });
   }
 
-  // Espaço para o roteiro do Ronnei
+  // Roteiro do Ronnei: usa o texto salvo no banco; se vazio, deixa linhas para preencher à mão.
+  const script = String(c?.meeting_script ?? "").trim();
   y += 6;
-  sectionTitle("Roteiro / análise (preencher)");
-  doc.setDrawColor(215, 215, 220);
-  for (let i = 0; i < 10; i += 1) {
-    ensure(9);
-    doc.line(MX, y, PAGE_W - MX, y);
-    y += 9;
+  sectionTitle(script ? "Roteiro / análise" : "Roteiro / análise (preencher)");
+
+  if (script) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(30, 30, 34);
+    script.split(/\n/).forEach((paragraph) => {
+      if (!paragraph.trim()) {
+        y += 3;
+        return;
+      }
+      doc.splitTextToSize(paragraph, CW).forEach((line: string) => {
+        ensure(6);
+        doc.text(line, MX, y);
+        y += 5;
+      });
+    });
+  } else {
+    doc.setDrawColor(215, 215, 220);
+    for (let i = 0; i < 10; i += 1) {
+      ensure(9);
+      doc.line(MX, y, PAGE_W - MX, y);
+      y += 9;
+    }
   }
 
   // Rodapé em todas as páginas
