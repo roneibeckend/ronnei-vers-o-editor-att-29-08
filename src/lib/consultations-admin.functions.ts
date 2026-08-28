@@ -342,6 +342,7 @@ export const saveConsultationNotes = createServerFn({ method: "POST" })
         adminNotes: z.string().trim().max(5000).nullable().optional(),
         studentNotes: z.string().trim().max(5000).nullable().optional(),
         actionPlan: z.string().trim().max(5000).nullable().optional(),
+        meetingSummary: z.string().trim().max(10000).nullable().optional(),
         meetingScript: z.string().trim().max(20000).nullable().optional(),
         materials: z
           .array(
@@ -364,6 +365,7 @@ export const saveConsultationNotes = createServerFn({ method: "POST" })
     if (data.adminNotes !== undefined) patch["admin_notes"] = data.adminNotes || null;
     if (data.studentNotes !== undefined) patch["student_notes"] = data.studentNotes || null;
     if (data.actionPlan !== undefined) patch["action_plan"] = data.actionPlan || null;
+    if (data.meetingSummary !== undefined) patch["meeting_summary"] = data.meetingSummary || null;
     if (data.meetingScript !== undefined) patch["meeting_script"] = data.meetingScript || null;
     if (data.materials !== undefined) {
       patch["materials"] = data.materials;

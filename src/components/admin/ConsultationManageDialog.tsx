@@ -113,6 +113,7 @@ export function ConsultationManageDialog({
           adminNotes,
           studentNotes,
           actionPlan,
+          meetingSummary,
           materials: materials.filter((m) => m.title.trim() && m.url.trim()),
         },
       }),
