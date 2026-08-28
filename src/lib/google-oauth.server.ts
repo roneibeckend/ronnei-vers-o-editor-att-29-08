@@ -33,7 +33,7 @@ const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
 
 /** Cache do access token em memória do worker (curto, revalidado sempre). */
-let accessTokenCache: { token: string; expiresAt: number } | null = null;
+let accessTokenCache: { credentialId: string; token: string; expiresAt: number } | null = null;
 
 /** Cache do client OAuth (id/secret) guardado no banco pelo painel admin. */
 let clientCache: { clientId: string; clientSecret: string } | null = null;
@@ -337,9 +337,13 @@ export async function exchangeCodeAndStore(code: string, redirectUri: string, us
   if (error) throw new Error(`Falha ao salvar as credenciais: ${error.message}`);
 
   accessTokenCache = {
+    credentialId: "pending-persisted-credential",
     token: payload.access_token,
     expiresAt: Date.now() + Math.max(0, (Number(payload.expires_in) || 3600) - 300) * 1000,
   };
+
+  const storedCredentials = await loadCredentials();
+  if (storedCredentials?.id) accessTokenCache.credentialId = storedCredentials.id;
 
   await logGoogleCall({
     action: "oauth.exchange",
@@ -390,10 +394,15 @@ async function markCredentialError(id: string, message: string, revoked: boolean
 
 /** Access token válido da conta conectada (renovado automaticamente). */
 export async function getGoogleAccessToken(): Promise<string> {
-  if (accessTokenCache && accessTokenCache.expiresAt > Date.now()) return accessTokenCache.token;
-
   const creds = await loadCredentials();
   if (!creds) throw new Error("Nenhuma conta Google conectada.");
+  if (
+    accessTokenCache &&
+    accessTokenCache.credentialId === creds.id &&
+    accessTokenCache.expiresAt > Date.now()
+  ) {
+    return accessTokenCache.token;
+  }
 
   const started = Date.now();
   const client = await requireClient();
@@ -429,6 +438,7 @@ export async function getGoogleAccessToken(): Promise<string> {
   }
 
   accessTokenCache = {
+    credentialId: creds.id,
     token: payload.access_token,
     expiresAt: Date.now() + Math.max(0, (Number(payload.expires_in) || 3600) - 300) * 1000,
   };
@@ -473,6 +483,9 @@ export async function googleFetch<T = any>(
       message = parsed?.error?.message || message;
     } catch {
       // resposta não-JSON
+    }
+    if (res.status === 401 || /insufficient authentication scopes/i.test(message)) {
+      accessTokenCache = null;
     }
     await logGoogleCall({
       action,
