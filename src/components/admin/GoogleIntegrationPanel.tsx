@@ -53,7 +53,7 @@ const CHECKLIST = [
   {
     title: "Escopos autorizados",
     detail:
-      "openid, email, profile, .../auth/calendar.events e .../auth/drive.file — exatamente os que a plataforma solicita.",
+      "openid, email, profile, .../auth/calendar.events, .../auth/calendar.readonly, .../auth/drive.file e .../auth/drive.readonly — exatamente os que a plataforma solicita.",
   },
   {
     title: "Credencial OAuth do tipo Aplicativo da Web",
