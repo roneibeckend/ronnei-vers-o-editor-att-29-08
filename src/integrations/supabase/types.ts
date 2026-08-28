@@ -873,6 +873,7 @@ export type Database = {
           materials: Json
           materials_released_at: string | null
           meet_link: string | null
+          meeting_script: string | null
           payment_id: string | null
           product_id: string | null
           product_title: string
@@ -915,6 +916,7 @@ export type Database = {
           materials?: Json
           materials_released_at?: string | null
           meet_link?: string | null
+          meeting_script?: string | null
           payment_id?: string | null
           product_id?: string | null
           product_title?: string
@@ -957,6 +959,7 @@ export type Database = {
           materials?: Json
           materials_released_at?: string | null
           meet_link?: string | null
+          meeting_script?: string | null
           payment_id?: string | null
           product_id?: string | null
           product_title?: string
