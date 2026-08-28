@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import {
   listConsultationProducts,
   getConsultationSlots,
-  bookConsultation,
+  reserveConsultation,
+  getConsultationReservation,
   listMyConsultations,
   submitConsultationBriefing,
   cancelMyConsultation,
@@ -20,7 +21,8 @@ import { ConsultationBriefingSummary } from "@/components/platform/ConsultationB
 import type { ConsultationBriefing } from "@/lib/consultation-briefing";
 import { consultationCalendarUrl } from "@/lib/google-calendar-link";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Calendar, Clock, Loader2, Video, FileText, History, ExternalLink, PlayCircle } from "lucide-react";
+import { Calendar, Clock, Loader2, Video, FileText, History, ExternalLink, PlayCircle, CreditCard, Timer, ShieldCheck } from "lucide-react";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/app/consultorias")({
   head: () => ({
@@ -57,6 +59,7 @@ const dateBR = (iso: string) =>
   }).format(new Date(iso));
 
 const STATUS_LABEL: Record<string, string> = {
+  awaiting_payment: "Aguardando pagamento",
   pending_payment: "Aguardando pagamento",
   scheduled: "Agendada",
   completed: "Realizada",
