@@ -15,6 +15,30 @@ export const MIN_LEAD_MINUTES = 120;
 export const HOLD_MINUTES = 30;
 /** Status que ocupam a agenda. */
 export const BUSY_STATUSES = ["scheduled", "pending_payment", "awaiting_payment"] as const;
+/** Teto de consultoria por dia: nunca entregar tudo de uma vez. */
+export const MAX_MINUTES_PER_DAY = 60;
+/** Duração real de cada encontro (limitada ao teto diário). */
+export function sessionMinutes(durationMinutes: number) {
+  return Math.min(Math.max(15, durationMinutes), MAX_MINUTES_PER_DAY);
+}
+/** Quantos encontros de até 1h a consultoria contratada gera. */
+export function sessionCount(durationMinutes: number) {
+  return Math.max(1, Math.ceil(durationMinutes / MAX_MINUTES_PER_DAY));
+}
+/** Minutos já reservados/agendados pelo aluno em um dia (fuso de SP). */
+export async function studentMinutesOnDay(userId: string, dateIso: string) {
+  const dateStr = spDateParts(new Date(dateIso));
+  const dayStart = new Date(`${dateStr}T00:00:00${TZ_OFFSET}`).toISOString();
+  const dayEnd = new Date(`${dateStr}T23:59:59${TZ_OFFSET}`).toISOString();
+  const { data } = await supabaseAdmin
+    .from("consultations")
+    .select("duration_minutes")
+    .eq("user_id", userId)
+    .in("status", [...BUSY_STATUSES])
+    .gte("scheduled_at", dayStart)
+    .lte("scheduled_at", dayEnd);
+  return (data ?? []).reduce((sum, r: any) => sum + (r.duration_minutes || 0), 0);
+}
 
 /** Cancela reservas não pagas expiradas e libera os horários. */
 export async function expireConsultationHolds() {
