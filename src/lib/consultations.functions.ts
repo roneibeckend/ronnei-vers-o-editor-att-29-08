@@ -275,7 +275,7 @@ export const submitConsultationBriefing = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (!row || row.user_id !== context.userId) throw new Error("Consultoria não encontrada.");
-    if (!["scheduled", "pending_payment"].includes(row.status)) {
+    if (!["scheduled", "pending_payment", "awaiting_payment"].includes(row.status)) {
       throw new Error("Esta consultoria já foi realizada ou cancelada.");
     }
 
@@ -317,6 +317,27 @@ export const cancelMyConsultation = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (!row || row.user_id !== context.userId) throw new Error("Consultoria não encontrada.");
+
+    // Reserva não paga: pode ser descartada a qualquer momento, liberando o horário.
+    if (row.status === "awaiting_payment") {
+      await supabaseAdmin
+        .from("consultations")
+        .update({
+          status: "cancelled",
+          cancel_reason: data.reason || "Reserva cancelada pelo aluno",
+          hold_expires_at: null,
+        } as never)
+        .eq("id", data.id);
+
+      await auditConsultation({
+        consultationId: data.id,
+        actorId: context.userId,
+        actorRole: "student",
+        action: "reservation_cancelled",
+      });
+      return { cancelled: true };
+    }
+
     if (row.status !== "scheduled") throw new Error("Esta consultoria não pode ser cancelada.");
     if (+new Date(row.scheduled_at) - Date.now() < 12 * 3600_000) {
       throw new Error("Cancelamentos só podem ser feitos com 12 horas de antecedência. Fale com o suporte.");
