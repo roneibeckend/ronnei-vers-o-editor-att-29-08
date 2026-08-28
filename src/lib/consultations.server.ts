@@ -3,6 +3,8 @@
 // e-mails de confirmação/lembrete/gravação e auditoria completa.
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { dueReminderWindows } from "@/lib/consultation-reminders";
+
 
 export const CONSULTATION_TZ = "America/Sao_Paulo";
 /** São Paulo não usa horário de verão desde 2019. */
