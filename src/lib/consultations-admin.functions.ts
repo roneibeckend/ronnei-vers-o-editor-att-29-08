@@ -1330,7 +1330,7 @@ export const retryGoogleSync = createServerFn({ method: "POST" })
         actorId: context.userId,
         actorRole: "admin",
         action: "google_sync_retry",
-        status: error ? "error" : "success",
+        status: error ? "error" : "ok",
         ...(error ? { details: { error } } : {}),
       });
 
