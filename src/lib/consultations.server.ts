@@ -365,7 +365,21 @@ async function sendConsultationEmail(
   }
 }
 
+/** Avisa o aluno que o encontro mudou de horário (novo link/instruções). */
+export async function sendConsultationRescheduled(
+  consultation: ConsultationRow,
+  previousIso: string,
+) {
+  return sendConsultationEmail(
+    consultation,
+    "consultoria_reagendada",
+    { previous_date: formatBR(previousIso) },
+    `consult-resched-${consultation.id}-${consultation.scheduled_at}`,
+  );
+}
+
 export async function sendConsultationConfirmation(consultation: ConsultationRow) {
+
   const res = await sendConsultationEmail(
     consultation,
     "consultoria_confirmada",
