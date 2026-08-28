@@ -441,6 +441,9 @@ export const rescheduleMyConsultation = createServerFn({ method: "POST" })
       );
     }
 
+    if (!(await isWithinAvailability(start.toISOString(), end.toISOString()))) {
+      throw new Error("Escolha um horário dentro da grade de disponibilidade.");
+    }
     if (!(await isSlotFree(start.toISOString(), end.toISOString()))) {
       throw new Error("Esse horário acabou de ser reservado. Escolha outro.");
     }
