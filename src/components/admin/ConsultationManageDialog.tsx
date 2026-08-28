@@ -11,8 +11,16 @@ import {
   sendConsultationPrepEmailFn,
   generateConsultationOutcome,
   sendConsultationOutcomeToClient,
+  getConsultationGroup,
+  sendConsultationComboReport,
 } from "@/lib/consultations-admin.functions";
-import { buildConsultationReportPdf } from "@/lib/consultation-pdf";
+import {
+  buildConsultationReportPdf,
+  buildConsultationComboReportPdf,
+  buildConsultationSessionPdfs,
+} from "@/lib/consultation-pdf";
+import { saveBlob } from "@/lib/download";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -228,6 +236,64 @@ export function ConsultationManageDialog({
     onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar ao cliente."),
   });
 
+  /* ------------------- Combo: relatório final consolidado ------------------- */
+
+  const groupFn = useServerFn(getConsultationGroup);
+  const comboEmailFn = useServerFn(sendConsultationComboReport);
+  const isCombo = Number(consultation?.sessions_total ?? 1) > 1 || Boolean(consultation?.booking_group);
+
+  const group = useQuery({
+    queryKey: ["consultation-group", consultation?.id],
+    queryFn: () => groupFn({ data: { id: consultation.id } }),
+    enabled: Boolean(consultation?.id) && isCombo,
+  });
+
+  /** Aplica as edições em tela na sessão atual, para o PDF sair atualizado. */
+  const groupSessions = () =>
+    ((group.data as any)?.sessions ?? []).map((s: any) =>
+      s.id === consultation?.id
+        ? { ...s, prep_data: prep, meeting_summary: meetingSummary, action_plan: actionPlan }
+        : s,
+    );
+
+  const downloadCombo = () => {
+    const sessions = groupSessions();
+    if (!sessions.length) return toast.error("Encontros do combo ainda não carregados.");
+    const pdf = buildConsultationComboReportPdf(sessions);
+    saveBlob(pdf.blob, pdf.filename);
+  };
+
+  const downloadSessions = () => {
+    const sessions = groupSessions();
+    if (!sessions.length) return toast.error("Encontros do combo ainda não carregados.");
+    buildConsultationSessionPdfs(sessions).forEach((pdf, i) => {
+      window.setTimeout(() => saveBlob(pdf.blob, pdf.filename), i * 400);
+    });
+  };
+
+  const sendCombo = useMutation({
+    mutationFn: () => {
+      const sessions = groupSessions();
+      if (!sessions.length) throw new Error("Encontros do combo ainda não carregados.");
+      const consolidated = buildConsultationComboReportPdf(sessions);
+      const perSession = buildConsultationSessionPdfs(sessions);
+      const attachments = [
+        { filename: consolidated.filename, base64: consolidated.base64 },
+        ...perSession.slice(0, 7).map((p) => ({ filename: p.filename, base64: p.base64 })),
+      ];
+      return comboEmailFn({
+        data: { id: consultation.id, recipients: emailList(clientRecipients), attachments },
+      });
+    },
+    onSuccess: (r: any) => {
+      toast.success(`Relatório final enviado para ${(r?.recipients ?? []).join(", ")}`);
+      onSaved();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar o relatório final."),
+  });
+
+
+
   return (
     <Dialog open={Boolean(consultation)} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[88dvh] max-w-2xl overflow-y-auto">
@@ -432,7 +498,42 @@ export function ConsultationManageDialog({
                 Enviado ao cliente em {dateBR(consultation.client_report_sent_at)}.
               </p>
             )}
+
+            {isCombo && (
+              <div className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-3">
+                <div>
+                  <p className="text-sm font-semibold">Relatório final do combo</p>
+                  <p className="text-xs text-muted-foreground">
+                    {group.isLoading
+                      ? "Carregando encontros..."
+                      : `${((group.data as any)?.sessions ?? []).length} encontro(s) nesta compra. O PDF consolidado reúne resumo e plano de ação de todos, e cada encontro também tem o seu PDF.`}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" disabled={group.isLoading} onClick={downloadCombo}>
+                    Baixar PDF consolidado
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={group.isLoading} onClick={downloadSessions}>
+                    Baixar PDF de cada encontro
+                  </Button>
+                </div>
+                <Button
+                  size="sm"
+                  className="w-full"
+                  disabled={group.isLoading || !clientRecipients.includes("@") || sendCombo.isPending}
+                  onClick={() => sendCombo.mutate()}
+                >
+                  {sendCombo.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="mr-2 h-4 w-4" />
+                  )}
+                  Enviar relatório final (consolidado + encontros)
+                </Button>
+              </div>
+            )}
           </TabsContent>
+
 
 
 

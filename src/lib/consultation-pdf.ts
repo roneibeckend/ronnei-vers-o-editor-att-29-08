@@ -259,3 +259,215 @@ export function generateConsultationReportPdf(c: any) {
   const { blob, filename } = buildConsultationReportPdf(c);
   saveBlob(blob, filename);
 }
+
+/* ------------------------------------------------------------------ */
+/* Combo (várias sessões de 1h sob a mesma compra)                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * PDF consolidado do combo: capa com os dados da compra, agenda de todos os
+ * encontros e, para cada encontro, resumo, plano de ação e notas.
+ * `sessions` deve vir ordenado por `session_index` / `scheduled_at`.
+ */
+export function buildConsultationComboReportPdf(sessions: any[]) {
+  const list = [...(sessions ?? [])].sort(
+    (a, b) =>
+      (a?.session_index ?? 0) - (b?.session_index ?? 0) ||
+      String(a?.scheduled_at ?? "").localeCompare(String(b?.scheduled_at ?? "")),
+  );
+  if (!list.length) throw new Error("Nenhum encontro para consolidar.");
+
+  const first = list[0];
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  let y = 0;
+
+  doc.setFillColor(17, 17, 17);
+  doc.rect(0, 0, PAGE_W, 38, "F");
+  doc.setFillColor(255, 106, 0);
+  doc.rect(0, 38, PAGE_W, 2, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("Relatório final da consultoria", MX, 20);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(230, 230, 235);
+  doc.text(
+    `Ronnei na Veia · ${list.length} encontro(s) · gerado em ${dateBR(new Date().toISOString())}`,
+    MX,
+    28,
+  );
+  y = 52;
+
+  const ensure = (needed: number) => {
+    if (y + needed > PAGE_H - 20) {
+      doc.addPage();
+      y = 24;
+    }
+  };
+
+  const sectionTitle = (label: string) => {
+    ensure(16);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(20, 20, 22);
+    doc.text(label.toUpperCase(), MX, y);
+    doc.setDrawColor(255, 106, 0);
+    doc.setLineWidth(0.8);
+    doc.line(MX, y + 1.8, MX + 22, y + 1.8);
+    doc.setLineWidth(0.2);
+    y += 9;
+  };
+
+  const row = (label: string, value: string) => {
+    const lines = doc.splitTextToSize(value || "—", CW - 52);
+    ensure(lines.length * 5 + 3);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(90, 90, 95);
+    doc.text(doc.splitTextToSize(label, 48), MX, y);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(30, 30, 34);
+    doc.text(lines, MX + 52, y);
+    y += Math.max(lines.length * 5, 5) + 2;
+  };
+
+  const paragraphs = (text: string) => {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(30, 30, 34);
+    text.split(/\n/).forEach((paragraph) => {
+      if (!paragraph.trim()) {
+        y += 3;
+        return;
+      }
+      doc.splitTextToSize(paragraph, CW).forEach((line: string) => {
+        ensure(6);
+        doc.text(line, MX, y);
+        y += 5;
+      });
+    });
+  };
+
+  const totalMinutes = list.reduce((sum, s) => sum + Number(s?.duration_minutes ?? 0), 0);
+  const totalAmount = list.reduce((sum, s) => sum + Number(s?.amount ?? 0), 0);
+
+  sectionTitle("Dados do programa");
+  row("Aluno", first?.client_name || "Aluno");
+  row("E-mail", first?.client_email || "—");
+  row("Produto", first?.product_title || "—");
+  row("Encontros", `${list.length} de ${first?.sessions_total ?? list.length}`);
+  row("Carga total", `${totalMinutes} min`);
+  row("Valor total", money(totalAmount));
+
+  y += 4;
+  sectionTitle("Agenda dos encontros");
+  list.forEach((s, i) => {
+    row(
+      `Encontro ${s?.session_index ?? i + 1}`,
+      `${dateBR(s?.scheduled_at)} · ${s?.duration_minutes ?? "—"} min · ${STATUS[s?.status] ?? String(s?.status ?? "—")}`,
+    );
+  });
+
+  list.forEach((s, i) => {
+    const idx = s?.session_index ?? i + 1;
+    y += 6;
+    sectionTitle(`Encontro ${idx} — ${dateBR(s?.scheduled_at)}`);
+
+    const summary = String(s?.meeting_summary ?? "").trim();
+    const plan = String(s?.action_plan ?? "").trim();
+    const notes = String(s?.student_notes ?? "").trim();
+
+    if (summary) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      ensure(6);
+      doc.setTextColor(60, 60, 65);
+      doc.text("Resumo", MX, y);
+      y += 5.5;
+      paragraphs(summary);
+    }
+
+    if (plan) {
+      y += 2;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      ensure(6);
+      doc.setTextColor(60, 60, 65);
+      doc.text("Plano de ação", MX, y);
+      y += 5.5;
+      paragraphs(plan);
+    }
+
+    if (notes) {
+      y += 2;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      ensure(6);
+      doc.setTextColor(60, 60, 65);
+      doc.text("Observações para o aluno", MX, y);
+      y += 5.5;
+      paragraphs(notes);
+    }
+
+    if (!summary && !plan && !notes) {
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(10);
+      doc.setTextColor(150, 60, 60);
+      ensure(6);
+      doc.text("Encontro ainda sem resumo registrado.", MX, y);
+      y += 7;
+    }
+  });
+
+  // Consolidação final: todos os planos de ação em uma única lista.
+  const allPlans = list
+    .map((s, i) => ({ idx: s?.session_index ?? i + 1, plan: String(s?.action_plan ?? "").trim() }))
+    .filter((p) => p.plan);
+
+  if (allPlans.length) {
+    y += 6;
+    sectionTitle("Plano de ação consolidado");
+    paragraphs(allPlans.map((p) => `Encontro ${p.idx}:\n${p.plan}`).join("\n\n"));
+  }
+
+  const total = (doc as any).getNumberOfPages();
+  for (let p = 1; p <= total; p += 1) {
+    doc.setPage(p);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(140, 140, 145);
+    doc.text("Relatório final · Ronnei na Veia", MX, PAGE_H - 10);
+    doc.text(`${p}/${total}`, PAGE_W - MX, PAGE_H - 10, { align: "right" });
+  }
+
+  const filename = `consultoria-final-${slug(first?.client_name || "aluno")}-${(first?.scheduled_at || "").slice(0, 10)}.pdf`;
+  return {
+    filename,
+    blob: doc.output("blob") as Blob,
+    base64: doc.output("datauristring").split(",")[1] ?? "",
+  };
+}
+
+export function generateConsultationComboReportPdf(sessions: any[]) {
+  const { blob, filename } = buildConsultationComboReportPdf(sessions);
+  saveBlob(blob, filename);
+}
+
+/** PDF individual de cada encontro do combo (um arquivo por sessão). */
+export function buildConsultationSessionPdfs(sessions: any[]) {
+  return [...(sessions ?? [])]
+    .sort(
+      (a, b) =>
+        (a?.session_index ?? 0) - (b?.session_index ?? 0) ||
+        String(a?.scheduled_at ?? "").localeCompare(String(b?.scheduled_at ?? "")),
+    )
+    .map((s, i) => {
+      const idx = s?.session_index ?? i + 1;
+      const pdf = buildConsultationReportPdf(s);
+      const filename = pdf.filename.replace(/\.pdf$/, `-encontro-${idx}.pdf`);
+      return { ...pdf, filename, sessionIndex: idx };
+    });
+}
+

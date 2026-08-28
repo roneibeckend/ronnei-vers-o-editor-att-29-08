@@ -970,3 +970,138 @@ export const sendConsultationOutcomeToClient = createServerFn({ method: "POST" }
 
     return { sent: true, recipients };
   });
+
+/* ------------------- Combo (várias sessões, mesma compra) ------------------- */
+
+/** Todas as sessões do combo ao qual esta consultoria pertence (ordenadas). */
+export const getConsultationGroup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: row } = await supabaseAdmin
+      .from("consultations")
+      .select("*")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!row) throw new Error("Consultoria não encontrada.");
+
+    const group = (row as any).booking_group as string | null;
+    if (!group) return { sessions: [row] };
+
+    const { data: sessions } = await supabaseAdmin
+      .from("consultations")
+      .select("*")
+      .eq("booking_group", group)
+      .order("session_index", { ascending: true })
+      .order("scheduled_at", { ascending: true });
+
+    return { sessions: (sessions?.length ? sessions : [row]) as any[] };
+  });
+
+/**
+ * Envia por e-mail o pacote final do combo: PDF consolidado + um PDF por
+ * encontro. Os PDFs são gerados no navegador do admin e vêm em base64.
+ */
+export const sendConsultationComboReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        recipients: z.array(z.string().trim().email().max(160)).min(1).max(5),
+        message: z.string().trim().max(2000).optional(),
+        attachments: z
+          .array(
+            z.object({
+              filename: z.string().trim().min(4).max(140),
+              base64: z.string().min(100).max(8_000_000),
+            }),
+          )
+          .min(1)
+          .max(8),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { auditConsultation, formatBR } = await import("@/lib/consultations.server");
+    const { sendResendEmail } = await import("@/lib/resend.server");
+
+    const { data: row } = await supabaseAdmin
+      .from("consultations")
+      .select("id, booking_group, client_name, product_title, scheduled_at, sessions_total")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!row) throw new Error("Consultoria não encontrada.");
+
+    const group = (row as any).booking_group as string | null;
+    const { data: sessions } = group
+      ? await supabaseAdmin
+          .from("consultations")
+          .select("id, session_index, scheduled_at, meeting_summary")
+          .eq("booking_group", group)
+          .order("session_index", { ascending: true })
+      : { data: [row as any] };
+
+    const rows = (sessions ?? []) as any[];
+    if (!rows.some((s) => String(s.meeting_summary ?? "").trim())) {
+      throw new Error("Gere o resumo de pelo menos um encontro antes de enviar o relatório final.");
+    }
+
+    const clean = (v: unknown) => String(v ?? "").replace(/[<>]/g, "");
+    const recipients = Array.from(new Set(data.recipients.map((e) => e.toLowerCase())));
+
+    const agenda = rows
+      .map(
+        (s, i) =>
+          `<li style="margin:0 0 4px;">Encontro ${s.session_index ?? i + 1} — ${clean(formatBR(s.scheduled_at))}</li>`,
+      )
+      .join("");
+
+    const html = `<!DOCTYPE html><html><body style="margin:0;background:#f5f5f6;font-family:Arial,Helvetica,sans-serif;color:#1a1a1c;">
+  <div style="max-width:580px;margin:0 auto;padding:28px 24px;background:#ffffff;">
+    <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#ff6a00;margin:0 0 6px;font-weight:bold;">Ronnei na Veia</p>
+    <h1 style="font-size:20px;margin:0 0 6px;">Relatório final da sua consultoria</h1>
+    <p style="font-size:13px;color:#6b6b70;margin:0 0 18px;">${clean(row.product_title)} · ${rows.length} encontro(s)</p>
+    <ul style="font-size:14px;line-height:1.6;margin:0 0 16px 18px;padding:0;">${agenda}</ul>
+    ${data.message ? `<p style="font-size:14px;line-height:1.65;white-space:pre-line;margin:0 0 16px;">${clean(data.message)}</p>` : ""}
+    <p style="font-size:13px;color:#6b6b70;margin:0;">Em anexo: o relatório consolidado do programa e o relatório individual de cada encontro (PDF).</p>
+  </div>
+</body></html>`;
+
+    await sendResendEmail({
+      to: recipients,
+      subject: `Relatório final da consultoria — ${clean(row.client_name || "Aluno")}`,
+      html,
+      tags: [{ name: "tipo", value: "relatorio_final_combo" }],
+      attachments: data.attachments.map((a) => ({ filename: a.filename, content: a.base64 })),
+    });
+
+    const now = new Date().toISOString();
+    if (group) {
+      await supabaseAdmin
+        .from("consultations")
+        .update({ client_report_sent_at: now } as never)
+        .eq("booking_group", group);
+    } else {
+      await supabaseAdmin
+        .from("consultations")
+        .update({ client_report_sent_at: now } as never)
+        .eq("id", data.id);
+    }
+
+    await auditConsultation({
+      consultationId: data.id,
+      actorId: context.userId,
+      actorRole: "admin",
+      action: "client_report_emailed",
+      details: { recipients, combo: true, attachments: data.attachments.length, sessions: rows.length },
+    });
+
+    return { sent: true, recipients, attachments: data.attachments.length };
+  });
+
