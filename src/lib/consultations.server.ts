@@ -366,12 +366,22 @@ export async function sendConsultationReminder(
 }
 
 export async function sendConsultationRecording(consultation: ConsultationRow) {
+  const materials = Array.isArray((consultation as any).materials)
+    ? ((consultation as any).materials as ConsultationMaterial[])
+    : [];
   const res = await sendConsultationEmail(
     consultation,
     "consultoria_gravacao",
-    { recording_url: consultation.recording_url, link: consultation.recording_url || DASH },
+    {
+      recording_url: consultation.recording_url,
+      link: consultation.recording_url || DASH,
+      materials,
+      action_plan: (consultation as any).action_plan || null,
+      dashboard_url: DASH,
+    },
     `consult-rec-${consultation.id}`,
   );
+
   await supabaseAdmin
     .from("consultations")
     .update({ recording_sent_at: new Date().toISOString() })

@@ -28,6 +28,7 @@ import { ConsultationBriefingSummary } from "@/components/platform/ConsultationB
 import { ConsultationManageDialog } from "@/components/admin/ConsultationManageDialog";
 import { ConsultationReports } from "@/components/admin/ConsultationReports";
 import { ConsultationAutomations } from "@/components/admin/ConsultationAutomations";
+import { ConsultationRecordings } from "@/components/admin/ConsultationRecordings";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -134,6 +135,7 @@ function AdminConsultationsPage() {
           <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
           <TabsTrigger value="produtos">Produtos</TabsTrigger>
           <TabsTrigger value="agenda">Agenda</TabsTrigger>
+          <TabsTrigger value="gravacoes">Gravações</TabsTrigger>
           <TabsTrigger value="automacoes">Automações</TabsTrigger>
           <TabsTrigger value="auditoria">Auditoria</TabsTrigger>
         </TabsList>
@@ -153,6 +155,9 @@ function AdminConsultationsPage() {
             blocks={data?.blocks ?? []}
             onChanged={refresh}
           />
+        </TabsContent>
+        <TabsContent value="gravacoes" className="mt-4">
+          <ConsultationRecordings />
         </TabsContent>
         <TabsContent value="automacoes" className="mt-4">
           <ConsultationAutomations />

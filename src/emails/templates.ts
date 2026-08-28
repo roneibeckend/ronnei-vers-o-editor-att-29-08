@@ -497,19 +497,45 @@ const consultationReminder1h: Builder = (d) =>
     cta: { label: "Entrar na reunião", url: link(d, ["meet_link", "link"], LINKS.dashboard) },
   });
 
-const consultationRecording: Builder = (d) =>
-  build({
-    subject: "🎬 A gravação da sua consultoria está disponível",
+const consultationRecording: Builder = (d) => {
+  const materials: { title?: string; url?: string }[] = Array.isArray(d?.materials) ? d.materials : [];
+  const blocks: EmailBlock[] = [
+    { type: "text", text: "A gravação da sua consultoria já está disponível para assistir quando quiser." },
+    { type: "details", rows: consultationRows(d) },
+  ];
+
+  if (materials.length) {
+    blocks.push({
+      type: "raw",
+      html: `<p style="margin:0 0 8px;font-weight:700">Materiais liberados</p><ul style="margin:0 0 16px;padding-left:20px">${materials
+        .map(
+          (m) =>
+            `<li style="margin-bottom:6px"><a href="${m.url ?? "#"}" style="color:#c2410c">${m.title ?? "Material"}</a></li>`,
+        )
+        .join("")}</ul>`,
+    });
+  }
+
+  if (d?.action_plan) {
+    blocks.push({ type: "quote", text: String(d.action_plan) });
+  }
+
+  blocks.push({
+    type: "text",
+    text: "Reveja os pontos combinados e coloque o plano de ação em prática.",
+    highlight: true,
+  });
+
+  return build({
+    subject: "Sua gravação da consultoria está disponível",
     preview: "Assista quantas vezes quiser a gravação da sua consultoria.",
     heading: "🎬 Gravação disponível",
     greeting: `Olá, ${firstName(d)}`,
-    blocks: [
-      { type: "text", text: "A gravação da sua consultoria já está disponível para assistir quando quiser." },
-      { type: "details", rows: consultationRows(d) },
-      { type: "text", text: "Reveja os pontos combinados e coloque o plano de ação em prática.", highlight: true },
-    ],
+    blocks,
     cta: { label: "Assistir gravação", url: link(d, ["recording_url", "link"], LINKS.dashboard) },
   });
+};
+
 
 const consultationReminder24h: Builder = (d) =>
   build({
