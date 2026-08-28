@@ -573,3 +573,54 @@ export const runConsultationRemindersNow = createServerFn({ method: "POST" })
     const { runConsultationReminders } = await import("@/lib/consultations.server");
     return runConsultationReminders();
   });
+
+/* ------------------------- Automações (lembretes) ------------------------- */
+
+/** Painel de monitoramento da rotina automática de lembretes. */
+export const getConsultationAutomations = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const since = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
+
+    const [job, logs, upcoming] = await Promise.all([
+      supabaseAdmin.from("ops_job_runs").select("*").eq("job", "consultation_reminders").maybeSingle(),
+      supabaseAdmin
+        .from("consultation_audit_log")
+        .select("id, consultation_id, action, status, details, created_at")
+        .like("action", "reminder_%")
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(200),
+      supabaseAdmin
+        .from("consultations")
+        .select("id, scheduled_at, reminder_8h_sent_at, reminder_1h_sent_at, meet_link, google_event_id, status")
+        .eq("status", "scheduled")
+        .gte("scheduled_at", new Date().toISOString())
+        .order("scheduled_at", { ascending: true })
+        .limit(50),
+    ]);
+
+    const rows = logs.data ?? [];
+    const sent = rows.filter((r) => r.status === "ok");
+    const failures = rows.filter((r) => r.status === "error");
+
+    const lastRunAt = job.data?.last_run_at ?? null;
+    const nextRunAt = lastRunAt ? new Date(+new Date(lastRunAt) + 15 * 60_000).toISOString() : null;
+
+    return {
+      job: job.data ?? null,
+      lastRunAt,
+      nextRunAt,
+      intervalMinutes: 15,
+      sentCount: sent.length,
+      sent8hCount: sent.filter((r) => r.action === "reminder_8h_sent").length,
+      sent1hCount: sent.filter((r) => r.action === "reminder_1h_sent").length,
+      failureCount: failures.length,
+      recentFailures: failures.slice(0, 20),
+      recentSent: sent.slice(0, 20),
+      upcoming: upcoming.data ?? [],
+    };
+  });
