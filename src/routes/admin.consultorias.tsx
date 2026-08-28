@@ -16,6 +16,7 @@ import {
   listConsultationRecordings,
   attachConsultationRecording,
   runConsultationRemindersNow,
+  saveConsultationNotes,
 } from "@/lib/consultations-admin.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -324,10 +325,7 @@ function ScriptDialog({
 
   const save = useMutation({
     mutationFn: () => saveNotes({ data: { id: consultation.id, meetingScript: script } as any }),
-    onSuccess: (_r, _v, ctx: any) => {
-      onSaved();
-      if (ctx?.withPdf !== false) return;
-    },
+    onSuccess: () => onSaved(),
     onError: (e: any) => toast.error(e?.message ?? "Falha ao salvar o roteiro."),
   });
 
