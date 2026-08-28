@@ -16,12 +16,16 @@ export const GOOGLE_SCOPES = [
 
 export const GOOGLE_CALLBACK_PATH = "/api/public/google/oauth/callback";
 
-const GOOGLE_PROD_ORIGIN = "https://ronneinv.lovable.app";
+const GOOGLE_PROD_ORIGIN = "https://grillmaster-pro.lovable.app";
 
 const GOOGLE_PREVIEW_ORIGIN =
-  "https://id-preview--19870d22-c8ea-4f04-9619-f074c2594e7b.lovable.app";
+  "https://id-preview--d1f36df5-e296-476a-9ac5-df68d64a889f.lovable.app";
 
-const GOOGLE_ALLOWED_ORIGINS = new Set([GOOGLE_PROD_ORIGIN, GOOGLE_PREVIEW_ORIGIN]);
+const GOOGLE_ALLOWED_ORIGINS = new Set([
+  GOOGLE_PROD_ORIGIN,
+  GOOGLE_PREVIEW_ORIGIN,
+  "https://ronneinaveia.com.br",
+]);
 
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -486,12 +490,23 @@ export type GoogleConnectionStatus = {
   lastRefreshAt: string | null;
   lastError: string | null;
   hasCalendarScope: boolean;
+  hasCalendarListScope: boolean;
   hasDriveScope: boolean;
+  hasDriveReadScope: boolean;
+  missingScopes: string[];
 };
 
 export async function getConnectionStatus(): Promise<GoogleConnectionStatus> {
   const creds = await loadCredentials();
   const scopes = (creds?.scopes ?? []) as string[];
+  const hasCalendarListScope = scopes.includes("https://www.googleapis.com/auth/calendar.readonly") ||
+    scopes.includes("https://www.googleapis.com/auth/calendar");
+  const hasDriveReadScope = scopes.includes("https://www.googleapis.com/auth/drive.readonly") ||
+    scopes.includes("https://www.googleapis.com/auth/drive");
+  const missingScopes = [
+    hasCalendarListScope ? null : "calendar.readonly",
+    hasDriveReadScope ? null : "drive.readonly",
+  ].filter((scope): scope is string => Boolean(scope));
   return {
     clientConfigured: await googleClientConfigured(),
     connected: Boolean(creds),
@@ -501,8 +516,12 @@ export async function getConnectionStatus(): Promise<GoogleConnectionStatus> {
     status: creds?.status ?? null,
     lastRefreshAt: creds?.last_refresh_at ?? null,
     lastError: creds?.last_error ?? null,
-    hasCalendarScope: scopes.some((s) => s.includes("/auth/calendar")),
-    hasDriveScope: scopes.some((s) => s.includes("/auth/drive")),
+    hasCalendarScope: scopes.includes("https://www.googleapis.com/auth/calendar.events") ||
+      scopes.includes("https://www.googleapis.com/auth/calendar"),
+    hasCalendarListScope,
+    hasDriveScope: scopes.includes("https://www.googleapis.com/auth/drive.file") || hasDriveReadScope,
+    hasDriveReadScope,
+    missingScopes,
   };
 }
 

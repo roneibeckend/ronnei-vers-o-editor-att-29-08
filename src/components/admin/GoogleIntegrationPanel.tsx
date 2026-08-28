@@ -144,15 +144,16 @@ export function GoogleIntegrationPanel() {
   const callbackUrls = useMemo(() => {
     const path = "/api/public/google/oauth/callback";
     return [
-      `https://ronneinv.lovable.app${path}`,
-      `https://id-preview--19870d22-c8ea-4f04-9619-f074c2594e7b.lovable.app${path}`,
+      `https://grillmaster-pro.lovable.app${path}`,
+      `https://id-preview--d1f36df5-e296-476a-9ac5-df68d64a889f.lovable.app${path}`,
+      `https://ronneinaveia.com.br${path}`,
     ];
   }, []);
 
   const connectMutation = useMutation({
     mutationFn: () => {
       const origin = window.location.origin.endsWith(".lovableproject.com")
-        ? "https://id-preview--19870d22-c8ea-4f04-9619-f074c2594e7b.lovable.app"
+        ? "https://id-preview--d1f36df5-e296-476a-9ac5-df68d64a889f.lovable.app"
         : window.location.origin;
       return startConnection({ data: { origin } });
     },
@@ -356,6 +357,19 @@ export function GoogleIntegrationPanel() {
             </Alert>
           )}
 
+          {connected && status?.missingScopes?.length > 0 && (
+            <Alert className="border-amber-500/30 bg-amber-500/10">
+              <AlertTriangle className="h-4 w-4 text-amber-400" />
+              <AlertTitle className="text-xs font-bold uppercase tracking-widest text-amber-300">
+                Permissões incompletas
+              </AlertTitle>
+              <AlertDescription className="text-[11px] text-white/70">
+                A conta conectada não concedeu: {status.missingScopes.join(" e ")}. Use “Reconectar conta” nesta
+                página e aceite todas as permissões para listar agendas e ler a pasta de gravações.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {connected && (
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-sm border border-white/5 bg-black/40 p-3">
@@ -488,6 +502,70 @@ export function GoogleIntegrationPanel() {
         </CardContent>
       </Card>
 
+      {/* Gravações — mantido no topo para ficar imediatamente visível */}
+      <Card className="border-[#ff6a00]/30 bg-[#111]">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-white">
+            <HardDrive className="h-4 w-4 text-[#ff6a00]" /> Google Drive — gravações
+          </CardTitle>
+          <CardDescription className="text-[11px] text-white/50">
+            Cole a URL completa da pasta ou somente o ID e teste a leitura dos últimos cinco arquivos.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              value={form.drive_recordings_folder_id}
+              onChange={(e) => setForm((f) => ({ ...f, drive_recordings_folder_id: e.target.value }))}
+              placeholder="https://drive.google.com/drive/folders/XXXX ou apenas o ID"
+              className="bg-black/60 border-white/10 text-white"
+            />
+            <Button
+              type="button"
+              disabled={!connected || folderMutation.isPending}
+              onClick={() => folderMutation.mutate()}
+              className="shrink-0 bg-[#ff6a00] text-black hover:bg-[#ff8533]"
+            >
+              {folderMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <HardDrive className="mr-2 h-4 w-4" />
+              )}
+              Testar pasta de gravações
+            </Button>
+          </div>
+          {!connected && <p className="text-[11px] text-amber-300">Conecte a conta Google para testar a pasta.</p>}
+
+          {folderResult && (
+            <Alert className={folderResult.ok ? "border-emerald-500/30 bg-emerald-500/10" : "border-red-500/30 bg-red-500/10"}>
+              {folderResult.ok ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <AlertTriangle className="h-4 w-4 text-red-400" />}
+              <AlertTitle className="text-white">
+                {folderResult.ok ? `Pasta acessível: ${folderResult.folderName}` : "Falha ao acessar a pasta"}
+              </AlertTitle>
+              <AlertDescription className="text-white/70">
+                {folderResult.ok ? (
+                  <div className="mt-2 space-y-2">
+                    <p className="text-[11px] text-white/50">ID: <span className="font-mono">{folderResult.folderId}</span></p>
+                    {folderResult.files?.length ? (
+                      <ul className="space-y-1">
+                        {folderResult.files.map((file: any) => (
+                          <li key={file.id} className="rounded-md border border-white/10 bg-black/40 px-3 py-2 text-xs">
+                            <div className="font-semibold text-white">{file.name}</div>
+                            <div className="text-[11px] text-white/50">
+                              {file.createdTime ? new Date(file.createdTime).toLocaleString("pt-BR") : "sem data"} · ID: <span className="font-mono">{file.id}</span>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : <p className="text-xs text-white/50">Nenhum arquivo encontrado (leitura autorizada).</p>}
+                  </div>
+                ) : folderResult.error}
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Configurações */}
       <Card className="bg-[#111] border-white/5">
         <CardHeader>
@@ -528,104 +606,6 @@ export function GoogleIntegrationPanel() {
                 onChange={(e) => setForm((f) => ({ ...f, default_duration_minutes: Number(e.target.value) }))}
                 className="bg-black/60 border-white/10 text-white"
               />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-white/50">
-                Pasta de gravações do Drive
-              </Label>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input
-                  value={form.drive_recordings_folder_id}
-                  onChange={(e) => setForm((f) => ({ ...f, drive_recordings_folder_id: e.target.value }))}
-                  placeholder="https://drive.google.com/drive/folders/XXXX  ou  apenas o ID"
-                  className="bg-black/60 border-white/10 text-white"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={folderMutation.isPending}
-                  onClick={() => folderMutation.mutate()}
-                  className="border-white/15 bg-white/5 text-white hover:bg-white/10 shrink-0"
-                >
-                  {folderMutation.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <HardDrive className="mr-2 h-4 w-4" />
-                  )}
-                  Testar pasta de gravações
-                </Button>
-              </div>
-              <p className="text-[11px] text-white/40">
-                Cole a URL completa da pasta no Google Drive ou somente o ID. Ao salvar, o acesso e a leitura da pasta
-                são validados com a conta Google conectada.
-              </p>
-
-              {folderResult && (
-                <Alert
-                  className={
-                    folderResult.ok
-                      ? "border-emerald-500/30 bg-emerald-500/10"
-                      : "border-red-500/30 bg-red-500/10"
-                  }
-                >
-                  {folderResult.ok ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                  ) : (
-                    <AlertTriangle className="h-4 w-4 text-red-400" />
-                  )}
-                  <AlertTitle className="text-white">
-                    {folderResult.ok
-                      ? `Pasta acessível: ${folderResult.folderName}`
-                      : "Falha ao acessar a pasta"}
-                  </AlertTitle>
-                  <AlertDescription className="text-white/70">
-                    {folderResult.ok ? (
-                      <div className="mt-2 space-y-2">
-                        <p className="text-[11px] text-white/50">
-                          ID: <span className="font-mono">{folderResult.folderId}</span>
-                          {folderResult.folderLink && (
-                            <>
-                              {" · "}
-                              <a
-                                href={folderResult.folderLink}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="underline"
-                              >
-                                abrir no Drive
-                              </a>
-                            </>
-                          )}
-                        </p>
-                        {folderResult.files?.length ? (
-                          <ul className="space-y-1">
-                            {folderResult.files.map((file: any) => (
-                              <li
-                                key={file.id}
-                                className="rounded-md border border-white/10 bg-black/40 px-3 py-2 text-xs"
-                              >
-                                <div className="font-semibold text-white">{file.name}</div>
-                                <div className="text-[11px] text-white/50">
-                                  {file.createdTime
-                                    ? new Date(file.createdTime).toLocaleString("pt-BR")
-                                    : "sem data"}{" "}
-                                  · ID: <span className="font-mono">{file.id}</span>
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="text-xs text-white/50">
-                            Nenhum arquivo encontrado na pasta (leitura autorizada).
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      folderResult.error
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
             </div>
           </div>
 
