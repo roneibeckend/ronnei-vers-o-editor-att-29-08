@@ -582,15 +582,20 @@ function BookingDialog({
             </div>
           ) : step === 3 ? (
             <div>
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <p className="min-w-0 truncate text-sm font-semibold">
-                  {fmtDay(selectedDate!, { weekday: "short", day: "2-digit", month: "short" })} ·{" "}
-                  {times.find((s: any) => s.startIso === slot)?.time}
-                </p>
-                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setSlot(null)}>
-                  Trocar horário
+              <div className="mb-3 flex items-start justify-between gap-2">
+                <div className="min-w-0 space-y-0.5 text-sm font-semibold">
+                  {picked.map((iso, i) => (
+                    <p key={iso} className="truncate">
+                      {sessionsTotal > 1 ? `Encontro ${i + 1}: ` : ""}
+                      {dateBR(iso)}
+                    </p>
+                  ))}
+                </div>
+                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setPicked([])}>
+                  Trocar horários
                 </Button>
               </div>
+
               <p className="mb-3 text-xs text-muted-foreground">
                 Responda em etapas curtas para o Ronnei chegar preparado na sua reunião.
               </p>
