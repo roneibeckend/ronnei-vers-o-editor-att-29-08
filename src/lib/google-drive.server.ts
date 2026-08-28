@@ -83,6 +83,85 @@ export async function listFolderFiles(folderId?: string | null, pageSize = 25): 
   return ((data.files ?? []) as any[]).map(mapFile);
 }
 
+/**
+ * Aceita a URL completa do Drive ou apenas o ID e devolve sempre o ID da pasta.
+ * Ex.: https://drive.google.com/drive/folders/<id>?usp=sharing → <id>
+ */
+export function parseDriveFolderId(input?: string | null): string | null {
+  const raw = (input ?? "").trim();
+  if (!raw) return null;
+  if (!/^https?:\/\//i.test(raw)) {
+    const clean = raw.replace(/^\/+|\/+$/g, "");
+    return /^[A-Za-z0-9_-]{10,}$/.test(clean) ? clean : null;
+  }
+  try {
+    const url = new URL(raw);
+    const byQuery = url.searchParams.get("id");
+    if (byQuery && /^[A-Za-z0-9_-]{10,}$/.test(byQuery)) return byQuery;
+    const parts = url.pathname.split("/").filter(Boolean);
+    const folderIdx = parts.findIndex((p) => p === "folders" || p === "d");
+    const candidate = folderIdx >= 0 ? parts[folderIdx + 1] : parts[parts.length - 1];
+    return candidate && /^[A-Za-z0-9_-]{10,}$/.test(candidate) ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
+export type DriveFolderCheck = {
+  ok: boolean;
+  folderId: string | null;
+  folderName?: string | null;
+  folderLink?: string | null;
+  fileCount?: number;
+  files?: DriveFile[];
+  error?: string;
+};
+
+/** Valida o acesso à pasta e faz uma leitura de teste (últimos arquivos). */
+export async function checkRecordingsFolder(
+  input?: string | null,
+  sample = 5,
+): Promise<DriveFolderCheck> {
+  let folderId = parseDriveFolderId(input);
+  if (!folderId) {
+    if (input && input.trim()) {
+      return { ok: false, folderId: null, error: "Não foi possível identificar o ID da pasta a partir do valor informado." };
+    }
+    const settings = await getGoogleSettings();
+    folderId = settings.drive_recordings_folder_id ?? null;
+  }
+  if (!folderId) {
+    return { ok: false, folderId: null, error: "Nenhuma pasta de gravações configurada." };
+  }
+
+  try {
+    const meta = await googleFetch<any>(
+      "drive.files.get",
+      `${DRIVE_BASE}/files/${encodeURIComponent(folderId)}?fields=id,name,mimeType,webViewLink&supportsAllDrives=true`,
+    );
+    if (meta?.mimeType !== FOLDER_MIME) {
+      return { ok: false, folderId, error: "O ID informado não é uma pasta do Google Drive." };
+    }
+    const files = await listFolderFiles(folderId, sample);
+    return {
+      ok: true,
+      folderId,
+      folderName: meta?.name ?? null,
+      folderLink: meta?.webViewLink ?? `https://drive.google.com/drive/folders/${folderId}`,
+      fileCount: files.length,
+      files,
+    };
+  } catch (err: any) {
+    const msg = String(err?.message ?? "Falha ao acessar a pasta");
+    const friendly = /404/.test(msg)
+      ? "Pasta não encontrada ou sem acesso pela conta Google conectada."
+      : /403/.test(msg)
+        ? "A conta Google conectada não tem permissão para ler esta pasta."
+        : msg;
+    return { ok: false, folderId, error: friendly };
+  }
+}
+
 /** Link de compartilhamento somente leitura para um arquivo. */
 export async function shareFileReadonly(fileId: string) {
   await googleFetch("drive.permissions.create", `${DRIVE_BASE}/files/${encodeURIComponent(fileId)}/permissions`, {
