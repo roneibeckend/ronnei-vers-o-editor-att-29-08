@@ -341,6 +341,7 @@ export const saveConsultationNotes = createServerFn({ method: "POST" })
         id: z.string().uuid(),
         adminNotes: z.string().trim().max(5000).nullable().optional(),
         studentNotes: z.string().trim().max(5000).nullable().optional(),
+        actionPlan: z.string().trim().max(5000).nullable().optional(),
         materials: z
           .array(
             z.object({
@@ -361,6 +362,7 @@ export const saveConsultationNotes = createServerFn({ method: "POST" })
     const patch: Record<string, unknown> = {};
     if (data.adminNotes !== undefined) patch["admin_notes"] = data.adminNotes || null;
     if (data.studentNotes !== undefined) patch["student_notes"] = data.studentNotes || null;
+    if (data.actionPlan !== undefined) patch["action_plan"] = data.actionPlan || null;
     if (data.materials !== undefined) {
       patch["materials"] = data.materials;
       patch["materials_released_at"] = data.materials.length ? new Date().toISOString() : null;
