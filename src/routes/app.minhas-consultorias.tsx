@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/platform/Shell";
 import { listMyConsultations } from "@/lib/consultations.functions";
 import { ConsultationBriefingSummary } from "@/components/platform/ConsultationBriefingSummary";
 import { consultationCalendarUrl } from "@/lib/google-calendar-link";
-import { VideoPlayer } from "@/components/platform/VideoPlayer";
+import { LessonPlayer } from "@/components/platform/LessonPlayer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -156,8 +156,11 @@ function ConsultationCard({ row }: { row: any }) {
       {row.recording_url ? (
         <div className="space-y-3">
           {showRecording ? (
-            <VideoPlayer
-              src={row.recording_url}
+            <LessonPlayer
+              videoUrl={row.recording_url}
+              provider={(row as any).video_provider}
+              providerVideoId={(row as any).video_id}
+              aspect={(row as any).video_aspect || "landscape"}
               videoId={`consult-${row.id}`}
               title={`Gravação — ${row.product_title}`}
               className="overflow-hidden rounded-lg"

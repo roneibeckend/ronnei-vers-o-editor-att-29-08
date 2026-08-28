@@ -558,6 +558,43 @@ function AdminEbooksPage() {
                           className="w-full bg-white/5 border border-white/10 p-3 rounded-lg text-sm outline-none focus:border-[#ff6a00] transition-colors"
                         />
                       </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Fonte do vídeo</label>
+                          <select
+                            value={editingItem?.opening_video_provider || "auto"}
+                            onChange={e => setEditingItem({...editingItem, opening_video_provider: e.target.value})}
+                            className="w-full bg-white/5 border border-white/10 p-3 rounded-lg text-sm outline-none focus:border-[#ff6a00] appearance-none cursor-pointer"
+                          >
+                            <option value="auto">Automático</option>
+                            <option value="bunny">Bunny Stream</option>
+                            <option value="youtube">YouTube</option>
+                            <option value="drive">Google Drive</option>
+                            <option value="url">URL / arquivo</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">ID do vídeo (Bunny)</label>
+                          <input
+                            value={editingItem?.opening_video_id || ""}
+                            onChange={e => setEditingItem({...editingItem, opening_video_id: e.target.value})}
+                            placeholder="libraryId/videoId"
+                            className="w-full bg-white/5 border border-white/10 p-3 rounded-lg text-sm outline-none focus:border-[#ff6a00] transition-colors"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Formato</label>
+                          <select
+                            value={editingItem?.opening_video_aspect || "portrait"}
+                            onChange={e => setEditingItem({...editingItem, opening_video_aspect: e.target.value})}
+                            className="w-full bg-white/5 border border-white/10 p-3 rounded-lg text-sm outline-none focus:border-[#ff6a00] appearance-none cursor-pointer"
+                          >
+                            <option value="portrait">Vertical 9:16</option>
+                            <option value="landscape">Horizontal 16:9</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="space-y-4">
@@ -876,6 +913,9 @@ function EbookContentEditor({ ebookId }: { ebookId: string }) {
           title: editingChapter.title,
           content: editingChapter.content,
           video_url: editingChapter.video_url,
+          video_provider: editingChapter.video_provider || 'auto',
+          video_id: editingChapter.video_id || null,
+          video_aspect: editingChapter.video_aspect || 'portrait',
           reading_minutes: editingChapter.reading_minutes,
           order_index: editingChapter.order_index
         })
@@ -1118,6 +1158,42 @@ function EbookContentEditor({ ebookId }: { ebookId: string }) {
                         label="Vídeo do Capítulo"
                         description="Recomendado: suba o vídeo no YouTube como 'Não listado' e cole o link aqui (streaming adaptativo, sem travar no celular)."
                       />
+                    </div>
+                    <div className="grid w-full grid-cols-1 gap-3 sm:max-w-[320px] sm:grid-cols-1">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Fonte do vídeo</label>
+                        <select
+                          value={editingChapter.video_provider || "auto"}
+                          onChange={e => setEditingChapter({...editingChapter, video_provider: e.target.value})}
+                          className="w-full bg-black/40 border border-white/10 p-2.5 rounded-lg text-sm outline-none focus:border-[#ff6a00]"
+                        >
+                          <option value="auto">Automático</option>
+                          <option value="bunny">Bunny Stream</option>
+                          <option value="youtube">YouTube</option>
+                          <option value="drive">Google Drive</option>
+                          <option value="url">URL / arquivo</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">ID do vídeo (Bunny)</label>
+                        <input
+                          value={editingChapter.video_id || ""}
+                          onChange={e => setEditingChapter({...editingChapter, video_id: e.target.value})}
+                          placeholder="libraryId/videoId"
+                          className="w-full bg-black/40 border border-white/10 p-2.5 rounded-lg text-sm outline-none focus:border-[#ff6a00]"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Formato</label>
+                        <select
+                          value={editingChapter.video_aspect || "portrait"}
+                          onChange={e => setEditingChapter({...editingChapter, video_aspect: e.target.value})}
+                          className="w-full bg-black/40 border border-white/10 p-2.5 rounded-lg text-sm outline-none focus:border-[#ff6a00]"
+                        >
+                          <option value="portrait">Vertical 9:16</option>
+                          <option value="landscape">Horizontal 16:9</option>
+                        </select>
+                      </div>
                     </div>
                     {editingChapter.video_url && (
                       <div className="w-full max-w-[220px] shrink-0 self-end">

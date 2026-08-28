@@ -23,6 +23,15 @@ interface LessonPlayerProps {
   /** Padrão dos cursos: horizontal 16:9 (estilo YouTube). */
   aspect?: VideoAspect | string | null;
   className?: string;
+  /** Não aplica o container/aspecto próprio — o chamador já tem o seu. */
+  frameless?: boolean;
+  /** Repassados ao player nativo (arquivos, YouTube, Drive). */
+  preferPoster?: boolean;
+  autoStart?: boolean;
+  isIntro?: boolean;
+  fit?: 'cover' | 'contain';
+  /** Autoplay no embed do Bunny (usado em modais em que o usuário já clicou). */
+  autoplay?: boolean;
   onProgress?: (seconds: number) => void;
   onEnded?: () => void;
 }
@@ -30,12 +39,17 @@ interface LessonPlayerProps {
 function Frame({
   aspect,
   className,
+  frameless,
   children,
 }: {
   aspect: VideoAspect;
   className?: string;
+  frameless?: boolean;
   children: React.ReactNode;
 }) {
+  if (frameless) {
+    return <div className={cn('relative h-full w-full overflow-hidden bg-black', className)}>{children}</div>;
+  }
   return (
     <div
       className={cn(
@@ -60,6 +74,12 @@ export function LessonPlayer({
   provider,
   aspect,
   className,
+  frameless,
+  preferPoster,
+  autoStart,
+  isIntro,
+  fit = 'contain',
+  autoplay,
   onProgress,
   onEnded,
 }: LessonPlayerProps) {
@@ -72,7 +92,7 @@ export function LessonPlayer({
 
   if (resolved.kind === 'none') {
     return (
-      <Frame aspect={resolved.aspect} className={className}>
+      <Frame aspect={resolved.aspect} className={className} frameless={frameless}>
         <div className="absolute inset-0 grid place-items-center text-xs text-white/40">
           Vídeo não disponível
         </div>
@@ -81,11 +101,12 @@ export function LessonPlayer({
   }
 
   if (resolved.kind === 'bunny') {
+    const src = autoplay || autoStart ? resolved.src.replace('autoplay=false', 'autoplay=true') : resolved.src;
     return (
-      <Frame aspect={resolved.aspect} className={className}>
+      <Frame aspect={resolved.aspect} className={className} frameless={frameless}>
         <iframe
-          src={resolved.src}
-          title={title || 'Aula'}
+          src={src}
+          title={title || 'Vídeo'}
           loading="lazy"
           className="absolute inset-0 h-full w-full border-0"
           allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
@@ -98,7 +119,7 @@ export function LessonPlayer({
   return (
     <Suspense
       fallback={
-        <Frame aspect={resolved.aspect} className={className}>
+        <Frame aspect={resolved.aspect} className={className} frameless={frameless}>
           <div className="absolute inset-0 animate-pulse bg-white/5" />
         </Frame>
       }
@@ -107,9 +128,12 @@ export function LessonPlayer({
         videoId={videoId}
         src={resolved.src}
         poster={poster}
+        preferPoster={preferPoster}
+        autoStart={autoStart}
+        isIntro={isIntro}
         title={title}
         aspect={resolved.aspect === 'portrait' ? 'portrait' : 'video'}
-        fit="contain"
+        fit={fit}
         className={cn('w-full', className)}
         onProgress={onProgress}
         onEnded={onEnded}

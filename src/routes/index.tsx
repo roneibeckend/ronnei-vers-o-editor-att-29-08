@@ -69,6 +69,11 @@ import printWhats1 from "@/assets/opt/print-whats-1.webp";
 import printWhats2 from "@/assets/opt/print-whats-2.webp";
 import printWhats3 from "@/assets/opt/print-whats-3.webp";
 import printPix from "@/assets/opt/print-pix.webp";
+import { LessonPlayer } from "@/components/platform/LessonPlayer";
+
+/** Vídeo da história na home: se houver ID do Bunny, usa o player do Bunny; senão mantém os MP4 locais. */
+const HERO_VIDEO_ID = (import.meta as any).env?.VITE_HERO_VIDEO_ID || '';
+const HERO_VIDEO_ASPECT = ((import.meta as any).env?.VITE_HERO_VIDEO_ASPECT || 'portrait') as 'portrait' | 'landscape';
 
 
 // Widget da assistente: chunk separado, carregado só quando a seção aparece.
@@ -663,7 +668,19 @@ function Hero() {
 
             <div className="glass gradient-border overflow-hidden rounded-2xl p-1 shadow-fire relative bg-black group/intro">
               <div className="relative aspect-[9/16] max-h-[85vh] w-full overflow-hidden rounded-xl bg-black shadow-2xl">
-                <video
+                {HERO_VIDEO_ID ? (
+                  <LessonPlayer
+                    videoId="hero-historia"
+                    title="A história do Ronnei"
+                    provider="bunny"
+                    providerVideoId={HERO_VIDEO_ID}
+                    aspect={HERO_VIDEO_ASPECT}
+                    frameless
+                    autoplay
+                    onEnded={() => setVideoOpen(false)}
+                  />
+                ) : (
+                  <video
                     autoPlay
                     controls
                     playsInline
@@ -682,6 +699,7 @@ function Hero() {
                     />
                     Seu navegador não suporta reprodução de vídeo.
                   </video>
+                )}
               </div>
             </div>
           </div>
