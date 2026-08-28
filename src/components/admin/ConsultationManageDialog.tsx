@@ -11,8 +11,16 @@ import {
   sendConsultationPrepEmailFn,
   generateConsultationOutcome,
   sendConsultationOutcomeToClient,
+  getConsultationGroup,
+  sendConsultationComboReport,
 } from "@/lib/consultations-admin.functions";
-import { buildConsultationReportPdf } from "@/lib/consultation-pdf";
+import {
+  buildConsultationReportPdf,
+  buildConsultationComboReportPdf,
+  buildConsultationSessionPdfs,
+} from "@/lib/consultation-pdf";
+import { saveBlob } from "@/lib/download";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
