@@ -70,7 +70,6 @@ import { Route as AppAfiliadosMateriaisRouteImport } from './routes/app.afiliado
 import { Route as AppAfiliadosLinksRouteImport } from './routes/app.afiliados.links'
 import { Route as AppAfiliadosFinanceiroRouteImport } from './routes/app.afiliados.financeiro'
 import { Route as AppAfiliadosConfigRouteImport } from './routes/app.afiliados.config'
-import { Route as ApiPublicTmpdrivecheckRouteImport } from './routes/api/public/tmpdrivecheck'
 import { Route as ApiPublicOpsRecoveryRouteImport } from './routes/api/public/ops-recovery'
 import { Route as ApiPublicDriveVideoRouteImport } from './routes/api/public/drive-video'
 import { Route as ApiPublicDailyUpdatesReportRouteImport } from './routes/api/public/daily-updates-report'
@@ -389,11 +388,6 @@ const AppAfiliadosConfigRoute = AppAfiliadosConfigRouteImport.update({
   path: '/config',
   getParentRoute: () => AppAfiliadosRoute,
 } as any)
-const ApiPublicTmpdrivecheckRoute = ApiPublicTmpdrivecheckRouteImport.update({
-  id: '/api/public/tmpdrivecheck',
-  path: '/api/public/tmpdrivecheck',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicOpsRecoveryRoute = ApiPublicOpsRecoveryRouteImport.update({
   id: '/api/public/ops-recovery',
   path: '/api/public/ops-recovery',
@@ -523,7 +517,6 @@ export interface FileRoutesByFullPath {
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
   '/api/public/ops-recovery': typeof ApiPublicOpsRecoveryRoute
-  '/api/public/tmpdrivecheck': typeof ApiPublicTmpdrivecheckRoute
   '/app/afiliados/config': typeof AppAfiliadosConfigRoute
   '/app/afiliados/financeiro': typeof AppAfiliadosFinanceiroRoute
   '/app/afiliados/links': typeof AppAfiliadosLinksRoute
@@ -595,7 +588,6 @@ export interface FileRoutesByTo {
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
   '/api/public/ops-recovery': typeof ApiPublicOpsRecoveryRoute
-  '/api/public/tmpdrivecheck': typeof ApiPublicTmpdrivecheckRoute
   '/app/afiliados/config': typeof AppAfiliadosConfigRoute
   '/app/afiliados/financeiro': typeof AppAfiliadosFinanceiroRoute
   '/app/afiliados/links': typeof AppAfiliadosLinksRoute
@@ -672,7 +664,6 @@ export interface FileRoutesById {
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
   '/api/public/ops-recovery': typeof ApiPublicOpsRecoveryRoute
-  '/api/public/tmpdrivecheck': typeof ApiPublicTmpdrivecheckRoute
   '/app/afiliados/config': typeof AppAfiliadosConfigRoute
   '/app/afiliados/financeiro': typeof AppAfiliadosFinanceiroRoute
   '/app/afiliados/links': typeof AppAfiliadosLinksRoute
@@ -750,7 +741,6 @@ export interface FileRouteTypes {
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
     | '/api/public/ops-recovery'
-    | '/api/public/tmpdrivecheck'
     | '/app/afiliados/config'
     | '/app/afiliados/financeiro'
     | '/app/afiliados/links'
@@ -822,7 +812,6 @@ export interface FileRouteTypes {
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
     | '/api/public/ops-recovery'
-    | '/api/public/tmpdrivecheck'
     | '/app/afiliados/config'
     | '/app/afiliados/financeiro'
     | '/app/afiliados/links'
@@ -898,7 +887,6 @@ export interface FileRouteTypes {
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
     | '/api/public/ops-recovery'
-    | '/api/public/tmpdrivecheck'
     | '/app/afiliados/config'
     | '/app/afiliados/financeiro'
     | '/app/afiliados/links'
@@ -935,7 +923,6 @@ export interface RootRouteChildren {
   ApiPublicDailyUpdatesReportRoute: typeof ApiPublicDailyUpdatesReportRoute
   ApiPublicDriveVideoRoute: typeof ApiPublicDriveVideoRoute
   ApiPublicOpsRecoveryRoute: typeof ApiPublicOpsRecoveryRoute
-  ApiPublicTmpdrivecheckRoute: typeof ApiPublicTmpdrivecheckRoute
   ApiPublicManifestWebmanifestRoute: typeof ApiPublicManifestWebmanifestRoute
   ApiPublicWebhooksAsaasRoute: typeof ApiPublicWebhooksAsaasRoute
   ApiPublicGoogleOauthCallbackRoute: typeof ApiPublicGoogleOauthCallbackRoute
@@ -1370,13 +1357,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAfiliadosConfigRouteImport
       parentRoute: typeof AppAfiliadosRoute
     }
-    '/api/public/tmpdrivecheck': {
-      id: '/api/public/tmpdrivecheck'
-      path: '/api/public/tmpdrivecheck'
-      fullPath: '/api/public/tmpdrivecheck'
-      preLoaderRoute: typeof ApiPublicTmpdrivecheckRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/ops-recovery': {
       id: '/api/public/ops-recovery'
       path: '/api/public/ops-recovery'
@@ -1631,7 +1611,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicDailyUpdatesReportRoute: ApiPublicDailyUpdatesReportRoute,
   ApiPublicDriveVideoRoute: ApiPublicDriveVideoRoute,
   ApiPublicOpsRecoveryRoute: ApiPublicOpsRecoveryRoute,
-  ApiPublicTmpdrivecheckRoute: ApiPublicTmpdrivecheckRoute,
   ApiPublicManifestWebmanifestRoute: ApiPublicManifestWebmanifestRoute,
   ApiPublicWebhooksAsaasRoute: ApiPublicWebhooksAsaasRoute,
   ApiPublicGoogleOauthCallbackRoute: ApiPublicGoogleOauthCallbackRoute,
