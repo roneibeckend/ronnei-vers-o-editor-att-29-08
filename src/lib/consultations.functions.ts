@@ -282,6 +282,7 @@ export const reserveConsultation = createServerFn({ method: "POST" })
       status: "awaiting_payment" as const,
       holdExpiresAt,
       paymentUrl,
+      paymentLinkId,
       amount: Number(product.price),
       scheduledAt: created.scheduled_at,
       durationMinutes: meetingMinutes,
@@ -310,7 +311,7 @@ export const getConsultationReservation = createServerFn({ method: "POST" })
     const { data: row } = await supabaseAdmin
       .from("consultations")
       .select(
-        "id, user_id, status, hold_expires_at, payment_url, meet_link, scheduled_at, ends_at, duration_minutes, amount, cancel_reason, booking_group, session_index, sessions_total",
+        "id, user_id, status, hold_expires_at, payment_url, payment_link_id, meet_link, scheduled_at, ends_at, duration_minutes, amount, cancel_reason, booking_group, session_index, sessions_total",
       )
       .eq("id", data.id)
       .maybeSingle();
@@ -355,6 +356,7 @@ export const getConsultationReservation = createServerFn({ method: "POST" })
       status: row.status,
       holdExpiresAt: (row as any).hold_expires_at ?? null,
       paymentUrl: (row as any).payment_url ?? null,
+      paymentLinkId: (row as any).payment_link_id ?? null,
       meetLink: row.meet_link,
       scheduledAt: row.scheduled_at,
       amount: Number(row.amount ?? 0),
