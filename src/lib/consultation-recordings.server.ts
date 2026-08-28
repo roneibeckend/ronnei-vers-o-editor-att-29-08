@@ -239,7 +239,7 @@ async function deliverRecording(row: RecordingRow, consultation: Candidate, reas
   let notifiedAt: string | null = null;
   if (!target["recording_sent_at"]) {
     await sendConsultationRecording({
-      ...(target as never),
+      ...target,
       recording_url: url,
       materials,
     } as never);
