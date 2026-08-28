@@ -30,21 +30,35 @@
     );
 
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js", {
-          scope: "/",
-          updateViaCache: "none"
-        })
-        .then(function (registration) {
-          registration.update();
-        })
-        .catch(function (error) {
-          console.error(
-            "[RNV PWA] Service Worker:",
-            error
-          );
-        });
+      var swHost = location.hostname;
+
+      var swBlocked =
+        window.top !== window.self ||
+        !window.isSecureContext ||
+        location.search.indexOf("sw=off") > -1 ||
+        swHost === "localhost" ||
+        swHost === "127.0.0.1" ||
+        swHost.indexOf("id-preview--") === 0 ||
+        swHost.indexOf("preview--") === 0 ||
+        swHost === "lovableproject.com" ||
+        swHost.slice(-19) === ".lovableproject.com" ||
+        swHost.slice(-16) === "-dev.lovable.app";
+
+      if (!swBlocked) {
+        navigator.serviceWorker
+          .register("/sw.js", {
+            scope: "/",
+            updateViaCache: "none"
+          })
+          .catch(function (error) {
+            console.warn(
+              "[RNV PWA] Service Worker:",
+              error
+            );
+          });
+      }
     }
+
   </script>
 
   <link
