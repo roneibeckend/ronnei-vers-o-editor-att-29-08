@@ -342,6 +342,7 @@ export const saveConsultationNotes = createServerFn({ method: "POST" })
         adminNotes: z.string().trim().max(5000).nullable().optional(),
         studentNotes: z.string().trim().max(5000).nullable().optional(),
         actionPlan: z.string().trim().max(5000).nullable().optional(),
+        meetingScript: z.string().trim().max(20000).nullable().optional(),
         materials: z
           .array(
             z.object({
