@@ -54,7 +54,7 @@ function slug(value: string) {
     .slice(0, 50);
 }
 
-export function generateConsultationReportPdf(c: any) {
+export function buildConsultationReportPdf(c: any) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const briefing = (c?.briefing_data ?? null) as any;
   let y = 0;
@@ -201,6 +201,16 @@ export function generateConsultationReportPdf(c: any) {
     doc.text(`${p}/${total}`, PAGE_W - MX, PAGE_H - 10, { align: "right" });
   }
 
-  const name = `consultoria-${slug(c?.client_name || "aluno")}-${(c?.scheduled_at || "").slice(0, 10)}.pdf`;
-  saveBlob(doc.output("blob"), name);
+  const filename = `consultoria-${slug(c?.client_name || "aluno")}-${(c?.scheduled_at || "").slice(0, 10)}.pdf`;
+  return {
+    filename,
+    blob: doc.output("blob") as Blob,
+    /** Conteúdo em base64, pronto para anexar em e-mail. */
+    base64: doc.output("datauristring").split(",")[1] ?? "",
+  };
+}
+
+export function generateConsultationReportPdf(c: any) {
+  const { blob, filename } = buildConsultationReportPdf(c);
+  saveBlob(blob, filename);
 }

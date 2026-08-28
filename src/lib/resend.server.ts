@@ -148,6 +148,8 @@ export async function sendResendEmail(params: {
   from?: string;
   reply_to?: string;
   tags?: { name: string; value: string }[];
+  /** Anexos (ex.: relatório em PDF). `content` em base64. */
+  attachments?: { filename: string; content: string }[];
 }) {
   try {
     const config = await getResendConfig();
@@ -171,7 +173,8 @@ export async function sendResendEmail(params: {
         tags: params.tags?.map((t) => ({
           name: sanitizeTag(t.name),
           value: sanitizeTag(t.value)
-        }))
+        })),
+        attachments: params.attachments?.length ? params.attachments : undefined
       })
     });
 

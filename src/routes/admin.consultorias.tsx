@@ -17,6 +17,7 @@ import {
   attachConsultationRecording,
   runConsultationRemindersNow,
   saveConsultationNotes,
+  sendConsultationReportEmail,
 } from "@/lib/consultations-admin.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -40,8 +41,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { generateConsultationReportPdf } from "@/lib/consultation-pdf";
-import { Loader2, Plus, Trash2, RefreshCw, Video, Bell, ShieldCheck, FileText } from "lucide-react";
+import { generateConsultationReportPdf, buildConsultationReportPdf } from "@/lib/consultation-pdf";
+import { useAuth } from "@/hooks/use-auth";
+import { Loader2, Plus, Trash2, RefreshCw, Video, Bell, ShieldCheck, FileText, Mail } from "lucide-react";
 
 export const Route = createFileRoute("/admin/consultorias")({
   head: () => ({
@@ -317,16 +319,64 @@ function ScriptDialog({
   const [script, setScript] = useState("");
   const [loadedId, setLoadedId] = useState<string | null>(null);
   const saveNotes = useServerFn(saveConsultationNotes);
+  const sendReport = useServerFn(sendConsultationReportEmail);
+  const { session } = useAuth();
+  const consultantEmail = session?.user?.email ?? "";
+
+  const [toStudent, setToStudent] = useState(true);
+  const [toConsultant, setToConsultant] = useState(false);
+  const [extraEmails, setExtraEmails] = useState("");
+  const [message, setMessage] = useState("");
+  const [confirming, setConfirming] = useState(false);
 
   if (consultation && loadedId !== consultation.id) {
     setLoadedId(consultation.id);
     setScript(consultation.meeting_script ?? "");
+    setToStudent(Boolean(consultation.client_email));
+    setToConsultant(false);
+    setExtraEmails("");
+    setMessage("");
+    setConfirming(false);
   }
+
+  const recipients = [
+    ...(toStudent && consultation?.client_email ? [String(consultation.client_email)] : []),
+    ...(toConsultant && consultantEmail ? [consultantEmail] : []),
+    ...extraEmails
+      .split(/[,;\s]+/)
+      .map((e) => e.trim())
+      .filter((e) => e.includes("@")),
+  ];
+  const uniqueRecipients = Array.from(new Set(recipients.map((e) => e.toLowerCase())));
 
   const save = useMutation({
     mutationFn: () => saveNotes({ data: { id: consultation.id, meetingScript: script } as any }),
     onSuccess: () => onSaved(),
     onError: (e: any) => toast.error(e?.message ?? "Falha ao salvar o roteiro."),
+  });
+
+  const email = useMutation({
+    mutationFn: async () => {
+      const { base64, filename } = buildConsultationReportPdf({
+        ...consultation,
+        meeting_script: script,
+      });
+      return sendReport({
+        data: {
+          id: consultation.id,
+          recipients: uniqueRecipients,
+          message: message.trim() || undefined,
+          filename,
+          pdfBase64: base64,
+        } as any,
+      });
+    },
+    onSuccess: () => {
+      toast.success(`Relatório enviado para ${uniqueRecipients.join(", ")}.`);
+      setConfirming(false);
+      onClose();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar o relatório."),
   });
 
   const handle = async (withPdf: boolean) => {
@@ -343,6 +393,16 @@ function ScriptDialog({
     }
     onClose();
   };
+
+  const handleSend = async () => {
+    if (!uniqueRecipients.length) {
+      toast.error("Escolha pelo menos um destinatário.");
+      return;
+    }
+    await save.mutateAsync();
+    await email.mutateAsync();
+  };
+
 
   return (
     <Dialog open={Boolean(consultation)} onOpenChange={(o) => !o && onClose()}>
@@ -367,6 +427,90 @@ function ScriptDialog({
               <p className="text-xs text-muted-foreground">
                 O texto fica salvo e é reaproveitado automaticamente no próximo PDF.
               </p>
+            </div>
+            <div className="space-y-2 rounded-lg border p-3">
+              <p className="text-sm font-medium">Enviar relatório por e-mail</p>
+              <label className="flex items-center gap-2 text-sm">
+                <Switch
+                  checked={toStudent}
+                  disabled={!consultation.client_email}
+                  onCheckedChange={(v) => {
+                    setToStudent(v);
+                    setConfirming(false);
+                  }}
+                />
+                Aluno {consultation.client_email ? `(${consultation.client_email})` : "(sem e-mail)"}
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Switch
+                  checked={toConsultant}
+                  disabled={!consultantEmail}
+                  onCheckedChange={(v) => {
+                    setToConsultant(v);
+                    setConfirming(false);
+                  }}
+                />
+                Consultor {consultantEmail ? `(${consultantEmail})` : "(sem e-mail)"}
+              </label>
+              <div className="space-y-1.5">
+                <Label htmlFor="report-extra">Outros e-mails (separados por vírgula)</Label>
+                <Input
+                  id="report-extra"
+                  value={extraEmails}
+                  onChange={(e) => {
+                    setExtraEmails(e.target.value);
+                    setConfirming(false);
+                  }}
+                  placeholder="equipe@exemplo.com, ronnei@exemplo.com"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="report-message">Mensagem (opcional)</Label>
+                <Textarea
+                  id="report-message"
+                  rows={3}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Segue o relatório da nossa reunião..."
+                />
+              </div>
+              {confirming && (
+                <p className="rounded-md bg-muted p-2 text-xs">
+                  Confirmar envio do PDF para:{" "}
+                  <strong>{uniqueRecipients.join(", ") || "nenhum destinatário"}</strong>
+                </p>
+              )}
+              <div className="flex justify-end">
+                {confirming ? (
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={email.isPending || save.isPending || !uniqueRecipients.length}
+                      onClick={handleSend}
+                    >
+                      {email.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Mail className="mr-2 h-4 w-4" />
+                      )}
+                      Confirmar envio
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!uniqueRecipients.length}
+                    onClick={() => setConfirming(true)}
+                  >
+                    <Mail className="mr-2 h-4 w-4" />
+                    Enviar por e-mail
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="flex flex-wrap justify-end gap-2">
               <Button variant="outline" disabled={save.isPending} onClick={() => handle(false)}>
