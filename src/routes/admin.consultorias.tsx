@@ -18,6 +18,8 @@ import {
   runConsultationRemindersNow,
   saveConsultationNotes,
   sendConsultationReportEmail,
+  applyAvailabilityPreset,
+  previewAvailableSlots,
 } from "@/lib/consultations-admin.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -32,6 +34,7 @@ import { ConsultationReports } from "@/components/admin/ConsultationReports";
 import { ConsultationAutomations } from "@/components/admin/ConsultationAutomations";
 import { ConsultationRecordings } from "@/components/admin/ConsultationRecordings";
 import { ConsultationAttendance } from "@/components/admin/ConsultationAttendance";
+import { ConsultationGoogleSync } from "@/components/admin/ConsultationGoogleSync";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -169,8 +172,9 @@ function AdminConsultationsPage() {
         <TabsContent value="presenca" className="mt-4">
           <ConsultationAttendance />
         </TabsContent>
-        <TabsContent value="automacoes" className="mt-4">
+        <TabsContent value="automacoes" className="mt-4 space-y-5">
           <ConsultationAutomations />
+          <ConsultationGoogleSync />
         </TabsContent>
         <TabsContent value="auditoria" className="mt-4">
           <AuditTab audit={data?.audit ?? []} />
@@ -868,10 +872,21 @@ function ScheduleTab({
     onSuccess: onChanged,
   });
 
+  const hasActive = availability.some((a) => a.active);
+
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card className="space-y-4 p-4">
         <h3 className="font-semibold">Disponibilidade semanal (horário de Brasília)</h3>
+
+        {!hasActive && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            <strong>Grade vazia:</strong> nenhum horário será oferecido aos alunos e as remarcações serão
+            recusadas. Aplique uma grade padrão abaixo ou cadastre janelas manualmente.
+          </div>
+        )}
+
+        <AvailabilityPresets onChanged={onChanged} hasRules={availability.length > 0} />
 
         <div className="space-y-2">
           {availability.map((a) => (
@@ -889,6 +904,7 @@ function ScheduleTab({
             <p className="text-sm text-muted-foreground">Nenhuma janela cadastrada — nenhum horário será oferecido.</p>
           )}
         </div>
+
 
         <div className="grid grid-cols-2 gap-2">
           <div>
@@ -979,7 +995,108 @@ function ScheduleTab({
   );
 }
 
+/* --------------------- Presets + simulação da grade --------------------- */
+
+const PRESETS = [
+  {
+    id: "manha",
+    label: "Seg–Sex · 09:00–12:00",
+    weekdays: [1, 2, 3, 4, 5],
+    windows: [{ start_time: "09:00", end_time: "12:00" }],
+  },
+  {
+    id: "tarde",
+    label: "Seg–Sex · 14:00–18:00",
+    weekdays: [1, 2, 3, 4, 5],
+    windows: [{ start_time: "14:00", end_time: "18:00" }],
+  },
+  {
+    id: "integral",
+    label: "Seg–Sex · 09:00–12:00 e 14:00–18:00",
+    weekdays: [1, 2, 3, 4, 5],
+    windows: [
+      { start_time: "09:00", end_time: "12:00" },
+      { start_time: "14:00", end_time: "18:00" },
+    ],
+  },
+];
+
+function AvailabilityPresets({ onChanged, hasRules }: { onChanged: () => void; hasRules: boolean }) {
+  const applyFn = useServerFn(applyAvailabilityPreset);
+  const previewFn = useServerFn(previewAvailableSlots);
+  const [replace, setReplace] = useState(false);
+  const [preview, setPreview] = useState<{ total: number; next: any[] } | null>(null);
+
+  const apply = useMutation({
+    mutationFn: (p: (typeof PRESETS)[number]) =>
+      applyFn({
+        data: {
+          weekdays: p.weekdays,
+          windows: p.windows,
+          slot_interval_minutes: 60,
+          replace,
+        } as any,
+      }),
+    onSuccess: (r: any) => {
+      toast.success(`${r.created} janela(s) criada(s).`);
+      onChanged();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao aplicar grade."),
+  });
+
+  const simulate = useMutation({
+    mutationFn: () => previewFn({ data: { durationMinutes: 60, days: 14 } as any }),
+    onSuccess: (r: any) => setPreview(r),
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao simular."),
+  });
+
+  return (
+    <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+      <p className="text-sm font-medium">Grade padrão (blocos de 1 hora)</p>
+      <div className="flex flex-wrap gap-2">
+        {PRESETS.map((p) => (
+          <Button
+            key={p.id}
+            size="sm"
+            variant="outline"
+            disabled={apply.isPending}
+            onClick={() => apply.mutate(p)}
+          >
+            {apply.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+            {p.label}
+          </Button>
+        ))}
+      </div>
+      {hasRules && (
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Switch checked={replace} onCheckedChange={setReplace} />
+          Substituir a grade atual ao aplicar
+        </label>
+      )}
+      <div className="flex flex-wrap items-center gap-3">
+        <Button size="sm" variant="secondary" disabled={simulate.isPending} onClick={() => simulate.mutate()}>
+          {simulate.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="mr-2 h-4 w-4" />
+          )}
+          Simular próximos 14 dias
+        </Button>
+        {preview && (
+          <span className={`text-xs ${preview.total ? "text-emerald-600" : "text-destructive"}`}>
+            {preview.total
+              ? `${preview.total} horário(s) de 1h disponíveis. Próximo: ${dateBR(preview.next[0].start)}`
+              : "Nenhum horário disponível — revise janelas, bloqueios e antecedência mínima."}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ------------------------------ Auditoria ------------------------------ */
+
+
 
 function AuditTab({ audit }: { audit: any[] }) {
   if (!audit.length) {
