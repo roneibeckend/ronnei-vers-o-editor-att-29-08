@@ -17,6 +17,7 @@ import { verifyAsaasPayment, checkAsaasCheckoutHealth } from "@/lib/asaas.functi
 import { completePendingCheckout } from "@/lib/checkout.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { gtmPurchase } from "@/lib/gtm";
 
 
 export function AsaasPaymentModal() {
@@ -84,6 +85,16 @@ export function AsaasPaymentModal() {
     const interval = window.setInterval(check, 4000);
     return () => clearInterval(interval);
   }, [isOpen, productId, productType, status, isEnrolledInCourse, isEnrolledInEbook, setStatus, refetchEnrollments]);
+
+  // Pagamento aprovado: dispara o evento de conversão uma única vez
+  const purchaseTracked = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (status !== 'confirmed' || !productId || !productType) return;
+    const key = `${productType}:${productId}`;
+    if (purchaseTracked.current === key) return;
+    purchaseTracked.current = key;
+    gtmPurchase({ productId, productType, productName: title });
+  }, [status, productId, productType, title]);
 
   // Redirecionamento automático após confirmação
   React.useEffect(() => {

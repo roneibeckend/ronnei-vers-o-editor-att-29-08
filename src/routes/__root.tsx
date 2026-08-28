@@ -16,6 +16,8 @@ import { useAffiliateTracking } from "../hooks/use-affiliate-tracking";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { initPixel, trackEvent } from "../lib/pixel";
+import { gtmPageView, gtmSocialClick, gtmPwaInstalled } from "../lib/gtm";
+
 import { installClientLogger, logClient } from "../lib/client-logger";
 
 function NotFoundComponent() {
@@ -192,7 +194,19 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR" className="dark">
       <head>
+        {/* Google Tag Manager — container único, carregado uma só vez */}
         <script
+          data-rnv-gtm
+          dangerouslySetInnerHTML={{
+            __html: `(function(w,d,s,l,i){if(w.__RNV_GTM_LOADED__)return;w.__RNV_GTM_LOADED__=true;w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-M376JTZP');`,
+          }}
+        />
+        <script
+
           data-rnv-auth-return
           dangerouslySetInnerHTML={{
             __html: `
@@ -278,7 +292,15 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body className="antialiased overflow-x-hidden selection:bg-primary/30">
+        {/* Google Tag Manager (noscript) */}
+        <noscript
+          dangerouslySetInnerHTML={{
+            __html: `<iframe src="https://www.googletagmanager.com/ns.html?id=GTM-M376JTZP"
+height="0" width="0" style="display:none;visibility:hidden"></iframe>`,
+          }}
+        />
         <script
+
           dangerouslySetInnerHTML={{
             __html: `
               // Script de Resiliência Visual: Detecta se o CSS principal falhou ou se há erros de chunk precoces
@@ -329,16 +351,39 @@ function RootComponent() {
         document.body.classList.remove("loading-route");
       }
       trackEvent("PageView");
+      gtmPageView();
     });
 
     initPixel();
+    gtmPageView();
     installClientLogger();
+
+    // Cliques em WhatsApp/Instagram (delegado: cobre todas as rotas, sem duplicar).
+    const onClick = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement | null)?.closest?.("a[href]") as
+        | HTMLAnchorElement
+        | null;
+      if (!anchor) return;
+      const href = anchor.href || "";
+      if (/wa\.me|api\.whatsapp\.com|whatsapp:/i.test(href)) {
+        gtmSocialClick("whatsapp", window.location.pathname);
+      } else if (/instagram\.com/i.test(href)) {
+        gtmSocialClick("instagram", window.location.pathname);
+      }
+    };
+    document.addEventListener("click", onClick, true);
+
+    const onInstalled = () => gtmPwaInstalled("installed");
+    window.addEventListener("appinstalled", onInstalled);
 
     return () => {
       unsubBefore();
       unsubAfter();
+      document.removeEventListener("click", onClick, true);
+      window.removeEventListener("appinstalled", onInstalled);
     };
   }, [router]);
+
   // Rede de segurança do login social: se o Supabase devolver o código/tokens
   // em uma rota que não é /auth/callback (acontece quando o Site URL do projeto
   // sobrescreve o redirectTo), concluímos a sessão aqui e levamos para /app.

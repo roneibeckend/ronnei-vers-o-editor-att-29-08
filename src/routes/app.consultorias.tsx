@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { gtmBeginCheckout, gtmPurchase, gtmConsultationScheduled } from "@/lib/gtm";
 import {
   listConsultationProducts,
   getConsultationSlots,
@@ -537,6 +538,7 @@ function BookingDialog({
     onSuccess: (res: any) => {
       setReservation(res);
       onBooked();
+      gtmBeginCheckout({ productId: String(res?.id ?? "consultoria"), productType: "consultation" });
       if (res?.paymentUrl) window.open(res.paymentUrl, "_blank", "noopener");
     },
     onError: (e: any) => toast.error(e?.message ?? "Falha ao criar a reserva."),
@@ -552,6 +554,11 @@ function BookingDialog({
 
   useEffect(() => {
     if (liveReservation?.status === "scheduled") {
+      gtmPurchase({ productId: String(liveReservation?.id ?? ""), productType: "consultation" });
+      gtmConsultationScheduled({
+        consultationId: String(liveReservation?.id ?? ""),
+        scheduledAt: (liveReservation as any)?.scheduled_at,
+      });
       toast.success("Pagamento aprovado! Sua consultoria está confirmada e o link do Meet foi enviado por e-mail.");
       onBooked();
       reset();

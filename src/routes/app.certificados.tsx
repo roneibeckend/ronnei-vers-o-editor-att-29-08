@@ -8,6 +8,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getStudentCertificates } from "@/lib/certificates-student.functions";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { gtmCertificateIssued } from "@/lib/gtm";
 import { CertificateQrCode, CERT_VERIFY_DOMAIN, certificateVerifyUrl } from "@/components/platform/CertificateQrCode";
 
 
@@ -348,6 +349,7 @@ function CertificateModal({ cert, onClose, autoDownload }: { cert: any; onClose:
     const toastId = toast.loading("Gerando o PDF do seu certificado...");
     try {
       await downloadCertificatePDF(certRef.current, cert);
+      gtmCertificateIssued({ courseId: String(cert?.courseId ?? cert?.id ?? ""), courseName: cert?.course });
       toast.success("Certificado baixado em PDF!", { id: toastId });
     } catch (err) {
       console.error("PDF generation failed", err);
