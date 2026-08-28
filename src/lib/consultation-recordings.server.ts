@@ -241,7 +241,7 @@ async function deliverRecording(row: RecordingRow, consultation: Candidate, reas
     await sendConsultationRecording({
       ...(target as never),
       recording_url: url,
-      materials_list: materials.map((m) => m.title).join(", "),
+      materials,
     } as never);
     notifiedAt = new Date().toISOString();
   }
