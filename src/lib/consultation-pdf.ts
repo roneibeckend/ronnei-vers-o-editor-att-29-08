@@ -201,6 +201,16 @@ export function buildConsultationReportPdf(c: any) {
     doc.text(`${p}/${total}`, PAGE_W - MX, PAGE_H - 10, { align: "right" });
   }
 
-  const name = `consultoria-${slug(c?.client_name || "aluno")}-${(c?.scheduled_at || "").slice(0, 10)}.pdf`;
-  saveBlob(doc.output("blob"), name);
+  const filename = `consultoria-${slug(c?.client_name || "aluno")}-${(c?.scheduled_at || "").slice(0, 10)}.pdf`;
+  return {
+    filename,
+    blob: doc.output("blob") as Blob,
+    /** Conteúdo em base64, pronto para anexar em e-mail. */
+    base64: doc.output("datauristring").split(",")[1] ?? "",
+  };
+}
+
+export function generateConsultationReportPdf(c: any) {
+  const { blob, filename } = buildConsultationReportPdf(c);
+  saveBlob(blob, filename);
 }
