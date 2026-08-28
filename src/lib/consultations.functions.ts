@@ -66,6 +66,7 @@ export const reserveConsultation = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const {
       isSlotFree,
+      isWithinAvailability,
       auditConsultation,
       expireConsultationHolds,
       CONSULTATION_TZ,
