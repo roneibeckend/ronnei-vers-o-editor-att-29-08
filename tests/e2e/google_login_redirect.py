@@ -12,6 +12,7 @@ Como rodar (servidor de dev já em execução em http://localhost:8080):
 
 import asyncio
 import json
+import re
 import time
 
 from playwright.async_api import async_playwright
@@ -88,10 +89,10 @@ async def main():
             f"&refresh_token={SESSION['refresh_token']}"
             f"&token_type=bearer&expires_in=3600&provider_token=google-token"
         )
-        await page.goto(callback, wait_until="domcontentloaded")
+        await page.goto(callback, wait_until="load")
 
         try:
-            await page.wait_for_url("**/app**", timeout=20_000)
+            await page.wait_for_url(re.compile(r"/app(\?|/|$)"), timeout=25_000)
         except Exception:
             print("FAIL: usuário permaneceu fora de /app. URL final:", page.url)
             print("erros de console:", console_errors[:5])
