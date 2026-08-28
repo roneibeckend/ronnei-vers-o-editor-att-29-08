@@ -101,12 +101,22 @@ export function LessonPlayer({
   }
 
   if (resolved.kind === 'bunny') {
-    const src = autoplay || autoStart ? resolved.src.replace('autoplay=false', 'autoplay=true') : resolved.src;
+    const wantsAutoplay = Boolean(autoplay || autoStart);
+    let src = resolved.src;
+    if (wantsAutoplay) {
+      // No mobile, autoplay com som é bloqueado: começa mudo e o BunnyFrame
+      // desmuta via API assim que a reprodução inicia (1 clique só).
+      src = src
+        .replace('autoplay=false', 'autoplay=true')
+        .replace('muted=false', 'muted=true');
+      if (!src.includes('muted=')) src += '&muted=true';
+    }
     return (
       <Frame aspect={resolved.aspect} className={className} frameless={frameless}>
         <BunnyFrame
           src={src}
           title={title}
+          unmuteOnPlay={wantsAutoplay}
           onEnded={onEnded}
         />
       </Frame>
