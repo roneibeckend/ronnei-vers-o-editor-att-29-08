@@ -66,6 +66,7 @@ export const reserveConsultation = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const {
       isSlotFree,
+      isWithinAvailability,
       auditConsultation,
       expireConsultationHolds,
       CONSULTATION_TZ,
@@ -134,6 +135,9 @@ export const reserveConsultation = createServerFn({ method: "POST" })
     for (const { start, end } of sessionsPlan) {
       if (+start < Date.now() + MIN_LEAD_MINUTES * 60_000) {
         throw new Error("Escolha horários com pelo menos 2 horas de antecedência.");
+      }
+      if (!(await isWithinAvailability(start.toISOString(), end.toISOString()))) {
+        throw new Error("Escolha horários dentro da grade de disponibilidade.");
       }
       const alreadyToday = await studentMinutesOnDay(context.userId, start.toISOString());
       if (alreadyToday + meetingMinutes > MAX_MINUTES_PER_DAY) {
@@ -389,6 +393,7 @@ export const rescheduleMyConsultation = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const {
       isSlotFree,
+      isWithinAvailability,
       auditConsultation,
       rescheduleGoogleMeeting,
       sendConsultationRescheduled,
@@ -436,6 +441,9 @@ export const rescheduleMyConsultation = createServerFn({ method: "POST" })
       );
     }
 
+    if (!(await isWithinAvailability(start.toISOString(), end.toISOString()))) {
+      throw new Error("Escolha um horário dentro da grade de disponibilidade.");
+    }
     if (!(await isSlotFree(start.toISOString(), end.toISOString()))) {
       throw new Error("Esse horário acabou de ser reservado. Escolha outro.");
     }

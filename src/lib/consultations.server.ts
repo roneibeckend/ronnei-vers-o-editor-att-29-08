@@ -32,12 +32,20 @@ export async function studentMinutesOnDay(userId: string, dateIso: string) {
   const dayEnd = new Date(`${dateStr}T23:59:59${TZ_OFFSET}`).toISOString();
   const { data } = await supabaseAdmin
     .from("consultations")
-    .select("duration_minutes")
+    .select("duration_minutes, status, hold_expires_at")
     .eq("user_id", userId)
     .in("status", [...BUSY_STATUSES])
     .gte("scheduled_at", dayStart)
     .lte("scheduled_at", dayEnd);
-  return (data ?? []).reduce((sum, r: any) => sum + (r.duration_minutes || 0), 0);
+
+  const nowIso = new Date().toISOString();
+  // Blindagem: hold vencido de reserva não paga não consome o limite diário.
+  return (data ?? [])
+    .filter(
+      (r: any) =>
+        r.status !== "awaiting_payment" || !r.hold_expires_at || r.hold_expires_at >= nowIso,
+    )
+    .reduce((sum, r: any) => sum + (r.duration_minutes || 0), 0);
 }
 
 /** Cancela reservas não pagas expiradas e libera os horários. */
@@ -46,8 +54,26 @@ export async function expireConsultationHolds() {
     const { data } = await supabaseAdmin.rpc("expire_consultation_holds" as never);
     return Number(data ?? 0);
   } catch (err) {
-    console.warn("[consultorias] Falha ao expirar reservas:", (err as Error)?.message);
-    return 0;
+    // Blindagem: se o RPC falhar (rede/instabilidade), expira direto pela tabela
+    // para que os horários nunca fiquem presos esperando o cron.
+    console.warn("[consultorias] RPC falhou, expirando holds diretamente:", (err as Error)?.message);
+    try {
+      const { data } = await supabaseAdmin
+        .from("consultations")
+        .update({
+          status: "cancelled",
+          cancel_reason: "Reserva expirada sem pagamento",
+          hold_expires_at: null,
+        } as never)
+        .eq("status", "awaiting_payment")
+        .not("hold_expires_at", "is", null)
+        .lt("hold_expires_at", new Date().toISOString())
+        .select("id");
+      return data?.length ?? 0;
+    } catch (fallbackErr) {
+      console.warn("[consultorias] Falha ao expirar reservas:", (fallbackErr as Error)?.message);
+      return 0;
+    }
   }
 }
 
@@ -139,16 +165,26 @@ export async function computeAvailableSlots(rawDurationMinutes: number, days = 3
       .gte("ends_at", new Date().toISOString()),
     supabaseAdmin
       .from("consultations")
-      .select("scheduled_at, ends_at, status")
+      .select("scheduled_at, ends_at, status, hold_expires_at")
       .in("status", [...BUSY_STATUSES])
       .gte("ends_at", new Date().toISOString()),
   ]);
 
   if (!availability?.length) return [];
 
+  const nowIso = new Date().toISOString();
+  // Blindagem: hold de reserva não paga que já venceu NUNCA bloqueia horário,
+  // mesmo que a expiração automática tenha falhado.
   const busy: { start: number; end: number }[] = [
     ...(blocks ?? []).map((b) => ({ start: +new Date(b.starts_at), end: +new Date(b.ends_at) })),
-    ...(booked ?? []).map((b) => ({ start: +new Date(b.scheduled_at), end: +new Date(b.ends_at) })),
+    ...(booked ?? [])
+      .filter(
+        (b: any) =>
+          b.status !== "awaiting_payment" ||
+          !b.hold_expires_at ||
+          b.hold_expires_at >= nowIso,
+      )
+      .map((b: any) => ({ start: +new Date(b.scheduled_at), end: +new Date(b.ends_at) })),
   ];
 
   const minStart = Date.now() + MIN_LEAD_MINUTES * 60_000;
@@ -196,11 +232,10 @@ export async function isSlotFree(startIso: string, endIso: string) {
   const [{ data: conflicts }, { data: blocked }] = await Promise.all([
     supabaseAdmin
       .from("consultations")
-      .select("id")
+      .select("id, status, hold_expires_at")
       .in("status", [...BUSY_STATUSES])
       .lt("scheduled_at", endIso)
-      .gt("ends_at", startIso)
-      .limit(1),
+      .gt("ends_at", startIso),
     supabaseAdmin
       .from("consultation_blocks")
       .select("id")
@@ -208,7 +243,42 @@ export async function isSlotFree(startIso: string, endIso: string) {
       .gt("ends_at", startIso)
       .limit(1),
   ]);
-  return !conflicts?.length && !blocked?.length;
+
+  // Blindagem: hold vencido de reserva não paga não conta como conflito.
+  const nowIso = new Date().toISOString();
+  const realConflicts = (conflicts ?? []).filter(
+    (c: any) =>
+      c.status !== "awaiting_payment" || !c.hold_expires_at || c.hold_expires_at >= nowIso,
+  );
+  return !realConflicts.length && !blocked?.length;
+}
+
+/**
+ * Confere se o horário está dentro da grade de disponibilidade oficial
+ * (mesma regra usada para gerar os slots: janela do dia + intervalo).
+ * Impede que o reagendamento/reserva contorne a grade com horários arbitrários.
+ */
+export async function isWithinAvailability(startIso: string, endIso: string) {
+  const dateStr = spDateParts(new Date(startIso));
+  const weekday = new Date(`${dateStr}T12:00:00${TZ_OFFSET}`).getUTCDay();
+  const { data: rules } = await supabaseAdmin
+    .from("consultation_availability")
+    .select("start_time, end_time, slot_interval_minutes")
+    .eq("active", true)
+    .eq("weekday", weekday);
+  if (!rules?.length) return false;
+
+  const start = +new Date(startIso);
+  const end = +new Date(endIso);
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return false;
+
+  return rules.some((rule: any) => {
+    const windowStart = +slotDate(dateStr, rule.start_time as string);
+    const windowEnd = +slotDate(dateStr, rule.end_time as string);
+    const step = Math.max(15, rule.slot_interval_minutes || 30) * 60_000;
+    if (start < windowStart || end > windowEnd) return false;
+    return (start - windowStart) % step === 0;
+  });
 }
 
 /* --------------------------- Google Calendar --------------------------- */
