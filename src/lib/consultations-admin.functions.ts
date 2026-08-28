@@ -624,3 +624,126 @@ export const getConsultationAutomations = createServerFn({ method: "GET" })
       upcoming: upcoming.data ?? [],
     };
   });
+
+/* ------------------------- Gravações automáticas ------------------------- */
+
+/** Painel Admin → Consultorias → Gravações. */
+export const getConsultationRecordingsPanel = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const [registry, job, consultations] = await Promise.all([
+      supabaseAdmin
+        .from("consultation_recordings")
+        .select("*")
+        .order("drive_created_time", { ascending: false })
+        .limit(200)
+        .then((r) => r.data ?? []),
+      supabaseAdmin.from("ops_job_runs").select("*").eq("job", "consultation_recordings").maybeSingle(),
+      supabaseAdmin
+        .from("consultations")
+        .select("id, product_title, client_name, scheduled_at, status, recording_url")
+        .in("status", ["scheduled", "completed", "no_show"])
+        .order("scheduled_at", { ascending: false })
+        .limit(120)
+        .then((r) => r.data ?? []),
+    ]);
+
+    const lastRunAt = job.data?.last_run_at ?? null;
+    return {
+      registry,
+      consultations,
+      job: job.data ?? null,
+      lastRunAt,
+      nextRunAt: lastRunAt ? new Date(+new Date(lastRunAt) + 3600_000).toISOString() : null,
+      intervalMinutes: 60,
+      counts: {
+        total: registry.length,
+        linked: registry.filter((r) => r.status === "linked").length,
+        pending: registry.filter((r) => r.status === "pending").length,
+        unmatched: registry.filter((r) => r.status === "unmatched").length,
+        failed: registry.filter((r) => r.status === "error" || r.status === "failed").length,
+      },
+    };
+  });
+
+/** Executa a rotina de gravações agora (mesma usada pelo agendador). */
+export const runConsultationRecordingsNow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { syncConsultationRecordings } = await import("@/lib/consultation-recordings.server");
+    const result = await syncConsultationRecordings();
+    const { auditConsultation } = await import("@/lib/consultations.server");
+    await auditConsultation({
+      actorId: context.userId,
+      actorRole: "admin",
+      action: "recordings_sync_manual",
+      status: result.driveError ? "error" : "ok",
+      details: result as never,
+    });
+    return result;
+  });
+
+/** Reprocessa uma gravação específica (opcionalmente forçando a consultoria). */
+export const reprocessConsultationRecording = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        fileId: z.string().min(3).max(200),
+        consultationId: z.string().uuid().nullable().optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { syncConsultationRecordings } = await import("@/lib/consultation-recordings.server");
+    const { auditConsultation } = await import("@/lib/consultations.server");
+
+    const { data: row } = await supabaseAdmin
+      .from("consultation_recordings")
+      .select("*")
+      .eq("file_id", data.fileId)
+      .maybeSingle();
+    if (!row) throw new Error("Gravação não encontrada no registro.");
+
+    await supabaseAdmin
+      .from("consultation_recordings")
+      .update({
+        status: "pending",
+        attempts: 0,
+        next_attempt_at: null,
+        error_message: null,
+        match_reason: null,
+        consultation_id: data.consultationId ?? null,
+      })
+      .eq("id", row.id);
+
+    // Vínculo manual: entrega direto na consultoria escolhida pelo admin.
+    if (data.consultationId) {
+      const { deliverRecordingToConsultation } = await import("@/lib/consultation-recordings.server");
+      const url = await deliverRecordingToConsultation(data.fileId, data.consultationId, "Vínculo manual do admin.");
+      await auditConsultation({
+        consultationId: data.consultationId,
+        actorId: context.userId,
+        actorRole: "admin",
+        action: "recording_manual_linked",
+        details: { fileId: data.fileId, url },
+      });
+      return { linked: 1, manual: true, url };
+    }
+
+    const result = await syncConsultationRecordings({ fileId: data.fileId });
+    await auditConsultation({
+      actorId: context.userId,
+      actorRole: "admin",
+      action: "recording_reprocessed",
+      status: result.failed ? "error" : "ok",
+      details: { fileId: data.fileId, ...result } as never,
+    });
+    return result;
+  });
