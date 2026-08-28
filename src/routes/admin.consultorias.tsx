@@ -176,6 +176,7 @@ function AdminConsultationsPage() {
 function MeetingsTab({ consultations, onChanged }: { consultations: any[]; onChanged: () => void }) {
   const [recordingFor, setRecordingFor] = useState<any | null>(null);
   const [managing, setManaging] = useState<any | null>(null);
+  const [scriptFor, setScriptFor] = useState<any | null>(null);
   const setStatus = useServerFn(setConsultationStatus);
   const regen = useServerFn(regenerateConsultationMeeting);
 
