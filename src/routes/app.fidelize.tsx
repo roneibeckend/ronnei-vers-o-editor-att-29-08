@@ -371,6 +371,10 @@ function FidelizePage() {
               <p className="mt-1 text-muted-foreground">
                 {data.lifecycleStatus === "canceled"
                   ? "Sua conta foi cancelada na Fidelize."
+                  : data.lifecycleStatus === "reactivated"
+                  ? `Sua assinatura foi reativada na Fidelize${
+                      data.lifecyclePlan ? ` (${fidelizePlanLabel(data.lifecyclePlan as never)})` : ""
+                    }.`
                   : `Você alterou seu plano diretamente na Fidelize${
                       data.lifecyclePlan ? ` (${fidelizePlanLabel(data.lifecyclePlan as never)})` : ""
                     }.`}{" "}

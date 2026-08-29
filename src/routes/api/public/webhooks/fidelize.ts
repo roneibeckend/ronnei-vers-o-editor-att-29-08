@@ -120,7 +120,18 @@ export const Route = createFileRoute("/api/public/webhooks/fidelize")({
             encodings: ["hex", "base64"],
             legacy: ["x-api-key", "Authorization: Bearer <secret>"],
           },
-          events: ["upgrade", "downgrade", "cancellation"],
+          events: ["upgrade", "downgrade", "cancellation", "reactivation"],
+          eventAliases: {
+            reactivation: [
+              "subscription.reactivated",
+              "subscription.reactivate",
+              "subscription.resumed",
+              "subscription.renewed",
+              "reactivate",
+              "reactivation",
+              "resubscribe",
+            ],
+          },
         }),
 
       POST: async ({ request }) => {
