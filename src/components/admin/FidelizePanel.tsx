@@ -19,6 +19,7 @@ import {
   Trash2,
   ShieldCheck,
   Tag,
+  Zap,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ import {
   listFidelizeTestAccounts,
   deleteFidelizeTestUser,
   runFidelizeHealthNow,
+  simulateFidelizePurchase,
 } from "@/lib/fidelize.functions";
 import { listFidelizePlansAdmin, saveFidelizePlans } from "@/lib/fidelize-products.functions";
 
@@ -74,6 +76,7 @@ export function FidelizePanel() {
   const listTestFn = useServerFn(listFidelizeTestAccounts);
   const deleteTestFn = useServerFn(deleteFidelizeTestUser);
   const healthFn = useServerFn(runFidelizeHealthNow);
+  const simulateFn = useServerFn(simulateFidelizePurchase);
 
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
@@ -83,6 +86,10 @@ export function FidelizePanel() {
   const [isTesting, setIsTesting] = useState(false);
   const [resultFilter, setResultFilter] = useState<ResultFilter>("all");
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("24h");
+  const [simEmail, setSimEmail] = useState("");
+  const [simPlan, setSimPlan] = useState<"starter" | "pro" | "premium">("starter");
+  const [simSendEmail, setSimSendEmail] = useState(true);
+  const [simResult, setSimResult] = useState<any>(null);
 
   const { data: integration, isLoading } = useQuery({
     queryKey: ["fidelize_integration"],
@@ -165,6 +172,20 @@ export function FidelizePanel() {
       refetchLogs();
     },
     onError: (err: any) => toast.error(err?.message || "Falha ao provisionar."),
+  });
+
+  const simulateMutation = useMutation({
+    mutationFn: () =>
+      simulateFn({ data: { email: simEmail.trim(), plan: simPlan, sendEmail: simSendEmail } }),
+    onSuccess: (r: any) => {
+      setSimResult(r);
+      if (r?.success) toast.success(`Compra simulada: conta provisionada para ${r.email}.`);
+      else toast.error(r?.error || "Simulação falhou no provisionamento.");
+      refetchTestAccounts();
+      refetchDashboard();
+      refetchLogs();
+    },
+    onError: (err: any) => toast.error(err?.message || "Falha ao simular a compra."),
   });
 
   const deleteMutation = useMutation({
@@ -398,6 +419,79 @@ export function FidelizePanel() {
 
       {/* ---------- Produtos / planos ---------- */}
       <FidelizePlansCard />
+
+      {/* ---------- Simulação de compra aprovada ---------- */}
+      <Card className="bg-[#111] border-white/5">
+        <CardHeader>
+          <CardTitle className="text-sm font-bold uppercase tracking-widest flex items-center gap-2 text-white">
+            <Zap className="h-4 w-4" style={{ color: ORANGE }} /> Simular compra aprovada
+          </CardTitle>
+          <CardDescription className="text-[10px] text-white/40">
+            Executa exatamente o mesmo fluxo do webhook de pagamento aprovado (provision-account +
+            e-mail de acesso + notificação), sem gerar cobrança real no Asaas.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="space-y-1 md:col-span-2">
+              <Label className="text-[10px] uppercase tracking-widest text-white/40">E-mail do aluno</Label>
+              <Input
+                value={simEmail}
+                onChange={(e) => setSimEmail(e.target.value)}
+                placeholder="aluno@email.com"
+                className="bg-black/40 border-white/10 text-white text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-widest text-white/40">Plano</Label>
+              <select
+                value={simPlan}
+                onChange={(e) => setSimPlan(e.target.value as any)}
+                className="h-9 w-full rounded-md border border-white/10 bg-black/40 px-3 text-xs text-white"
+              >
+                <option value="starter">Starter</option>
+                <option value="pro">Pro</option>
+                <option value="premium">Premium</option>
+              </select>
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-white/50">
+            <input
+              type="checkbox"
+              checked={simSendEmail}
+              onChange={(e) => setSimSendEmail(e.target.checked)}
+              className="accent-[#ff6a00]"
+            />
+            Enviar e-mail de acesso ao aluno (igual à compra real)
+          </label>
+
+          <Button
+            onClick={() => simulateMutation.mutate()}
+            disabled={simulateMutation.isPending || !simEmail.trim()}
+            className="h-9 bg-[#ff6a00] text-black hover:bg-[#ff6a00]/90 text-[10px] font-bold uppercase tracking-widest"
+          >
+            {simulateMutation.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+            ) : (
+              <Zap className="h-3.5 w-3.5 mr-2" />
+            )}
+            Simular compra aprovada
+          </Button>
+
+          {simResult && (
+            <div className="rounded-lg border border-white/5 bg-black/40 p-3 text-[10px] text-white/50 space-y-1">
+              <p className={simResult.success ? "text-emerald-400" : "text-red-400"}>
+                {simResult.success ? "Provisionamento concluído" : `Falha: ${simResult.error}`}
+              </p>
+              <p>Pedido simulado: {simResult.paymentId}</p>
+              <p>Plano: {simResult.plan} — Valor de referência: R$ {Number(simResult.amount || 0).toFixed(2)}</p>
+              {simResult.loginUrl && <p className="truncate">Acesso: {simResult.loginUrl}</p>}
+              {simResult.temporaryPassword && <p>Senha temporária: {simResult.temporaryPassword}</p>}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ---------- Provisionamento de teste ---------- */}
       <Card className="bg-[#111] border-white/5">
