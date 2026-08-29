@@ -178,7 +178,7 @@ export async function applyFidelizeRecurringPayment(params: {
     last_payment_id: params.paymentId,
     next_due_date: params.dueDate ?? null,
     overdue_since: null,
-    reactivated_at: record.subscription_status === "active" ? undefined : now,
+    ...(record.subscription_status === "active" ? {} : { reactivated_at: now }),
     ...(params.subscriptionId ? { subscription_id: params.subscriptionId } : {}),
   });
 
