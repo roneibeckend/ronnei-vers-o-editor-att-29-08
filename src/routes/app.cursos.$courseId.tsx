@@ -7,7 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { needsSignedUrl } from "@/lib/video-source";
 import { VISIBLE_STATUSES, isComingSoon, COMING_SOON_NOTICE } from "@/lib/product-status";
 import { useEnrollments } from "@/hooks/use-enrollments";
-import { createAsaasPaymentLink } from "@/lib/asaas.functions";
 import { CouponInput, type AppliedCoupon } from "@/components/platform/CouponInput";
 import { getAffiliateRef } from "@/hooks/use-affiliate-tracking";
 import { useServerFn } from "@tanstack/react-start";
@@ -101,7 +100,6 @@ function CoursePage() {
   useEffect(() => {
     syncWithDatabase();
   }, [syncWithDatabase]);
-  const createPaymentLink = useServerFn(createAsaasPaymentLink);
   const { openCheckout } = useCheckout();
   const getSignedUrl = useServerFn(getSignedVideoUrl);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);

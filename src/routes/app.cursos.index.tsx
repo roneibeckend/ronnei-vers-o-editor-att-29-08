@@ -1,7 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Play, Sparkles, Lock, ShoppingCart, Loader2 } from "lucide-react";
 import { useCheckout } from "@/hooks/use-checkout";
-import { createAsaasPaymentLink } from "@/lib/asaas.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { getAffiliateRef } from "@/hooks/use-affiliate-tracking";
 import { toast } from "sonner";
@@ -99,7 +98,6 @@ function CoursesPage() {
       return () => clearTimeout(timer);
     }
   }, [isLoadingEnrollments, courseEnrollments, ebookEnrollments]);
-  const createPaymentLink = useServerFn(createAsaasPaymentLink);
   const { openCheckout } = useCheckout();
   const queryClient = useQueryClient();
 

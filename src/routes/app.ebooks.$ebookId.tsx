@@ -13,7 +13,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { isComingSoon, COMING_SOON_NOTICE } from "@/lib/product-status";
 import { useEnrollments } from "@/hooks/use-enrollments";
 import { useProgress } from "@/hooks/use-progress";
-import { createAsaasPaymentLink } from "@/lib/asaas.functions";
 import { CouponInput, type AppliedCoupon } from "@/components/platform/CouponInput";
 import { getAffiliateRef } from "@/hooks/use-affiliate-tracking";
 import { useServerFn } from "@tanstack/react-start";
@@ -161,7 +160,6 @@ function EbookReaderPage() {
   }, []);
 
   const registerDownload = useServerFn(registerEbookDownload);
-  const createPaymentLink = useServerFn(createAsaasPaymentLink);
   const getSignedUrl = useServerFn(getSignedVideoUrl);
   const { openCheckout } = useCheckout();
   const [signedIntroUrl, setSignedIntroUrl] = useState<string | null>(null);
