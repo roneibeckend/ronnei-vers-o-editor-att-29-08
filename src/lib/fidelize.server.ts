@@ -232,3 +232,137 @@ export async function fidelizePing(config?: FidelizeConfig, testPath?: string) {
 
   return last!;
 }
+
+/* ===================== Diagnóstico completo da integração ===================== */
+
+export type FidelizeCheckState = "ok" | "auth_error" | "unavailable" | "error";
+
+export type FidelizeCheck = {
+  key: "health" | "auth" | "provision-account" | "customer";
+  label: string;
+  state: FidelizeCheckState;
+  httpCode: number;
+  durationMs: number;
+  endpoint: string;
+  message: string;
+};
+
+export type FidelizeDiagnostics = {
+  overall: "connected" | "auth_error" | "unavailable";
+  message: string;
+  checks: FidelizeCheck[];
+  apiVersion: string | null;
+  durationMs: number;
+  lastResponseAt: string | null;
+};
+
+function classify(httpCode: number, success: boolean): FidelizeCheckState {
+  if (success) return "ok";
+  if (httpCode === 401 || httpCode === 403) return "auth_error";
+  if (httpCode === 404 || httpCode === 0) return "unavailable";
+  // 400/405/422 indicam que o endpoint existe, mas rejeitou o payload de sondagem.
+  if (httpCode === 400 || httpCode === 405 || httpCode === 422) return "ok";
+  return "error";
+}
+
+const STATE_LABEL: Record<FidelizeCheckState, string> = {
+  ok: "Disponível",
+  auth_error: "Falha de autenticação",
+  unavailable: "Endpoint indisponível",
+  error: "Erro inesperado",
+};
+
+/**
+ * Testa a conexão real: API Key, endpoint /provision-account e endpoint /customer.
+ */
+export async function runFidelizeDiagnostics(
+  config: FidelizeConfig,
+  testPath?: string,
+): Promise<FidelizeDiagnostics> {
+  const started = Date.now();
+  const checks: FidelizeCheck[] = [];
+  let apiVersion: string | null = null;
+  let lastResponseAt: string | null = null;
+
+  const probe = async (
+    key: FidelizeCheck["key"],
+    label: string,
+    path: string,
+    method: "GET" | "POST" = "GET",
+  ) => {
+    const result = await fidelizeRequest(path, {
+      method,
+      config,
+      context: { operation: "diagnostics", check: key },
+      ...(method === "POST" ? { body: { probe: true, source: "ronnei" } } : {}),
+    });
+    apiVersion = apiVersion || result.apiVersion || null;
+    if (result.httpCode > 0) lastResponseAt = result.timestamp;
+    const state = classify(result.httpCode, result.success);
+    checks.push({
+      key,
+      label,
+      state,
+      httpCode: result.httpCode,
+      durationMs: result.durationMs,
+      endpoint: path,
+      message: state === "ok" ? STATE_LABEL[state] : result.error || STATE_LABEL[state],
+    });
+    return state;
+  };
+
+  const healthPath = testPath?.trim() || resolveFidelizePath(config.baseUrl, "/health");
+  await probe("health", "API online (/health)", healthPath);
+  await probe("provision-account", "Provisionamento (/provision-account)", resolveFidelizePath(config.baseUrl, "/provision-account"), "POST");
+  await probe("customer", "Clientes (/customer)", resolveFidelizePath(config.baseUrl, "/customer"));
+
+  const authFailed = checks.some((c) => c.state === "auth_error");
+  const anyOk = checks.some((c) => c.state === "ok");
+  const overall: FidelizeDiagnostics["overall"] = authFailed ? "auth_error" : anyOk && checks.every((c) => c.state === "ok") ? "connected" : anyOk ? "unavailable" : "unavailable";
+
+  return {
+    overall,
+    message:
+      overall === "connected"
+        ? "Fidelize conectada e operacional."
+        : overall === "auth_error"
+          ? "API Key rejeitada pelo Fidelize."
+          : "Um ou mais endpoints da Fidelize estão indisponíveis.",
+    checks,
+    apiVersion,
+    durationMs: Date.now() - started,
+    lastResponseAt,
+  };
+}
+
+/** Health check automático (cron a cada 30 min). */
+export async function runFidelizeHealthCheck() {
+  const config = await getFidelizeConfig();
+  if (!config || !config.status) {
+    return { skipped: true, reason: "Integração Fidelize inativa ou não configurada." };
+  }
+
+  const path = resolveFidelizePath(config.baseUrl, "/health");
+  const result = await fidelizeRequest(path, { config, context: { operation: "health_check" } });
+
+  if (!result.success) {
+    const { notifyAdmin } = await import("./admin-notify.server");
+    await notifyAdmin({
+      type: "system",
+      severity: "critical",
+      title: "Fidelize fora do ar",
+      body: `O health check da Fidelize falhou (HTTP ${result.httpCode || "sem resposta"}): ${result.error ?? "erro desconhecido"}`,
+      link: "/admin/integracoes",
+      dedupKey: "fidelize_health_fail",
+      metadata: { httpCode: result.httpCode, durationMs: result.durationMs, endpoint: result.endpoint },
+    });
+  }
+
+  return {
+    skipped: false,
+    success: result.success,
+    httpCode: result.httpCode,
+    durationMs: result.durationMs,
+    checkedAt: result.timestamp,
+  };
+}
