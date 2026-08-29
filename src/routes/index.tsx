@@ -79,7 +79,7 @@ const HERO_VIDEO_ASPECT = ((import.meta as any).env?.VITE_HERO_VIDEO_ASPECT || '
 // Widget da assistente: chunk separado, carregado só quando a seção aparece.
 const BrasaChat = lazy(() => import("@/components/landing/BrasaChat"));
 
-const SITE_URL = "https://espetinhonaveia.lovable.app";
+const SITE_URL = "https://ronneinaveia.com.br";
 const OG_IMAGE = `${SITE_URL}${heroChefOriginal.url}`;
 
 export const Route = createFileRoute("/")({
