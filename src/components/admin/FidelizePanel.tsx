@@ -662,11 +662,25 @@ export function FidelizePanel() {
   );
 }
 
-/** Produtos Fidelize: preço editável e ativar/desativar por plano. */
+type PlanDraft = {
+  price: string;
+  active: boolean;
+  coverUrl: string;
+  label: string;
+  tagline: string;
+  description: string;
+  ctaLabel: string;
+  modules: string;
+  highlight: boolean;
+  sortOrder: string;
+};
+
+/** Produtos Fidelize: personalização completa de cada plano. */
 function FidelizePlansCard() {
   const listPlans = useServerFn(listFidelizePlansAdmin);
   const savePlans = useServerFn(saveFidelizePlans);
-  const [draft, setDraft] = useState<Record<string, { price: string; active: boolean; coverUrl: string }>>({});
+  const [draft, setDraft] = useState<Record<string, PlanDraft>>({});
+  const [resetting, setResetting] = useState<string | null>(null);
 
   const { data: plans, refetch } = useQuery({
     queryKey: ["fidelize_plans_admin"],
@@ -679,30 +693,65 @@ function FidelizePlansCard() {
         Object.fromEntries(
           plans.map((p) => [
             p.plan,
-            { price: String(p.price), active: p.active, coverUrl: p.cover?.startsWith("http") ? p.cover : "" },
+            {
+              price: String(p.price),
+              active: p.active,
+              coverUrl: p.cover?.startsWith("http") ? p.cover : "",
+              label: p.label,
+              tagline: p.tagline,
+              description: p.description,
+              ctaLabel: p.ctaLabel,
+              modules: (p.modules || []).join("\n"),
+              highlight: p.highlight,
+              sortOrder: String(p.sortOrder),
+            } as PlanDraft,
           ]),
         ),
       );
     }
   }, [plans]);
 
+  const buildPayload = (p: (typeof plans extends undefined ? never : any)) => {
+    const s = draft[p.plan];
+    return {
+      plan: p.plan,
+      price: Number(String(s?.price ?? p.price).replace(",", ".")),
+      active: s?.active ?? p.active,
+      coverUrl: s?.coverUrl ?? "",
+      label: s?.label ?? "",
+      tagline: s?.tagline ?? "",
+      description: s?.description ?? "",
+      ctaLabel: s?.ctaLabel ?? "",
+      modules: (s?.modules ?? "")
+        .split("\n")
+        .map((m: string) => m.trim())
+        .filter(Boolean),
+      highlight: s?.highlight ?? false,
+      sortOrder: Number(s?.sortOrder ?? 0) || 0,
+    };
+  };
+
   const mutation = useMutation({
-    mutationFn: () =>
-      savePlans({
-        data: {
-          plans: (plans || []).map((p) => ({
-            plan: p.plan,
-            price: Number(String(draft[p.plan]?.price ?? p.price).replace(",", ".")),
-            active: draft[p.plan]?.active ?? p.active,
-            coverUrl: draft[p.plan]?.coverUrl ?? "",
-          })),
-        },
-      }),
+    mutationFn: () => savePlans({ data: { plans: (plans || []).map(buildPayload) } }),
     onSuccess: () => {
       toast.success("Planos Fidelize atualizados.");
       refetch();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao salvar os planos."),
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: (plan: string) =>
+      savePlans({ data: { plans: [{ plan: plan as any, price: 1, active: true, reset: true }] } }),
+    onSuccess: () => {
+      toast.success("Plano restaurado para o padrão.");
+      setResetting(null);
+      refetch();
+    },
+    onError: (err: any) => {
+      setResetting(null);
+      toast.error(err?.message || "Erro ao restaurar o plano.");
+    },
   });
 
   return (
