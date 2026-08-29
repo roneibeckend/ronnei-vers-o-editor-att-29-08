@@ -52,24 +52,27 @@ export async function getFidelizePlanRecords(): Promise<FidelizePlanRecord[]> {
     PlanOverride
   >;
 
-  return FIDELIZE_PLANS.map((plan) => {
+  return FIDELIZE_PLANS.map((plan, index) => {
     const base = FIDELIZE_PLAN_CATALOG[plan];
     const override = overrides[plan] || {};
     const price = Number.isFinite(Number(override.price)) && Number(override.price) > 0 ? Number(override.price) : base.price;
+    const modules = Array.isArray(override.modules) && override.modules.length ? override.modules : base.modules;
 
     return {
       plan,
       label: override.label?.trim() || base.label,
       description: override.description?.trim() || base.description,
-      modules: base.modules,
+      modules,
       price,
       active: override.active !== false,
       cover: override.coverUrl?.trim() || base.cover,
       tagline: override.tagline?.trim() || base.tagline,
-      highlight: Boolean(base.highlight),
+      highlight: typeof override.highlight === "boolean" ? override.highlight : Boolean(base.highlight),
+      ctaLabel: override.ctaLabel?.trim() || "Assinar agora",
+      sortOrder: Number.isFinite(Number(override.sortOrder)) ? Number(override.sortOrder) : index,
       customized: Object.keys(override).length > 0,
     };
-  });
+  }).sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 export async function getFidelizePlanRecord(plan: FidelizePlan): Promise<FidelizePlanRecord> {
