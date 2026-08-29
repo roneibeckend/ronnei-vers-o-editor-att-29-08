@@ -81,7 +81,7 @@ export async function getFidelizePlanRecord(plan: FidelizePlan): Promise<Fideliz
 }
 
 export async function saveFidelizePlanOverrides(
-  input: { plan: FidelizePlan; price: number; active: boolean; coverUrl?: string }[],
+  input: ({ plan: FidelizePlan; reset?: boolean } & FidelizePlanOverride)[],
 ): Promise<void> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
