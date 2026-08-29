@@ -61,7 +61,7 @@ export function ModuleMaterialsList({
   return (
     <div className="space-y-1 px-2">
       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-        Materiais do módulo
+        {lessonId ? "Materiais da aula" : "Materiais do módulo"}
       </p>
       <ul className="space-y-1">
         {items.map((item) => (

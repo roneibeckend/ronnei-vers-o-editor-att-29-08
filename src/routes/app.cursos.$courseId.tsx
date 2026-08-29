@@ -28,6 +28,17 @@ import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } fr
 import { LessonPlayer } from "@/components/platform/LessonPlayer";
 import { ModuleMaterialsList } from "@/components/platform/ModuleMaterialsList";
 
+function LessonMaterials({ lessonId }: { lessonId: string }) {
+  return (
+    <div className="-mx-2">
+      <ModuleMaterialsList lessonId={lessonId} />
+      <p className="px-2 pt-2 text-xs text-muted-foreground">
+        Nenhum material adicional? Os arquivos aparecem aqui assim que forem publicados.
+      </p>
+    </div>
+  );
+}
+
 
 
 const VideoPlayer = lazy(() => 
@@ -706,12 +717,13 @@ function CoursePage() {
               </div>
             </div>
             {tab === "materiais" ? (
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-center justify-between rounded-lg border border-white/5 p-3">
-                  <span>PDF · Guia rápido de temperos</span>
-                  <button className="text-gold hover:underline">Baixar</button>
-                </li>
-              </ul>
+              isEnrolledInCourse(course.id) && active?.id ? (
+                <LessonMaterials lessonId={active.id} />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Os materiais desta aula ficam disponíveis para alunos matriculados.
+                </p>
+              )
             ) : (
               <textarea
                 value={note}
