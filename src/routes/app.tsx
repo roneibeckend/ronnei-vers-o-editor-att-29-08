@@ -1,7 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { Shell } from "@/components/platform/Shell";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckoutModal } from "@/components/checkout/CheckoutModal";
 import { OnboardingGuide } from "@/components/platform/OnboardingGuide";
 import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
 import { checkSession } from "@/lib/session-guard";
@@ -91,7 +90,6 @@ function AppGate() {
       <Shell>
         <Outlet />
       </Shell>
-      <CheckoutModal />
       <OnboardingGuide />
     </>
   );

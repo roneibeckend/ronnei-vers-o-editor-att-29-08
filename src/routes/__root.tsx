@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { Toaster } from "sonner";
+import { CheckoutModal } from "@/components/checkout/CheckoutModal";
 import { PwaUpdateManager } from "../components/platform/PwaUpdateManager";
 
 import { useAffiliateTracking } from "../hooks/use-affiliate-tracking";
@@ -468,6 +469,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
+      <CheckoutModal />
       
       <Toaster
         position="top-center"
