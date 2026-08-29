@@ -168,6 +168,11 @@ export async function fidelizeRequest<T = unknown>(
         request: {
           url: url.toString(),
           method,
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "x-api-key": `${config.apiKey.slice(0, 8)}****${config.apiKey.slice(-4)}`,
+          },
           body: redact(options.body),
           query: options.query ?? null,
         },
