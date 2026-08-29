@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FidelizeOffer } from "@/components/platform/FidelizeOffer";
+import { FidelizePlanFeatures } from "@/components/platform/FidelizePlanFeatures";
 import {
   getMyFidelizeAccount,
   resendMyFidelizeAccess,
@@ -289,17 +290,6 @@ function FidelizePage() {
   const SubscriptionIcon = subscription.icon;
   const isCanceled = subscriptionState === "canceled";
   const isOverdue = subscriptionState === "overdue";
-  const planInfo = isFidelizePlan(data.plan) ? FIDELIZE_PLAN_CATALOG[data.plan] : null;
-  const planFeatures = data.modules.length > 0 ? data.modules : (planInfo?.modules ?? []);
-  const nextPlan =
-    planInfo?.plan === "starter"
-      ? FIDELIZE_PLAN_CATALOG.pro
-      : planInfo?.plan === "pro"
-        ? FIDELIZE_PLAN_CATALOG.premium
-        : null;
-  const nextPlanExtras = nextPlan
-    ? nextPlan.modules.filter((m) => !planFeatures.some((f) => f.toLowerCase() === m.toLowerCase()))
-    : [];
 
 
   return (
