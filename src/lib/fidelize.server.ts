@@ -38,8 +38,15 @@ function redact(value: unknown): unknown {
 }
 
 function normalizeBaseUrl(url: string) {
-  return url.trim().replace(/\/+$/, "");
+  const clean = url.trim().replace(/\/+$/, "");
+  // http:// gera 301 para https e o redirect converte POST em GET (causa de 405
+  // em /provision-account). Forçamos https, exceto em hosts locais.
+  if (/^http:\/\//i.test(clean) && !/^http:\/\/(localhost|127\.0\.0\.1)/i.test(clean)) {
+    return clean.replace(/^http:\/\//i, "https://");
+  }
+  return clean;
 }
+
 
 /** Lê a configuração salva da integração Fidelize (descriptografando a API Key). */
 export async function getFidelizeConfig(): Promise<FidelizeConfig | null> {
@@ -133,7 +140,10 @@ export async function fidelizeRequest<T = unknown>(
         "x-api-key": config.apiKey,
       },
       ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
+      // "manual" evita que um 301/302 transforme POST em GET silenciosamente.
+      redirect: "manual",
       signal: controller.signal,
+
     });
 
     const rawBody = await response.text().catch(() => "");
@@ -156,7 +166,12 @@ export async function fidelizeRequest<T = unknown>(
         response.headers.get("x-api-version") ||
         response.headers.get("api-version") ||
         (parsed && typeof parsed === "object" ? ((parsed as any).version ?? (parsed as any).api_version ?? null) : null),
-      error: response.ok ? null : `HTTP ${response.status} ${response.statusText}`,
+      error: response.ok
+        ? null
+        : response.status >= 300 && response.status < 400
+          ? `A URL da API redirecionou (HTTP ${response.status} → ${response.headers.get("location") ?? "destino desconhecido"}). Configure a URL final (https, sem redirect).`
+          : `HTTP ${response.status} ${response.statusText}`,
+
       timestamp,
     };
 
@@ -325,6 +340,8 @@ export async function runFidelizeDiagnostics(
 
   const healthPath = testPath?.trim() || resolveFidelizePath(config.baseUrl, "/health");
   await probe("health", "API online (/health)", healthPath, "GET", true);
+  await probe("auth", "Autenticação (/ping-auth)", resolveFidelizePath(config.baseUrl, "/ping-auth"), "GET");
+
   await probe("provision-account", "Provisionamento (/provision-account)", resolveFidelizePath(config.baseUrl, "/provision-account"), "POST");
   await probe(
     "customer",
