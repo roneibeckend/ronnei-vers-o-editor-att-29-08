@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/platform/Shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FidelizeOffer } from "@/components/platform/FidelizeOffer";
 import { getMyFidelizeAccount } from "@/lib/fidelize-account.functions";
 import { FIDELIZE_PLAN_CATALOG, fidelizePlanLabel, isFidelizePlan } from "@/lib/fidelize-plans";
 
