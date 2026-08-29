@@ -74,17 +74,33 @@ function AdminAlunosPage() {
 
       const rows = data || [];
       let roles: { user_id: string; role: string }[] = [];
+      let fidelizeLogs: { user_id: string; plan: string; subscription_status: string | null; status: string }[] = [];
       if (rows.length) {
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('user_id, role')
-          .in('user_id', rows.map(r => r.id));
-        roles = roleData || [];
+        const userIds = rows.map(r => r.id);
+        const [roleData, fidelizeData] = await Promise.all([
+          supabase.from('user_roles').select('user_id, role').in('user_id', userIds),
+          supabase
+            .from('fidelize_provisioning_logs')
+            .select('user_id, plan, subscription_status, status')
+            .in('user_id', userIds)
+            .order('created_at', { ascending: false })
+            .limit(userIds.length * 2),
+        ]);
+        roles = roleData?.data || [];
+
+        // Mantém apenas o log mais recente por usuário
+        const seen = new Set<string>();
+        fidelizeLogs = (fidelizeData?.data || []).filter((log: any) => {
+          if (seen.has(log.user_id)) return false;
+          seen.add(log.user_id);
+          return true;
+        }) as typeof fidelizeLogs;
       }
 
       setProfiles(rows.map(r => ({
         ...r,
         role: roles.find(x => x.user_id === r.id)?.role || 'student',
+        fidelize: fidelizeLogs.find(x => x.user_id === r.id) || null,
       })));
       setTotalCount(count || 0);
     } catch (error: any) {
