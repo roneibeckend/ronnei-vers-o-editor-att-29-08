@@ -99,7 +99,12 @@ function isoDate(daysAhead = 0) {
 }
 
 export interface CreateChargeInput {
+  /** Produto principal (define referência externa e liberação principal). */
   product: PricedProduct;
+  /** Valor total cobrado (principal + itens adicionais, já com cupom aplicado). */
+  totalValue: number;
+  /** Descrição completa do pedido. */
+  orderTitle: string;
   method: CheckoutMethod;
   recurring: boolean;
   userId: string;
@@ -139,7 +144,7 @@ export async function createNativeCharge(input: CreateChargeInput): Promise<Char
     affiliateRef: input.affiliateRef || null,
   });
 
-  const description = `Acesso a: ${input.product.title}`.slice(0, 480);
+  const description = `Acesso a: ${input.orderTitle}`.slice(0, 480);
   const holderInfo = input.card
     ? {
         name: sanitizeName(input.payer.name) || "Cliente",
@@ -172,7 +177,7 @@ export async function createNativeCharge(input: CreateChargeInput): Promise<Char
     const subscription = await call(config, "/subscriptions", "POST", {
       customer,
       billingType: input.method,
-      value: input.product.value,
+      value: input.totalValue,
       nextDueDate: isoDate(input.method === "BOLETO" ? 3 : 0),
       cycle: "MONTHLY",
       description,
@@ -187,7 +192,7 @@ export async function createNativeCharge(input: CreateChargeInput): Promise<Char
     payment = await call(config, "/payments", "POST", {
       customer,
       billingType: input.method,
-      value: input.product.value,
+      value: input.totalValue,
       dueDate: isoDate(input.method === "BOLETO" ? 3 : 0),
       description,
       externalReference,
@@ -201,7 +206,7 @@ export async function createNativeCharge(input: CreateChargeInput): Promise<Char
     status: payment.status,
     confirmed: ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"].includes(payment.status),
     method: input.method,
-    value: Number(payment.value ?? input.product.value),
+    value: Number(payment.value ?? input.totalValue),
   };
 
   if (input.method === "PIX") {
