@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { FidelizeRevenueCard } from "@/components/admin/FidelizeRevenueCard";
 import {
   getFidelizeIntegration,
   saveFidelizeIntegration,
@@ -227,6 +228,8 @@ export function FidelizePanel() {
           Última verificação: {fmt(integration?.lastCheck?.at)}
         </Badge>
       </div>
+
+      <FidelizeRevenueCard />
 
       {/* ---------- Dashboard ---------- */}
       <Card className="bg-[#111] border-white/5">
