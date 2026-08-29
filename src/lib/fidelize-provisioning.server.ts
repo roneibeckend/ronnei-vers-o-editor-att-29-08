@@ -108,7 +108,13 @@ export async function provisionFidelizeAccount(input: ProvisionInput): Promise<P
   });
 
   const response = (call.data || {}) as Record<string, any>;
-  const ok = call.success && response?.success !== false;
+  const rawMessage = call.error || response?.message || response?.error || null;
+  // Conta já existente na Fidelize não é falha: vinculamos a conta existente ao aluno.
+  const alreadyExists =
+    !(call.success && response?.success !== false) &&
+    call.httpCode > 0 &&
+    isFidelizeAlreadyExists(call.httpCode, `${rawMessage ?? ""} ${call.rawBody ?? ""}`);
+  const ok = (call.success && response?.success !== false) || alreadyExists;
   const modules = normalizeModules(response, input.plan);
 
   const update = {
@@ -119,11 +125,12 @@ export async function provisionFidelizeAccount(input: ProvisionInput): Promise<P
     modules: modules as never,
     response_payload: (call.data ?? { raw: call.rawBody }) as never,
     status: ok ? "success" : "failed",
-    error_message: ok ? null : call.error || response?.message || "Falha no provisionamento da Fidelize.",
+    error_message: ok ? null : rawMessage || "Falha no provisionamento da Fidelize.",
     duration_ms: call.durationMs,
     endpoint: provisionPath,
     updated_at: new Date().toISOString(),
   };
+
 
   if (logId) {
     await supabaseAdmin.from("fidelize_provisioning_logs").update(update as never).eq("id", logId);
