@@ -12,7 +12,9 @@ import {
   Loader2,
   Mail,
   RefreshCw,
+  RotateCcw,
   ShieldAlert,
+  XCircle,
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -26,7 +28,11 @@ import {
   resendMyFidelizeAccess,
   revealMyFidelizeCredentials,
   getMyFidelizeAccessUrl,
+  cancelMyFidelizeSubscription,
+  requestMyFidelizeReactivation,
 } from "@/lib/fidelize-account.functions";
+import { createAsaasPaymentLink } from "@/lib/asaas.functions";
+import { usePaymentModal } from "@/hooks/use-payment-modal";
 import { FIDELIZE_PLAN_CATALOG, fidelizePlanLabel, isFidelizePlan } from "@/lib/fidelize-plans";
 import { friendlyFidelizeError } from "@/lib/fidelize-messages";
 
@@ -59,6 +65,13 @@ const STATUS_MAP: Record<string, { label: string; className: string; icon: typeo
   failed: { label: "Falha na ativação", className: "bg-destructive/15 text-destructive", icon: ShieldAlert },
 };
 
+const SUBSCRIPTION_MAP: Record<string, { label: string; className: string; icon: typeof CheckCircle2 }> = {
+  active: { label: "Assinatura ativa", className: "bg-emerald-500/15 text-emerald-600", icon: CheckCircle2 },
+  overdue: { label: "Assinatura vencida", className: "bg-amber-500/15 text-amber-700", icon: Clock },
+  canceled: { label: "Assinatura cancelada", className: "bg-destructive/15 text-destructive", icon: XCircle },
+  pending: { label: "Aguardando pagamento", className: "bg-muted text-muted-foreground", icon: Clock },
+};
+
 function FidelizePage() {
   const fetchAccount = useServerFn(getMyFidelizeAccount);
   const resendAccess = useServerFn(resendMyFidelizeAccess);
@@ -69,6 +82,11 @@ function FidelizePage() {
   const [revealing, setRevealing] = useState(false);
   const [opening, setOpening] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [subscriptionBusy, setSubscriptionBusy] = useState<"cancel" | "reactivate" | null>(null);
+  const cancelSubscription = useServerFn(cancelMyFidelizeSubscription);
+  const requestReactivation = useServerFn(requestMyFidelizeReactivation);
+  const createPaymentLink = useServerFn(createAsaasPaymentLink);
+  const { openPayment } = usePaymentModal();
   const [credentials, setCredentials] = useState<{
     temporaryPassword: string | null;
     autoLoginUrl: string | null;
@@ -183,6 +201,58 @@ function FidelizePage() {
   };
 
 
+  const handleCancelSubscription = async () => {
+    const ok = window.confirm(
+      "Tem certeza que deseja cancelar sua assinatura Fidelize? A cobrança mensal deixa de existir e você mantém o acesso até o fim do período já pago.",
+    );
+    if (!ok) return;
+    setSubscriptionBusy("cancel");
+    try {
+      const result: any = await cancelSubscription();
+      if (result?.success) {
+        toast.success(result.message || "Assinatura cancelada.");
+        queryClient.invalidateQueries({ queryKey: ["fidelize-account"] });
+      } else {
+        toast.error(result?.message || "Não foi possível cancelar agora.");
+      }
+    } catch {
+      toast.error("Não foi possível cancelar agora. Tente novamente em alguns minutos.");
+    } finally {
+      setSubscriptionBusy(null);
+    }
+  };
+
+  const handleReactivate = async () => {
+    setSubscriptionBusy("reactivate");
+    try {
+      const intent: any = await requestReactivation();
+      const plan = intent?.plan || data?.plan;
+      if (!plan) {
+        toast.error(intent?.message || "Não encontramos seu plano para reativar.");
+        return;
+      }
+      const result: any = await createPaymentLink({
+        data: {
+          products: [{ productId: plan, productType: "fidelize", title: fidelizePlanLabel(plan) }],
+          paymentType: "recurring",
+        },
+      });
+      if (result?.url) {
+        openPayment(result.url, fidelizePlanLabel(plan), plan, "fidelize", {
+          value: result.value,
+          transactionId: result.id,
+          onClose: () => queryClient.invalidateQueries({ queryKey: ["fidelize-account"] }),
+        });
+      } else {
+        toast.error("Não foi possível iniciar a reativação.");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível reativar agora.");
+    } finally {
+      setSubscriptionBusy(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -214,6 +284,11 @@ function FidelizePage() {
 
   const status = STATUS_MAP[data.status] ?? STATUS_MAP["pending"]!;
   const StatusIcon = status.icon;
+  const subscriptionState = (data as any).subscriptionStatus ?? "active";
+  const subscription = SUBSCRIPTION_MAP[subscriptionState] ?? SUBSCRIPTION_MAP["active"]!;
+  const SubscriptionIcon = subscription.icon;
+  const isCanceled = subscriptionState === "canceled";
+  const isOverdue = subscriptionState === "overdue";
   const modules =
     data.modules.length > 0
       ? data.modules
@@ -233,10 +308,18 @@ function FidelizePage() {
               Ativado em {new Date(data.activatedAt).toLocaleDateString("pt-BR")}
             </p>
           </div>
-          <Badge className={`${status.className} shrink-0`}>
-            <StatusIcon className="mr-1 h-3.5 w-3.5" />
-            {status.label}
-          </Badge>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Badge className={status.className}>
+              <StatusIcon className="mr-1 h-3.5 w-3.5" />
+              {status.label}
+            </Badge>
+            {data.status === "success" && (
+              <Badge className={subscription.className}>
+                <SubscriptionIcon className="mr-1 h-3.5 w-3.5" />
+                {subscription.label}
+              </Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-5">
           {data.status === "failed" && (
@@ -335,6 +418,77 @@ function FidelizePage() {
             </p>
           </div>
 
+
+          {data.status === "success" && !data.migratedToFidelize && (
+            <div className="space-y-3 rounded-xl border p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-semibold">Assinatura mensal</p>
+                <Badge className={subscription.className}>
+                  <SubscriptionIcon className="mr-1 h-3.5 w-3.5" />
+                  {subscription.label}
+                </Badge>
+              </div>
+              <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+                {(data as any).lastPaymentAt && (
+                  <p>
+                    Último pagamento confirmado em{" "}
+                    {new Date((data as any).lastPaymentAt).toLocaleDateString("pt-BR")}
+                  </p>
+                )}
+                {(data as any).nextDueDate && !isCanceled && (
+                  <p>Próximo vencimento em {new Date((data as any).nextDueDate).toLocaleDateString("pt-BR")}</p>
+                )}
+                {isOverdue && (data as any).overdueSince && (
+                  <p className="text-amber-700">
+                    Em atraso desde {new Date((data as any).overdueSince).toLocaleDateString("pt-BR")}
+                  </p>
+                )}
+                {isCanceled && data.subscriptionCanceledAt && (
+                  <p>Cancelada em {new Date(data.subscriptionCanceledAt).toLocaleDateString("pt-BR")}</p>
+                )}
+              </div>
+              {isOverdue && (
+                <p className="rounded-lg bg-amber-500/10 p-3 text-sm text-amber-700">
+                  Identificamos uma fatura em atraso. Assim que o Asaas confirmar o pagamento, sua assinatura volta a
+                  ficar ativa automaticamente.
+                </p>
+              )}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {isCanceled ? (
+                  <Button
+                    className="w-full sm:w-auto"
+                    onClick={handleReactivate}
+                    disabled={subscriptionBusy !== null}
+                  >
+                    {subscriptionBusy === "reactivate" ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                    )}
+                    Reativar assinatura
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="w-full text-destructive hover:text-destructive sm:w-auto"
+                    onClick={handleCancelSubscription}
+                    disabled={subscriptionBusy !== null}
+                  >
+                    {subscriptionBusy === "cancel" ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <XCircle className="mr-2 h-4 w-4" />
+                    )}
+                    Cancelar assinatura
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                O status acima é sincronizado automaticamente com o Asaas — cancelamentos e pagamentos só mudam o
+                estado depois da confirmação do gateway.
+              </p>
+            </div>
+          )}
 
           {modules.length > 0 && (
             <div>
