@@ -240,6 +240,9 @@ export async function fidelizePing(config?: FidelizeConfig, testPath?: string) {
 
 /* ===================== Diagnóstico completo da integração ===================== */
 
+/** Telefone fictício usado apenas para sondar o endpoint de consulta de cliente. */
+const FIDELIZE_DIAGNOSTIC_PHONE = "00000000000";
+
 export type FidelizeCheckState = "ok" | "auth_error" | "unavailable" | "error";
 
 export type FidelizeCheck = {
