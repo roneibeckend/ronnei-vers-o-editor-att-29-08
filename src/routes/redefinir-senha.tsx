@@ -140,18 +140,12 @@ function ResetPasswordPage() {
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) throw updateError;
 
-      // Encerra a sessão temporária criada pelo link de recuperação:
-      // o usuário precisa entrar novamente com a nova senha.
-      try {
-        await queryClient.cancelQueries();
-        queryClient.clear();
-        await supabase.auth.signOut();
-      } catch {
-        /* ignora falha de logout */
-      }
+      // Mantém a sessão criada pelo link: o usuário já entra logado.
+      await queryClient.invalidateQueries();
 
-      toast.success("Senha atualizada!", { description: "Entre novamente com a nova senha." });
-      navigate({ to: "/login", replace: true });
+      toast.success("Senha atualizada!", { description: "Você já está conectado." });
+      navigate({ to: "/app", replace: true });
+
 
     } catch (err: any) {
       toast.error("Não foi possível atualizar a senha", { description: err?.message });
