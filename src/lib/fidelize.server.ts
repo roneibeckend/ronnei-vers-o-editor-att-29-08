@@ -140,7 +140,10 @@ export async function fidelizeRequest<T = unknown>(
         "x-api-key": config.apiKey,
       },
       ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
+      // "manual" evita que um 301/302 transforme POST em GET silenciosamente.
+      redirect: "manual",
       signal: controller.signal,
+
     });
 
     const rawBody = await response.text().catch(() => "");
