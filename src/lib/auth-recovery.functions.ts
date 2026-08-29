@@ -22,7 +22,19 @@ export const sendPasswordResetEmail = createServerFn({ method: "POST" })
       const { BRAND } = await import("@/emails/layout");
       const { triggerEmailEvent } = await import("@/lib/resend.server");
 
-      const base = (data.origin || BRAND.site).replace(/\/$/, "");
+      // Nunca confiamos na origem enviada pelo cliente: o destino do link de
+      // redefinição vem sempre de uma allow-list controlada pelo servidor.
+      const allowed = [
+        BRAND.site,
+        "https://ronneinaveia.com.br",
+        "https://ronneinv.lovable.app",
+        process.env["APP_URL"] || "",
+      ]
+        .filter(Boolean)
+        .map((u) => u.replace(/\/$/, ""));
+
+      const requested = data.origin ? data.origin.replace(/\/$/, "") : "";
+      const base = allowed.includes(requested) ? requested : allowed[0];
       const redirectTo = `${base}/redefinir-senha`;
 
       const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
