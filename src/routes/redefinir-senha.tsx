@@ -28,6 +28,8 @@ export const Route = createFileRoute("/redefinir-senha")({
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [password, setPassword] = useState("");
