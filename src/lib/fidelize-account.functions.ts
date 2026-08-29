@@ -40,6 +40,14 @@ export const getMyFidelizeAccount = createServerFn({ method: "GET" })
     };
   });
 
+/** Retorna a melhor URL de acesso (login único) à Fidelize para o aluno logado. */
+export const getMyFidelizeAccessUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { getFidelizeAccessTarget } = await import("./fidelize-sso.server");
+    return getFidelizeAccessTarget(context.userId);
+  });
+
 /** Reenvia os dados de acesso da conta Fidelize para o e-mail do aluno. */
 export const resendMyFidelizeAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
