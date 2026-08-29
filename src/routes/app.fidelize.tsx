@@ -54,11 +54,41 @@ const STATUS_MAP: Record<string, { label: string; className: string; icon: typeo
 
 function FidelizePage() {
   const fetchAccount = useServerFn(getMyFidelizeAccount);
+  const resendAccess = useServerFn(resendMyFidelizeAccess);
+  const queryClient = useQueryClient();
+  const [resending, setResending] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ["fidelize-account"],
     queryFn: () => fetchAccount(),
     refetchInterval: (query) => ((query.state.data as any)?.status === "pending" ? 15000 : false),
   });
+
+  const copy = async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`${label} copiado.`);
+    } catch {
+      toast.error("Não foi possível copiar. Copie manualmente.");
+    }
+  };
+
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      const result: any = await resendAccess();
+      if (result?.success) {
+        toast.success(result.message || "Enviamos os dados de acesso para o seu e-mail.");
+        queryClient.invalidateQueries({ queryKey: ["fidelize-account"] });
+      } else {
+        toast.error(result?.message || "Não foi possível reenviar o acesso agora.");
+      }
+    } catch {
+      toast.error("Não foi possível reenviar o acesso agora. Tente novamente em alguns minutos.");
+    } finally {
+      setResending(false);
+    }
+  };
+
 
   if (isLoading) {
     return (
