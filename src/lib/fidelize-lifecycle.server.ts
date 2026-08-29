@@ -63,7 +63,7 @@ async function cancelAsaasSubscriptions(userId: string) {
 
   const { data: paymentRows } = await supabaseAdmin
     .from("payments")
-    .select("customer_id, external_reference, subscription_id")
+    .select("customer_id, external_reference")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(100);
