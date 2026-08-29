@@ -245,7 +245,7 @@ export function CourseTreeEditor({ courseId }: CourseTreeEditorProps) {
               </div>
               <div className="flex shrink-0 items-center gap-1 sm:gap-2">
                 <button 
-                  onClick={() => setEditingLesson({ module_id: module.id, title: "", slug: "", description: "", video_url: "", video_provider: "auto", video_id: "", video_aspect: "landscape", duration_minutes: 10, order_index: lessons.filter(l => l.module_id === module.id).length, is_free: false, content: "" })}
+                  onClick={() => setEditingLesson({ id: crypto.randomUUID(), module_id: module.id, title: "", slug: "", description: "", video_url: "", video_provider: "auto", video_id: "", video_aspect: "landscape", duration_minutes: 10, order_index: lessons.filter(l => l.module_id === module.id).length, is_free: false, content: "" })}
                   className="p-2 text-white/40 hover:text-white"
                 >
                   <Plus className="h-4 w-4" />
@@ -387,6 +387,13 @@ export function CourseTreeEditor({ courseId }: CourseTreeEditorProps) {
                   <span className="text-sm">Aula Grátis (Preview)</span>
                 </label>
               </div>
+              <ModuleMaterialsManager
+                moduleId={editingLesson.module_id}
+                courseId={courseId}
+                lessonId={editingLesson.id ?? null}
+                isPersisted={lessons.some(l => l.id === editingLesson.id)}
+              />
+
               <DialogFooter>
                 <button type="submit" disabled={isSaving} className="w-full py-3 rounded-lg bg-[#ff6a00] text-black font-bold disabled:opacity-50">{isSaving ? "Salvando..." : "Salvar"}</button>
               </DialogFooter>
