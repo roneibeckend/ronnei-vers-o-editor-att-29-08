@@ -18,7 +18,24 @@ export type FidelizeAccessTarget = {
 
 const SAFETY_WINDOW_MS = 30_000;
 
-function pickUrl(payload: Record<string, any> | null | undefined): string | null {
+/**
+ * A API da Fidelize pode devolver a URL com o placeholder de configuração
+ * (`PLACEHOLDER_VALUE_TO_BE_REPLACED/auth/autologin?...`) ou apenas o caminho.
+ * Nesses casos reconstruímos o link usando o domínio da própria API.
+ */
+function sanitizeUrl(value: unknown, origin: string | null): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const raw = value.trim();
+  if (/^https?:\/\//i.test(raw) && !/PLACEHOLDER/i.test(raw)) return raw;
+  const path = raw.replace(/^.*?(?=\/(?:auth|acesso|app|login)\b)/i, "");
+  if (!origin || !path.startsWith("/")) return null;
+  return `${origin}${path}`;
+}
+
+function pickUrl(
+  payload: Record<string, any> | null | undefined,
+  origin: string | null,
+): string | null {
   if (!payload) return null;
   const candidates = [
     payload["autologin_url"],
@@ -31,10 +48,12 @@ function pickUrl(payload: Record<string, any> | null | undefined): string | null
     payload["link"],
   ];
   for (const value of candidates) {
-    if (typeof value === "string" && /^https?:\/\//i.test(value)) return value;
+    const url = sanitizeUrl(value, origin);
+    if (url) return url;
   }
   return null;
 }
+
 
 function pickToken(payload: Record<string, any> | null | undefined): string | null {
   if (!payload) return null;
