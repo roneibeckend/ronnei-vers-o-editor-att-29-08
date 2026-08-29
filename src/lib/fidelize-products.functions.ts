@@ -26,7 +26,7 @@ export const listFidelizePlansAdmin = createServerFn({ method: "GET" })
     return getFidelizePlanRecords();
   });
 
-/** Salva preço e status (ativo/inativo) de cada plano. */
+/** Salva a personalização completa de cada plano Fidelize. */
 export const saveFidelizePlans = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
@@ -38,7 +38,15 @@ export const saveFidelizePlans = createServerFn({ method: "POST" })
               plan: z.enum(["starter", "pro", "premium"]),
               price: z.number().min(1, "O preço deve ser maior que zero.").max(99999),
               active: z.boolean(),
+              label: z.string().trim().max(80).optional().or(z.literal("")),
+              tagline: z.string().trim().max(120).optional().or(z.literal("")),
+              description: z.string().trim().max(600).optional().or(z.literal("")),
               coverUrl: z.string().trim().max(2000).optional().or(z.literal("")),
+              ctaLabel: z.string().trim().max(60).optional().or(z.literal("")),
+              modules: z.array(z.string().trim().max(120)).max(20).optional(),
+              highlight: z.boolean().optional(),
+              sortOrder: z.number().int().min(0).max(99).optional(),
+              reset: z.boolean().optional(),
             }),
           )
           .min(1)
