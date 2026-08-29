@@ -8,7 +8,7 @@ export const getMyFidelizeAccount = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("fidelize_provisioning_logs")
       .select(
-        "id, plan, tenant_id, login_url, slug, modules, status, error_message, request_payload, created_at, updated_at",
+        "id, plan, tenant_id, login_url, slug, modules, status, error_message, request_payload, created_at, updated_at, lifecycle_status, lifecycle_plan, migrated_to_fidelize, migrated_at, subscription_canceled_at",
       )
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false })

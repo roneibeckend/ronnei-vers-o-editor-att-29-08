@@ -83,6 +83,7 @@ import { Route as ApiPublicConsultationRemindersRouteImport } from './routes/api
 import { Route as ApiPublicConsultationRecordingsRouteImport } from './routes/api/public/consultation-recordings'
 import { Route as AdminRankingCampanhasRouteImport } from './routes/admin.ranking.campanhas'
 import { Route as AdminAlunosStudentIdRouteImport } from './routes/admin.alunos_.$studentId'
+import { Route as ApiPublicWebhooksFidelizeRouteImport } from './routes/api/public/webhooks/fidelize'
 import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
 import { Route as ApiPublicManifestWebmanifestRouteImport } from './routes/api/public/manifest.webmanifest'
 import { Route as ApiPublicGoogleOauthCallbackRouteImport } from './routes/api/public/google/oauth/callback'
@@ -462,6 +463,12 @@ const AdminAlunosStudentIdRoute = AdminAlunosStudentIdRouteImport.update({
   path: '/alunos/$studentId',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiPublicWebhooksFidelizeRoute =
+  ApiPublicWebhooksFidelizeRouteImport.update({
+    id: '/api/public/webhooks/fidelize',
+    path: '/api/public/webhooks/fidelize',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWebhooksAsaasRoute = ApiPublicWebhooksAsaasRouteImport.update({
   id: '/api/public/webhooks/asaas',
   path: '/api/public/webhooks/asaas',
@@ -557,6 +564,7 @@ export interface FileRoutesByFullPath {
   '/app/cursos/': typeof AppCursosIndexRoute
   '/api/public/manifest/webmanifest': typeof ApiPublicManifestWebmanifestRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
+  '/api/public/webhooks/fidelize': typeof ApiPublicWebhooksFidelizeRoute
   '/api/public/google/oauth/callback': typeof ApiPublicGoogleOauthCallbackRoute
 }
 export interface FileRoutesByTo {
@@ -632,6 +640,7 @@ export interface FileRoutesByTo {
   '/app/cursos': typeof AppCursosIndexRoute
   '/api/public/manifest/webmanifest': typeof ApiPublicManifestWebmanifestRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
+  '/api/public/webhooks/fidelize': typeof ApiPublicWebhooksFidelizeRoute
   '/api/public/google/oauth/callback': typeof ApiPublicGoogleOauthCallbackRoute
 }
 export interface FileRoutesById {
@@ -712,6 +721,7 @@ export interface FileRoutesById {
   '/app/cursos/': typeof AppCursosIndexRoute
   '/api/public/manifest/webmanifest': typeof ApiPublicManifestWebmanifestRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
+  '/api/public/webhooks/fidelize': typeof ApiPublicWebhooksFidelizeRoute
   '/api/public/google/oauth/callback': typeof ApiPublicGoogleOauthCallbackRoute
 }
 export interface FileRouteTypes {
@@ -793,6 +803,7 @@ export interface FileRouteTypes {
     | '/app/cursos/'
     | '/api/public/manifest/webmanifest'
     | '/api/public/webhooks/asaas'
+    | '/api/public/webhooks/fidelize'
     | '/api/public/google/oauth/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -868,6 +879,7 @@ export interface FileRouteTypes {
     | '/app/cursos'
     | '/api/public/manifest/webmanifest'
     | '/api/public/webhooks/asaas'
+    | '/api/public/webhooks/fidelize'
     | '/api/public/google/oauth/callback'
   id:
     | '__root__'
@@ -947,6 +959,7 @@ export interface FileRouteTypes {
     | '/app/cursos/'
     | '/api/public/manifest/webmanifest'
     | '/api/public/webhooks/asaas'
+    | '/api/public/webhooks/fidelize'
     | '/api/public/google/oauth/callback'
   fileRoutesById: FileRoutesById
 }
@@ -975,6 +988,7 @@ export interface RootRouteChildren {
   ApiPublicOpsRecoveryRoute: typeof ApiPublicOpsRecoveryRoute
   ApiPublicManifestWebmanifestRoute: typeof ApiPublicManifestWebmanifestRoute
   ApiPublicWebhooksAsaasRoute: typeof ApiPublicWebhooksAsaasRoute
+  ApiPublicWebhooksFidelizeRoute: typeof ApiPublicWebhooksFidelizeRoute
   ApiPublicGoogleOauthCallbackRoute: typeof ApiPublicGoogleOauthCallbackRoute
 }
 
@@ -1498,6 +1512,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAlunosStudentIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/public/webhooks/fidelize': {
+      id: '/api/public/webhooks/fidelize'
+      path: '/api/public/webhooks/fidelize'
+      fullPath: '/api/public/webhooks/fidelize'
+      preLoaderRoute: typeof ApiPublicWebhooksFidelizeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/asaas': {
       id: '/api/public/webhooks/asaas'
       path: '/api/public/webhooks/asaas'
@@ -1707,6 +1728,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicOpsRecoveryRoute: ApiPublicOpsRecoveryRoute,
   ApiPublicManifestWebmanifestRoute: ApiPublicManifestWebmanifestRoute,
   ApiPublicWebhooksAsaasRoute: ApiPublicWebhooksAsaasRoute,
+  ApiPublicWebhooksFidelizeRoute: ApiPublicWebhooksFidelizeRoute,
   ApiPublicGoogleOauthCallbackRoute: ApiPublicGoogleOauthCallbackRoute,
 }
 export const routeTree = rootRouteImport
