@@ -6,4 +6,4 @@ Disallow: /login
 Disallow: /auth
 Disallow: /api
 
-Sitemap: https://espetinhonaveia.lovable.app/sitemap.xml
+Sitemap: https://ronneinaveia.com.br/sitemap.xml
