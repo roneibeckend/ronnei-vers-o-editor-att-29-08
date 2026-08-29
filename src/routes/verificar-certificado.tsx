@@ -34,8 +34,10 @@ export const Route = createFileRoute("/verificar-certificado")({
         content: "Verificação pública e gratuita de certificados da Academia Ronnei na Veia.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://ronneinaveia.com.br/verificar-certificado" },
       { name: "twitter:card", content: "summary" },
     ],
+    links: [{ rel: "canonical", href: "https://ronneinaveia.com.br/verificar-certificado" }],
   }),
   component: VerificarCertificado,
 });
