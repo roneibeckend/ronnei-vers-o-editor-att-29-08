@@ -264,9 +264,8 @@ function Dashboard() {
         </section>
       )}
 
-      <FidelizeHomeSection />
-
       <section id="novidades">
+
         <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:justify-between">
           <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight break-words min-w-0">Novidades para você</h2>
           <Link to="/app/cursos" className="shrink-0 text-sm font-medium text-gold hover:underline">Ver todos</Link>
@@ -299,6 +298,10 @@ function Dashboard() {
           </div>
         )}
       </section>
+
+      <FidelizeHomeSection />
+
+
 
     </div>
   );
