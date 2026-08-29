@@ -114,9 +114,30 @@ function FidelizePage() {
     }
   };
 
+  // Abre uma URL em nova aba de forma segura (sem depender de popup tardio).
+  const openInTab = (tab: Window | null, url: string) => {
+    if (tab && !tab.closed) {
+      try {
+        tab.opener = null;
+      } catch {
+        /* alguns navegadores bloqueiam a atribuição */
+      }
+      tab.location.replace(url);
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
   // Login único: pede ao servidor a melhor URL de acesso (autologin → magic-link → login).
   const handleAccess = async () => {
-    const tab = window.open("", "_blank", "noopener,noreferrer");
+    // Sem "noopener" aqui: precisamos do handle da aba para navegá-la depois.
+    const tab = window.open("about:blank", "_blank");
     setOpening(true);
     try {
       const result: any = await getAccessUrl();
@@ -131,10 +152,9 @@ function FidelizePage() {
       } else if (result?.message) {
         toast.info(result.message);
       }
-      if (tab) tab.location.href = url;
-      else window.open(url, "_blank", "noopener,noreferrer");
+      openInTab(tab, url);
     } catch {
-      if (data?.loginUrl && tab) tab.location.href = data.loginUrl;
+      if (data?.loginUrl) openInTab(tab, data.loginUrl);
       else {
         tab?.close();
         toast.error("Não foi possível abrir a Fidelize agora. Tente novamente.");
@@ -143,6 +163,7 @@ function FidelizePage() {
       setOpening(false);
     }
   };
+
 
   const handleResend = async () => {
     setResending(true);
