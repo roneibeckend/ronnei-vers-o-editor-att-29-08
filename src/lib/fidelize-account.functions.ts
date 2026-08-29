@@ -32,6 +32,11 @@ export const getMyFidelizeAccount = createServerFn({ method: "GET" })
       errorMessage: (row["error_message"] as string) ?? null,
       activatedAt: (row["updated_at"] as string) ?? (row["created_at"] as string),
       createdAt: row["created_at"] as string,
+      lifecycleStatus: (row["lifecycle_status"] as string) ?? "active",
+      lifecyclePlan: (row["lifecycle_plan"] as string) ?? null,
+      migratedToFidelize: Boolean(row["migrated_to_fidelize"]),
+      migratedAt: (row["migrated_at"] as string) ?? null,
+      subscriptionCanceledAt: (row["subscription_canceled_at"] as string) ?? null,
     };
   });
 
