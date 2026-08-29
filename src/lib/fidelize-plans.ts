@@ -1,4 +1,7 @@
 /** Catálogo dos planos da Fidelize (client-safe). */
+import coverStarter from "@/assets/fidelize-starter.jpg";
+import coverPro from "@/assets/fidelize-pro.jpg";
+import coverPremium from "@/assets/fidelize-premium.jpg";
 
 export type FidelizePlan = "starter" | "pro" | "premium";
 
@@ -11,6 +14,12 @@ export interface FidelizePlanInfo {
   price: number;
   description: string;
   modules: string[];
+  /** Imagem de capa padrão (pode ser sobrescrita pelo admin). */
+  cover: string;
+  /** Frase curta de posicionamento exibida sobre a capa. */
+  tagline: string;
+  /** Destaque visual ("mais vendido"). */
+  highlight?: boolean;
 }
 
 export const FIDELIZE_PLAN_CATALOG: Record<FidelizePlan, FidelizePlanInfo> = {
@@ -19,6 +28,8 @@ export const FIDELIZE_PLAN_CATALOG: Record<FidelizePlan, FidelizePlanInfo> = {
     label: "Fidelize Starter",
     price: 97,
     description: "Programa de fidelidade essencial para começar a reter clientes.",
+    cover: coverStarter,
+    tagline: "Comece a fidelizar",
     modules: ["Cartão fidelidade digital", "Cadastro de clientes", "Relatórios básicos"],
   },
   pro: {
@@ -26,6 +37,9 @@ export const FIDELIZE_PLAN_CATALOG: Record<FidelizePlan, FidelizePlanInfo> = {
     label: "Fidelize Pro",
     price: 197,
     description: "Automação de campanhas e recompensas para escalar o delivery.",
+    cover: coverPro,
+    tagline: "O mais escolhido",
+    highlight: true,
     modules: [
       "Cartão fidelidade digital",
       "Cadastro de clientes",
@@ -39,6 +53,8 @@ export const FIDELIZE_PLAN_CATALOG: Record<FidelizePlan, FidelizePlanInfo> = {
     label: "Fidelize Premium",
     price: 297,
     description: "Plataforma completa com múltiplas unidades e integrações.",
+    cover: coverPremium,
+    tagline: "Para escalar sem limites",
     modules: [
       "Cartão fidelidade digital",
       "Cadastro de clientes",

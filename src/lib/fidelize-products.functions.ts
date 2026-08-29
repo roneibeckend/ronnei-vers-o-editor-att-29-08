@@ -38,6 +38,7 @@ export const saveFidelizePlans = createServerFn({ method: "POST" })
               plan: z.enum(["starter", "pro", "premium"]),
               price: z.number().min(1, "O preço deve ser maior que zero.").max(99999),
               active: z.boolean(),
+              coverUrl: z.string().trim().max(2000).optional().or(z.literal("")),
             }),
           )
           .min(1)

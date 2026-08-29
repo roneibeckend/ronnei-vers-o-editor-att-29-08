@@ -12,11 +12,21 @@ export type FidelizePlanRecord = {
   modules: string[];
   price: number;
   active: boolean;
+  cover: string;
+  tagline: string;
+  highlight: boolean;
   /** true quando o preço/status foi personalizado pelo admin. */
   customized: boolean;
 };
 
-type PlanOverride = Partial<{ price: number; active: boolean; label: string; description: string }>;
+type PlanOverride = Partial<{
+  price: number;
+  active: boolean;
+  label: string;
+  description: string;
+  coverUrl: string;
+  tagline: string;
+}>;
 
 export async function getFidelizePlanRecords(): Promise<FidelizePlanRecord[]> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -44,6 +54,9 @@ export async function getFidelizePlanRecords(): Promise<FidelizePlanRecord[]> {
       modules: base.modules,
       price,
       active: override.active !== false,
+      cover: override.coverUrl?.trim() || base.cover,
+      tagline: override.tagline?.trim() || base.tagline,
+      highlight: Boolean(base.highlight),
       customized: Object.keys(override).length > 0,
     };
   });
@@ -55,7 +68,7 @@ export async function getFidelizePlanRecord(plan: FidelizePlan): Promise<Fideliz
 }
 
 export async function saveFidelizePlanOverrides(
-  input: { plan: FidelizePlan; price: number; active: boolean }[],
+  input: { plan: FidelizePlan; price: number; active: boolean; coverUrl?: string }[],
 ): Promise<void> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -69,7 +82,12 @@ export async function saveFidelizePlanOverrides(
   const plans = { ...((settings["plans"] || {}) as Record<string, PlanOverride>) };
 
   for (const item of input) {
-    plans[item.plan] = { ...(plans[item.plan] || {}), price: item.price, active: item.active };
+    plans[item.plan] = {
+      ...(plans[item.plan] || {}),
+      price: item.price,
+      active: item.active,
+      coverUrl: item.coverUrl?.trim() || undefined,
+    };
   }
   settings["plans"] = plans;
 
