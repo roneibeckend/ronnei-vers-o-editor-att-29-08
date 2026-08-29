@@ -25,6 +25,7 @@ import {
   getMyFidelizeAccount,
   resendMyFidelizeAccess,
   revealMyFidelizeCredentials,
+  getMyFidelizeAccessUrl,
 } from "@/lib/fidelize-account.functions";
 import { FIDELIZE_PLAN_CATALOG, fidelizePlanLabel, isFidelizePlan } from "@/lib/fidelize-plans";
 import { friendlyFidelizeError } from "@/lib/fidelize-messages";
@@ -62,6 +63,7 @@ function FidelizePage() {
   const fetchAccount = useServerFn(getMyFidelizeAccount);
   const resendAccess = useServerFn(resendMyFidelizeAccess);
   const revealCredentials = useServerFn(revealMyFidelizeCredentials);
+  const getAccessUrl = useServerFn(getMyFidelizeAccessUrl);
   const queryClient = useQueryClient();
   const [resending, setResending] = useState(false);
   const [revealing, setRevealing] = useState(false);
