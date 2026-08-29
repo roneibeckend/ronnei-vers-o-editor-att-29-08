@@ -8,7 +8,7 @@ export const getMyFidelizeAccount = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("fidelize_provisioning_logs")
       .select(
-        "id, plan, tenant_id, login_url, slug, modules, status, error_message, request_payload, created_at, updated_at, lifecycle_status, lifecycle_plan, migrated_to_fidelize, migrated_at, subscription_canceled_at",
+        "id, plan, tenant_id, login_url, slug, modules, status, error_message, request_payload, created_at, updated_at, lifecycle_status, lifecycle_plan, migrated_to_fidelize, migrated_at, subscription_canceled_at, subscription_status, last_payment_at, next_due_date, overdue_since, cancel_requested_at, reactivated_at",
       )
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false })
@@ -37,6 +37,12 @@ export const getMyFidelizeAccount = createServerFn({ method: "GET" })
       migratedToFidelize: Boolean(row["migrated_to_fidelize"]),
       migratedAt: (row["migrated_at"] as string) ?? null,
       subscriptionCanceledAt: (row["subscription_canceled_at"] as string) ?? null,
+      subscriptionStatus: (row["subscription_status"] as string) ?? "active",
+      lastPaymentAt: (row["last_payment_at"] as string) ?? null,
+      nextDueDate: (row["next_due_date"] as string) ?? null,
+      overdueSince: (row["overdue_since"] as string) ?? null,
+      cancelRequestedAt: (row["cancel_requested_at"] as string) ?? null,
+      reactivatedAt: (row["reactivated_at"] as string) ?? null,
     };
   });
 
@@ -115,3 +121,21 @@ function buildAutoLoginUrl(
     return base;
   }
 }
+
+/** Cancela a assinatura recorrente Fidelize do aluno (confirmado no Asaas). */
+export const cancelMyFidelizeSubscription = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { cancelFidelizeSubscriptionForUser } = await import("./fidelize-subscription.server");
+    return cancelFidelizeSubscriptionForUser(context.userId);
+  });
+
+/** Marca a intenção de reativar; o acesso volta quando o Asaas confirmar o pagamento. */
+export const requestMyFidelizeReactivation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { markFidelizeReactivationRequested } = await import("./fidelize-subscription.server");
+    const record = await markFidelizeReactivationRequested(context.userId);
+    if (!record) return { success: false, plan: null, message: "Nenhuma conta Fidelize encontrada." };
+    return { success: true, plan: record.plan as string, message: null as string | null };
+  });
