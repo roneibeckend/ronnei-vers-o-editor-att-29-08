@@ -299,6 +299,10 @@ function Dashboard() {
         )}
       </section>
 
+      <FidelizeHomeSection />
+
+
+
     </div>
   );
 }
