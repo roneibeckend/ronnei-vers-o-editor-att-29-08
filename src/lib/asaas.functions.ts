@@ -111,6 +111,9 @@ export const createAsaasPaymentLink = createServerFn({ method: "POST" })
 
       const totalValue = Math.round(pricedProducts.reduce((acc, p) => acc + p.value, 0) * 100) / 100;
       const mainProduct = pricedProducts[0];
+      // Fidelize é assinatura mensal: força recorrência mesmo se o cliente pedir avulso.
+      const isRecurring = data.paymentType === 'recurring'
+        || pricedProducts.some((p) => p.productType === 'fidelize');
 
       // 100% DE DESCONTO: libera o acesso imediatamente, sem gerar cobrança no Asaas.
       if (totalValue <= 0) {
