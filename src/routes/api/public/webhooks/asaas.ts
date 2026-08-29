@@ -102,6 +102,25 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
             PAYMENT_OVERDUE: 'invoice_overdue',
           };
 
+          // 3b. Sinais negativos da assinatura recorrente (refletem o status na área do aluno).
+          const negativeEvents: Record<string, 'overdue' | 'canceled'> = {
+            PAYMENT_OVERDUE: 'overdue',
+            PAYMENT_DELETED: 'canceled',
+            PAYMENT_REFUNDED: 'canceled',
+            PAYMENT_REVERSED: 'canceled',
+            PAYMENT_CHARGEBACK_REQUESTED: 'canceled',
+            SUBSCRIPTION_DELETED: 'canceled',
+            SUBSCRIPTION_INACTIVATED: 'canceled',
+          };
+
+          if (negativeEvents[eventType]) {
+            try {
+              await syncFidelizeSubscriptionSignal(body.payment ?? body.subscription, negativeEvents[eventType]!);
+            } catch (signalError) {
+              console.error('[Webhook Asaas] Falha ao sincronizar assinatura Fidelize:', signalError);
+            }
+          }
+
           if (invoiceEvents[eventType]) {
             try {
               await sendInvoiceEmail(invoiceEvents[eventType]!, eventId as string, body.payment);
@@ -304,6 +323,32 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
             const email = (profile as any)?.email || verifiedPayment.customerEmail;
             if (!email) {
               throw new Error('E-mail do aluno não encontrado para provisionar a Fidelize.');
+            }
+
+            // RENOVAÇÃO MENSAL: se a conta já existe, não reprovisiona — apenas
+            // renova o acesso e atualiza o status da assinatura do aluno.
+            const { applyFidelizeRecurringPayment } = await import('@/lib/fidelize-subscription.server');
+            const renewal = await applyFidelizeRecurringPayment({
+              userId,
+              paymentId,
+              plan,
+              dueDate: verifiedPayment.dueDate ?? null,
+              subscriptionId: verifiedPayment.subscription ?? null,
+            });
+
+            if (renewal.renewal) {
+              await supabaseAdmin
+                .from('asaas_webhook_events')
+                .update({
+                  status: 'completed',
+                  processed_at: new Date().toISOString(),
+                  last_error: null,
+                })
+                .eq('event_id', eventId as string)
+                .eq('claim_token', claimToken as string)
+                .eq('status', 'processing');
+
+              return Response.json({ received: true, processed: true, type: 'fidelize', renewal: true });
             }
 
             const result = await provisionFidelizeAccount({
@@ -702,6 +747,26 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
     },
   },
 });
+
+/**
+ * Reflete na área do aluno os sinais negativos da assinatura recorrente Fidelize
+ * (fatura vencida, cobrança cancelada/estornada, assinatura removida no Asaas).
+ */
+async function syncFidelizeSubscriptionSignal(payment: any, status: 'overdue' | 'canceled') {
+  if (!payment) return;
+  const parsed = parseExternalReference(payment?.externalReference);
+  if (parsed?.productType !== 'fidelize') return;
+
+  let userId = parsed.userId as string | null;
+  if (!userId) {
+    const { apiKey, baseUrl } = await getAsaasConfig();
+    userId = await resolveUserFromPayment(payment, baseUrl, apiKey);
+  }
+  if (!userId) return;
+
+  const { applyFidelizeSubscriptionSignal } = await import('@/lib/fidelize-subscription.server');
+  await applyFidelizeSubscriptionSignal({ userId, status, paymentId: payment?.id ?? null });
+}
 
 /**
  * Envia e-mails de cobrança (fatura gerada, vencendo ou atrasada) para o aluno
