@@ -682,8 +682,48 @@ const consultationCompleted: Builder = (d) =>
     cta: { label: "Abrir minhas consultorias", url: `${LINKS.dashboard}/minhas-consultorias` },
   });
 
+/* ========================= FIDELIZE (acesso) =========================== */
+const fidelizeAccess: Builder = (d) => {
+  const modules = val(d, ["modules", "modulos"], "")
+    .split(/[,;]\s*/)
+    .filter(Boolean);
+
+  return build({
+    subject: "Seu acesso à Fidelize foi liberado",
+    preview: "Sua conta na Fidelize está pronta — veja seu login e senha temporária.",
+    heading: "🎉 Seu acesso à Fidelize foi liberado",
+    subheading: "Sua conta já está ativa e pronta para uso.",
+    greeting: `Parabéns, ${firstName(d)}!`,
+    blocks: [
+      { type: "text", text: "Criamos sua conta na <strong>Fidelize</strong>. Use os dados abaixo para entrar." },
+      {
+        type: "details",
+        title: "Dados de acesso",
+        rows: [
+          { label: "Plano contratado", value: val(d, ["plan", "plano", "product_name"], "Fidelize") },
+          { label: "Login", value: val(d, ["login", "email"], "-") },
+          { label: "Senha temporária", value: val(d, ["temporary_password", "senha_temporaria"], "-") },
+        ],
+      },
+      ...(modules.length
+        ? [
+            {
+              type: "details" as const,
+              title: "Módulos liberados",
+              rows: modules.map((m, i) => ({ label: `Módulo ${i + 1}`, value: m })),
+            },
+          ]
+        : []),
+      { type: "note", text: "Por segurança, altere sua senha temporária no primeiro acesso." },
+    ],
+    cta: { label: "Acessar a Fidelize", url: link(d, ["login_url", "link", "url"], `${LINKS.dashboard}/fidelize`) },
+  });
+};
+
 /** Nomes canônicos + aliases usados no código atual da plataforma. */
 export const EMAIL_TEMPLATES: Record<string, Builder> = {
+  fidelize_access: fidelizeAccess,
+  fidelize_acesso: fidelizeAccess,
   consultoria_confirmada: consultationConfirmed,
   consultoria_reagendada: consultationRescheduled,
   consultoria_confirmar_presenca: consultationAttendanceRequest,
