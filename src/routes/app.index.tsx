@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Play, ShoppingCart, Sparkles, Lock, Loader2, CalendarDays } from "lucide-react";
-import { usePaymentModal } from "@/hooks/use-payment-modal";
+import { useCheckout } from "@/hooks/use-checkout";
 import { createAsaasPaymentLink } from "@/lib/asaas.functions";
 import { savePendingCheckout, getPendingCheckout, completePendingCheckout } from "@/lib/checkout.functions";
 import { useServerFn } from "@tanstack/react-start";
@@ -42,7 +42,7 @@ function Dashboard() {
   const saveCheckout = useServerFn(savePendingCheckout);
   const getPending = useServerFn(getPendingCheckout);
   const completeCheckout = useServerFn(completePendingCheckout);
-  const { openPayment } = usePaymentModal();
+  const { openCheckout } = useCheckout();
 
   const executeCheckout = async (targetItem: any, additionalItems: any[]) => {
     try {
@@ -310,7 +310,7 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
   const { isEnabled: isOfferEnabled } = usePostPurchaseOfferStore();
   const createPaymentLink = useServerFn(createAsaasPaymentLink);
   const saveCheckout = useServerFn(savePendingCheckout);
-  const { openPayment } = usePaymentModal();
+  const { openCheckout } = useCheckout();
   const [isProcessing, setIsProcessing] = useState(false);
   const [showOffer, setShowOffer] = useState(false);
   const [discountPercentage, setDiscountPercentage] = useState(15);

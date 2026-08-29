@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Play, Sparkles, Lock, ShoppingCart, Loader2 } from "lucide-react";
-import { usePaymentModal } from "@/hooks/use-payment-modal";
+import { useCheckout } from "@/hooks/use-checkout";
 import { createAsaasPaymentLink } from "@/lib/asaas.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { getAffiliateRef } from "@/hooks/use-affiliate-tracking";
@@ -100,7 +100,7 @@ function CoursesPage() {
     }
   }, [isLoadingEnrollments, courseEnrollments, ebookEnrollments]);
   const createPaymentLink = useServerFn(createAsaasPaymentLink);
-  const { openPayment } = usePaymentModal();
+  const { openCheckout } = useCheckout();
   const queryClient = useQueryClient();
 
   const handlePurchase = async (item: any, type: 'course' | 'ebook') => {

@@ -14,7 +14,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProgress } from "@/hooks/use-progress";
-import { usePaymentModal } from "@/hooks/use-payment-modal";
+import { useCheckout } from "@/hooks/use-checkout";
 import { FeedbackModal } from "@/components/platform/FeedbackModal";
 import { FeedbackSummary } from "@/components/platform/FeedbackSummary";
 import { FeedbackList } from "@/components/platform/FeedbackList";
@@ -102,7 +102,7 @@ function CoursePage() {
     syncWithDatabase();
   }, [syncWithDatabase]);
   const createPaymentLink = useServerFn(createAsaasPaymentLink);
-  const { openPayment } = usePaymentModal();
+  const { openCheckout } = useCheckout();
   const getSignedUrl = useServerFn(getSignedVideoUrl);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showOpeningVideo, setShowOpeningVideo] = useState(false);

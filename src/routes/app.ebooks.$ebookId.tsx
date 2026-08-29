@@ -19,7 +19,7 @@ import { getAffiliateRef } from "@/hooks/use-affiliate-tracking";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { usePaymentModal } from "@/hooks/use-payment-modal";
+import { useCheckout } from "@/hooks/use-checkout";
 import { PostPurchaseOffer } from "@/components/platform/PostPurchaseOffer";
 import { FeedbackSummary } from "@/components/platform/FeedbackSummary";
 import { FeedbackList } from "@/components/platform/FeedbackList";
@@ -163,7 +163,7 @@ function EbookReaderPage() {
   const registerDownload = useServerFn(registerEbookDownload);
   const createPaymentLink = useServerFn(createAsaasPaymentLink);
   const getSignedUrl = useServerFn(getSignedVideoUrl);
-  const { openPayment } = usePaymentModal();
+  const { openCheckout } = useCheckout();
   const [signedIntroUrl, setSignedIntroUrl] = useState<string | null>(null);
   const generateCertFn = useServerFn(generateCertificate);
   const introNeedsSigning = needsSignedUrl(ebook?.opening_video_url);
