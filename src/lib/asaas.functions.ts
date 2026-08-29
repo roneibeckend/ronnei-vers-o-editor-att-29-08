@@ -39,9 +39,12 @@ export const createAsaasPaymentLink = createServerFn({ method: "POST" })
       for (const p of data.products) {
         // Planos Fidelize não vivem no catálogo de conteúdo: preço autoritativo do catálogo de planos.
         if (p.productType === 'fidelize') {
-          const { FIDELIZE_PLAN_CATALOG, isFidelizePlan } = await import("./fidelize-plans");
+          const { isFidelizePlan } = await import("./fidelize-plans");
+          const { getFidelizePlanRecord } = await import("./fidelize-plans.server");
           if (!isFidelizePlan(p.productId)) throw new Error("Plano Fidelize inválido.");
-          const planInfo = FIDELIZE_PLAN_CATALOG[p.productId];
+          const planInfo = await getFidelizePlanRecord(p.productId);
+          if (!planInfo.active) throw new Error("Este plano Fidelize está indisponível no momento.");
+          if (!(planInfo.price > 0)) throw new Error("Plano Fidelize sem preço válido para checkout.");
           pricedProducts.push({
             productId: p.productId,
             productType: 'fidelize',

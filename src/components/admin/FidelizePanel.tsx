@@ -18,6 +18,7 @@ import {
   UserPlus,
   Trash2,
   ShieldCheck,
+  Tag,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ import {
   deleteFidelizeTestUser,
   runFidelizeHealthNow,
 } from "@/lib/fidelize.functions";
+import { listFidelizePlansAdmin, saveFidelizePlans } from "@/lib/fidelize-products.functions";
 
 const ORANGE = "#ff6a00";
 const URL_EXAMPLE = "https://afidelize.seudominio.com/api/public/integrations";
@@ -394,6 +396,9 @@ export function FidelizePanel() {
         </CardContent>
       </Card>
 
+      {/* ---------- Produtos / planos ---------- */}
+      <FidelizePlansCard />
+
       {/* ---------- Provisionamento de teste ---------- */}
       <Card className="bg-[#111] border-white/5">
         <CardHeader className="flex flex-row items-center justify-between">
@@ -560,5 +565,101 @@ export function FidelizePanel() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/** Produtos Fidelize: preço editável e ativar/desativar por plano. */
+function FidelizePlansCard() {
+  const listPlans = useServerFn(listFidelizePlansAdmin);
+  const savePlans = useServerFn(saveFidelizePlans);
+  const [draft, setDraft] = useState<Record<string, { price: string; active: boolean }>>({});
+
+  const { data: plans, refetch } = useQuery({
+    queryKey: ["fidelize_plans_admin"],
+    queryFn: () => listPlans({} as any),
+  });
+
+  useEffect(() => {
+    if (plans) {
+      setDraft(
+        Object.fromEntries(plans.map((p) => [p.plan, { price: String(p.price), active: p.active }])),
+      );
+    }
+  }, [plans]);
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      savePlans({
+        data: {
+          plans: (plans || []).map((p) => ({
+            plan: p.plan,
+            price: Number(String(draft[p.plan]?.price ?? p.price).replace(",", ".")),
+            active: draft[p.plan]?.active ?? p.active,
+          })),
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Planos Fidelize atualizados.");
+      refetch();
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao salvar os planos."),
+  });
+
+  return (
+    <Card className="bg-[#111] border-white/5">
+      <CardHeader>
+        <CardTitle className="text-sm font-bold uppercase tracking-widest flex items-center gap-2 text-white">
+          <Tag className="h-4 w-4" style={{ color: ORANGE }} /> Produtos Fidelize
+        </CardTitle>
+        <CardDescription className="text-[10px] text-white/40">
+          Preço e disponibilidade dos planos vendidos com <code className="text-white/60">product_type = fidelize</code>.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {(plans || []).map((plan) => {
+          const state = draft[plan.plan] || { price: String(plan.price), active: plan.active };
+          return (
+            <div
+              key={plan.plan}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/5 bg-black/40 p-3"
+            >
+              <div className="min-w-[180px]">
+                <p className="text-xs font-bold text-white">{plan.label}</p>
+                <p className="text-[10px] text-white/35">
+                  plan: <code className="text-white/60">{plan.plan}</code> · /fidelize/{plan.plan}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-widest text-white/30">R$</span>
+                <Input
+                  value={state.price}
+                  inputMode="decimal"
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, [plan.plan]: { ...state, price: e.target.value } }))
+                  }
+                  className="h-8 w-28 bg-black/40 border-white/10 text-white"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDraft((d) => ({ ...d, [plan.plan]: { ...state, active: !state.active } }))}
+                  className={`h-8 border-white/10 text-[9px] uppercase tracking-widest ${state.active ? "bg-emerald-500/15 text-emerald-400" : "bg-white/5 text-white/40"}`}
+                >
+                  {state.active ? "Ativo" : "Inativo"}
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+        <Button
+          onClick={() => mutation.mutate()}
+          disabled={mutation.isPending || !plans?.length}
+          className="h-9 bg-[#ff6a00] text-black hover:bg-[#ff6a00]/90 text-[10px] font-bold uppercase tracking-widest"
+        >
+          {mutation.isPending ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-2" />}
+          Salvar planos
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
