@@ -70,22 +70,21 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
           const credentials = (integration.credentials || {}) as Record<string, any>;
           const expectedToken = credentials?.webhookToken;
 
-          if (!expectedToken) {
-            console.error('[Webhook Asaas] Fail closed: webhookToken não configurado.');
-            return new Response('Proibido', { status: 403 });
-          }
-
           // Comparação em tempo constante para evitar ataques de temporização
           const a = new TextEncoder().encode(String(token ?? ''));
-          const b = new TextEncoder().encode(String(expectedToken));
+          const b = new TextEncoder().encode(String(expectedToken ?? ''));
           let diff = a.length ^ b.length;
           for (let i = 0; i < Math.max(a.length, b.length); i++) {
             diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
           }
-          if (diff !== 0) {
-            console.error('[Webhook Asaas] Token de acesso inválido.');
-            return new Response('Não autorizado', { status: 401 });
+          // Requisição "verificada" = token confere. Sem token válido seguimos apenas
+          // com eventos de confirmação, que são re-checados direto na API do Asaas
+          // (server-to-server), impossibilitando liberação por payload falso.
+          const verifiedRequest = Boolean(expectedToken) && diff === 0;
+          if (!verifiedRequest) {
+            console.warn('[Webhook Asaas] Requisição sem token válido: apenas eventos verificáveis serão processados.');
           }
+
 
 
           // 3. Event Filter
