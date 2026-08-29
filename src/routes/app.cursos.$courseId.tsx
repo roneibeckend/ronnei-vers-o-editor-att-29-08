@@ -717,7 +717,7 @@ function CoursePage() {
               </div>
             </div>
             {tab === "materiais" ? (
-              isEnrolledInCourse(course.id) && active?.id ? (
+              hasAccess && active?.id ? (
                 <LessonMaterials lessonId={active.id} />
               ) : (
                 <p className="text-sm text-muted-foreground">
