@@ -34,7 +34,7 @@ import {
 } from "@/lib/fidelize-account.functions";
 import { createAsaasPaymentLink } from "@/lib/asaas.functions";
 import { usePaymentModal } from "@/hooks/use-payment-modal";
-import { FIDELIZE_PLAN_CATALOG, fidelizePlanLabel, isFidelizePlan } from "@/lib/fidelize-plans";
+import { fidelizePlanLabel } from "@/lib/fidelize-plans";
 import { friendlyFidelizeError } from "@/lib/fidelize-messages";
 
 
