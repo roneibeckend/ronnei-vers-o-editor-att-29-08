@@ -35,8 +35,21 @@ export const createAsaasPaymentLink = createServerFn({ method: "POST" })
     try {
       // SECURITY: preços autoritativos vêm do banco, nunca do cliente.
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const pricedProducts: { productId: string; productType: 'course' | 'ebook'; title: string; value: number }[] = [];
+      const pricedProducts: { productId: string; productType: 'course' | 'ebook' | 'fidelize'; title: string; value: number }[] = [];
       for (const p of data.products) {
+        // Planos Fidelize não vivem no catálogo de conteúdo: preço autoritativo do catálogo de planos.
+        if (p.productType === 'fidelize') {
+          const { FIDELIZE_PLAN_CATALOG, isFidelizePlan } = await import("./fidelize-plans");
+          if (!isFidelizePlan(p.productId)) throw new Error("Plano Fidelize inválido.");
+          const planInfo = FIDELIZE_PLAN_CATALOG[p.productId];
+          pricedProducts.push({
+            productId: p.productId,
+            productType: 'fidelize',
+            title: planInfo.label,
+            value: planInfo.price,
+          });
+          continue;
+        }
         const table = p.productType === 'course' ? 'courses' : 'ebooks';
         const { data: row, error: priceError } = await supabaseAdmin
           .from(table)
