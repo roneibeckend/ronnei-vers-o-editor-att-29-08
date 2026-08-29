@@ -32,7 +32,7 @@ import {
   cancelMyFidelizeSubscription,
   requestMyFidelizeReactivation,
 } from "@/lib/fidelize-account.functions";
-import { createAsaasPaymentLink } from "@/lib/asaas.functions";
+import { useCheckout } from "@/hooks/use-checkout";
 import { usePaymentModal } from "@/hooks/use-payment-modal";
 import { fidelizePlanLabel } from "@/lib/fidelize-plans";
 import { friendlyFidelizeError } from "@/lib/fidelize-messages";
@@ -86,7 +86,7 @@ function FidelizePage() {
   const [subscriptionBusy, setSubscriptionBusy] = useState<"cancel" | "reactivate" | null>(null);
   const cancelSubscription = useServerFn(cancelMyFidelizeSubscription);
   const requestReactivation = useServerFn(requestMyFidelizeReactivation);
-  const createPaymentLink = useServerFn(createAsaasPaymentLink);
+  const { openCheckout } = useCheckout();
   const { openPayment } = usePaymentModal();
   const [credentials, setCredentials] = useState<{
     temporaryPassword: string | null;
@@ -232,21 +232,13 @@ function FidelizePage() {
         toast.error(intent?.message || "Não encontramos seu plano para reativar.");
         return;
       }
-      const result: any = await createPaymentLink({
-        data: {
-          products: [{ productId: plan, productType: "fidelize", title: fidelizePlanLabel(plan) }],
-          paymentType: "recurring",
-        },
+      openCheckout({
+        productId: plan,
+        productType: "fidelize",
+        title: fidelizePlanLabel(plan),
+        recurring: true,
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["fidelize-account"] }),
       });
-      if (result?.url) {
-        openPayment(result.url, fidelizePlanLabel(plan), plan, "fidelize", {
-          value: result.value,
-          transactionId: result.id,
-          onClose: () => queryClient.invalidateQueries({ queryKey: ["fidelize-account"] }),
-        });
-      } else {
-        toast.error("Não foi possível iniciar a reativação.");
-      }
     } catch (err: any) {
       toast.error(err?.message || "Não foi possível reativar agora.");
     } finally {
