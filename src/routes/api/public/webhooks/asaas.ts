@@ -102,6 +102,25 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
             PAYMENT_OVERDUE: 'invoice_overdue',
           };
 
+          // 3b. Sinais negativos da assinatura recorrente (refletem o status na área do aluno).
+          const negativeEvents: Record<string, 'overdue' | 'canceled'> = {
+            PAYMENT_OVERDUE: 'overdue',
+            PAYMENT_DELETED: 'canceled',
+            PAYMENT_REFUNDED: 'canceled',
+            PAYMENT_REVERSED: 'canceled',
+            PAYMENT_CHARGEBACK_REQUESTED: 'canceled',
+            SUBSCRIPTION_DELETED: 'canceled',
+            SUBSCRIPTION_INACTIVATED: 'canceled',
+          };
+
+          if (negativeEvents[eventType]) {
+            try {
+              await syncFidelizeSubscriptionSignal(body.payment ?? body.subscription, negativeEvents[eventType]!);
+            } catch (signalError) {
+              console.error('[Webhook Asaas] Falha ao sincronizar assinatura Fidelize:', signalError);
+            }
+          }
+
           if (invoiceEvents[eventType]) {
             try {
               await sendInvoiceEmail(invoiceEvents[eventType]!, eventId as string, body.payment);
