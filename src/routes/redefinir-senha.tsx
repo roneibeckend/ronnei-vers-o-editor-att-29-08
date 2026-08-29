@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Lock, Loader2, ShieldCheck, ShieldAlert, Mail, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+
 import { supabase } from "@/integrations/supabase/client";
 import { validatePassword } from "@/lib/password-validation";
 import { completeAuthFromUrl } from "@/lib/auth-callback";
@@ -28,6 +30,8 @@ export const Route = createFileRoute("/redefinir-senha")({
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [password, setPassword] = useState("");
@@ -135,8 +139,20 @@ function ResetPasswordPage() {
     try {
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) throw updateError;
-      toast.success("Senha atualizada!", { description: "Use a nova senha para entrar." });
-      navigate({ to: "/inicio", replace: true });
+
+      // Encerra a sessão temporária criada pelo link de recuperação:
+      // o usuário precisa entrar novamente com a nova senha.
+      try {
+        await queryClient.cancelQueries();
+        queryClient.clear();
+        await supabase.auth.signOut();
+      } catch {
+        /* ignora falha de logout */
+      }
+
+      toast.success("Senha atualizada!", { description: "Entre novamente com a nova senha." });
+      navigate({ to: "/login", replace: true });
+
     } catch (err: any) {
       toast.error("Não foi possível atualizar a senha", { description: err?.message });
     } finally {
