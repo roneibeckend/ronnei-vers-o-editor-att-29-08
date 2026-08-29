@@ -763,7 +763,10 @@ function CoursePage() {
                       </div>
                     </div>
                   )}
+
+                  {isEnrolledInCourse(course.id) && <ModuleMaterialsList moduleId={m.id} />}
                 </div>
+
                 <ul className="space-y-1">
                   {m.lessons?.map((l: any) => {
                     const isActive = l.id === active?.id;
