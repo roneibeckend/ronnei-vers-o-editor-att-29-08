@@ -761,62 +761,163 @@ function FidelizePlansCard() {
           <Tag className="h-4 w-4" style={{ color: ORANGE }} /> Produtos Fidelize
         </CardTitle>
         <CardDescription className="text-[10px] text-white/40">
-          Preço e disponibilidade dos planos vendidos com <code className="text-white/60">product_type = fidelize</code>.
+          Nome, chamada, descrição, capa, módulos, preço, destaque e ordem dos planos vendidos com{" "}
+          <code className="text-white/60">product_type = fidelize</code>.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {(plans || []).map((plan) => {
-          const state =
-            draft[plan.plan] || { price: String(plan.price), active: plan.active, coverUrl: "" };
+          const state = draft[plan.plan];
+          if (!state) return null;
+          const set = (patch: Partial<PlanDraft>) =>
+            setDraft((d) => ({ ...d, [plan.plan]: { ...state, ...patch } }));
+          const moduleCount = state.modules.split("\n").filter((m) => m.trim()).length;
+
           return (
-            <div
+            <details
               key={plan.plan}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/5 bg-black/40 p-3"
+              className="group rounded-lg border border-white/5 bg-black/40 p-3 open:border-white/10"
             >
-              <img
-                src={state.coverUrl || plan.cover}
-                alt={`Capa do plano ${plan.label}`}
-                loading="lazy"
-                width={1024}
-                height={576}
-                className="h-14 w-24 shrink-0 rounded-md object-cover"
-              />
-              <div className="min-w-[180px]">
-                <p className="text-xs font-bold text-white">{plan.label}</p>
-                <p className="text-[10px] text-white/35">
-                  plan: <code className="text-white/60">{plan.plan}</code> · /fidelize/{plan.plan}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] uppercase tracking-widest text-white/30">R$</span>
-                <Input
-                  value={state.price}
-                  inputMode="decimal"
-                  onChange={(e) =>
-                    setDraft((d) => ({ ...d, [plan.plan]: { ...state, price: e.target.value } }))
-                  }
-                  className="h-8 w-28 bg-black/40 border-white/10 text-white"
+              <summary className="flex cursor-pointer flex-wrap items-center gap-3 list-none">
+                <img
+                  src={state.coverUrl || plan.cover}
+                  alt={`Capa do plano ${state.label || plan.label}`}
+                  loading="lazy"
+                  width={1024}
+                  height={576}
+                  className="h-14 w-24 shrink-0 rounded-md object-cover"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setDraft((d) => ({ ...d, [plan.plan]: { ...state, active: !state.active } }))}
-                  className={`h-8 border-white/10 text-[9px] uppercase tracking-widest ${state.active ? "bg-emerald-500/15 text-emerald-400" : "bg-white/5 text-white/40"}`}
-                >
-                  {state.active ? "Ativo" : "Inativo"}
-                </Button>
+                <div className="min-w-[180px] flex-1">
+                  <p className="text-xs font-bold text-white">
+                    {state.label || plan.label}
+                    {state.highlight && (
+                      <Badge className="ml-2 bg-[#ff6a00]/15 text-[8px] uppercase tracking-widest text-[#ff6a00]">
+                        Destaque
+                      </Badge>
+                    )}
+                  </p>
+                  <p className="text-[10px] text-white/35">
+                    <code className="text-white/60">{plan.plan}</code> · /fidelize/{plan.plan} · {moduleCount} módulos
+                    {plan.customized ? " · personalizado" : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase tracking-widest text-white/30">R$</span>
+                  <Input
+                    value={state.price}
+                    inputMode="decimal"
+                    onClick={(e) => e.preventDefault()}
+                    onChange={(e) => set({ price: e.target.value })}
+                    className="h-8 w-24 bg-black/40 border-white/10 text-white"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      set({ active: !state.active });
+                    }}
+                    className={`h-8 border-white/10 text-[9px] uppercase tracking-widest ${state.active ? "bg-emerald-500/15 text-emerald-400" : "bg-white/5 text-white/40"}`}
+                  >
+                    {state.active ? "Ativo" : "Inativo"}
+                  </Button>
+                </div>
+              </summary>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-[9px] uppercase tracking-widest text-white/40">Nome do produto</Label>
+                  <Input
+                    value={state.label}
+                    onChange={(e) => set({ label: e.target.value })}
+                    className="h-8 bg-black/40 border-white/10 text-white text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[9px] uppercase tracking-widest text-white/40">Chamada (tagline)</Label>
+                  <Input
+                    value={state.tagline}
+                    onChange={(e) => set({ tagline: e.target.value })}
+                    className="h-8 bg-black/40 border-white/10 text-white text-xs"
+                  />
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <Label className="text-[9px] uppercase tracking-widest text-white/40">Descrição</Label>
+                  <textarea
+                    value={state.description}
+                    rows={2}
+                    onChange={(e) => set({ description: e.target.value })}
+                    className="w-full rounded-md border border-white/10 bg-black/40 p-2 text-xs text-white outline-none focus:border-[#ff6a00]/50"
+                  />
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <Label className="text-[9px] uppercase tracking-widest text-white/40">
+                    Módulos liberados (um por linha)
+                  </Label>
+                  <textarea
+                    value={state.modules}
+                    rows={5}
+                    onChange={(e) => set({ modules: e.target.value })}
+                    className="w-full rounded-md border border-white/10 bg-black/40 p-2 text-xs text-white outline-none focus:border-[#ff6a00]/50"
+                  />
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <Label className="text-[9px] uppercase tracking-widest text-white/40">URL da capa</Label>
+                  <Input
+                    value={state.coverUrl}
+                    placeholder="Deixe vazio para usar a capa padrão"
+                    onChange={(e) => set({ coverUrl: e.target.value })}
+                    className="h-8 bg-black/40 border-white/10 text-white text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[9px] uppercase tracking-widest text-white/40">Texto do botão</Label>
+                  <Input
+                    value={state.ctaLabel}
+                    placeholder="Assinar agora"
+                    onChange={(e) => set({ ctaLabel: e.target.value })}
+                    className="h-8 bg-black/40 border-white/10 text-white text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[9px] uppercase tracking-widest text-white/40">Ordem de exibição</Label>
+                  <Input
+                    value={state.sortOrder}
+                    inputMode="numeric"
+                    onChange={(e) => set({ sortOrder: e.target.value.replace(/\D/g, "") })}
+                    className="h-8 w-24 bg-black/40 border-white/10 text-white text-xs"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2 md:col-span-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => set({ highlight: !state.highlight })}
+                    className={`h-8 border-white/10 text-[9px] uppercase tracking-widest ${state.highlight ? "bg-[#ff6a00]/15 text-[#ff6a00]" : "bg-white/5 text-white/40"}`}
+                  >
+                    <Zap className="mr-1.5 h-3 w-3" />
+                    {state.highlight ? "Em destaque" : "Sem destaque"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={resetMutation.isPending}
+                    onClick={() => {
+                      if (resetting === plan.plan) {
+                        resetMutation.mutate(plan.plan);
+                      } else {
+                        setResetting(plan.plan);
+                        toast.info("Clique novamente para restaurar os valores padrão deste plano.");
+                      }
+                    }}
+                    className="h-8 border-white/10 bg-white/5 text-[9px] uppercase tracking-widest text-white/50"
+                  >
+                    <RefreshCw className="mr-1.5 h-3 w-3" />
+                    {resetting === plan.plan ? "Confirmar restauração" : "Restaurar padrão"}
+                  </Button>
+                </div>
               </div>
-              <div className="w-full">
-                <Input
-                  value={state.coverUrl}
-                  placeholder="URL da imagem de capa (deixe vazio para usar a capa padrão)"
-                  onChange={(e) =>
-                    setDraft((d) => ({ ...d, [plan.plan]: { ...state, coverUrl: e.target.value } }))
-                  }
-                  className="h-8 bg-black/40 border-white/10 text-white text-xs"
-                />
-              </div>
-            </div>
+            </details>
           );
         })}
         <Button
