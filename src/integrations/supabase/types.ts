@@ -2112,6 +2112,74 @@ export type Database = {
         }
         Relationships: []
       }
+      fidelize_lifecycle_events: {
+        Row: {
+          cancel_result: Json
+          created_at: string
+          email: string | null
+          error_message: string | null
+          event_id: string | null
+          event_type: string
+          id: string
+          new_plan: string | null
+          payload: Json
+          previous_plan: string | null
+          provisioning_log_id: string | null
+          status: string
+          subscription_canceled: boolean
+          subscription_id: string | null
+          tenant_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          cancel_result?: Json
+          created_at?: string
+          email?: string | null
+          error_message?: string | null
+          event_id?: string | null
+          event_type: string
+          id?: string
+          new_plan?: string | null
+          payload?: Json
+          previous_plan?: string | null
+          provisioning_log_id?: string | null
+          status?: string
+          subscription_canceled?: boolean
+          subscription_id?: string | null
+          tenant_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          cancel_result?: Json
+          created_at?: string
+          email?: string | null
+          error_message?: string | null
+          event_id?: string | null
+          event_type?: string
+          id?: string
+          new_plan?: string | null
+          payload?: Json
+          previous_plan?: string | null
+          provisioning_log_id?: string | null
+          status?: string
+          subscription_canceled?: boolean
+          subscription_id?: string | null
+          tenant_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fidelize_lifecycle_events_provisioning_log_id_fkey"
+            columns: ["provisioning_log_id"]
+            isOneToOne: false
+            referencedRelation: "fidelize_provisioning_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fidelize_provisioning_logs: {
         Row: {
           created_at: string
@@ -2121,7 +2189,11 @@ export type Database = {
           fidelize_user_id: string | null
           id: string
           is_test: boolean
+          lifecycle_plan: string | null
+          lifecycle_status: string
           login_url: string | null
+          migrated_at: string | null
+          migrated_to_fidelize: boolean
           modules: Json
           order_id: string | null
           plan: string
@@ -2129,6 +2201,8 @@ export type Database = {
           response_payload: Json
           slug: string | null
           status: string
+          subscription_canceled_at: string | null
+          subscription_id: string | null
           tenant_id: string | null
           updated_at: string
           user_id: string | null
@@ -2141,7 +2215,11 @@ export type Database = {
           fidelize_user_id?: string | null
           id?: string
           is_test?: boolean
+          lifecycle_plan?: string | null
+          lifecycle_status?: string
           login_url?: string | null
+          migrated_at?: string | null
+          migrated_to_fidelize?: boolean
           modules?: Json
           order_id?: string | null
           plan: string
@@ -2149,6 +2227,8 @@ export type Database = {
           response_payload?: Json
           slug?: string | null
           status?: string
+          subscription_canceled_at?: string | null
+          subscription_id?: string | null
           tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
@@ -2161,7 +2241,11 @@ export type Database = {
           fidelize_user_id?: string | null
           id?: string
           is_test?: boolean
+          lifecycle_plan?: string | null
+          lifecycle_status?: string
           login_url?: string | null
+          migrated_at?: string | null
+          migrated_to_fidelize?: boolean
           modules?: Json
           order_id?: string | null
           plan?: string
@@ -2169,6 +2253,8 @@ export type Database = {
           response_payload?: Json
           slug?: string | null
           status?: string
+          subscription_canceled_at?: string | null
+          subscription_id?: string | null
           tenant_id?: string | null
           updated_at?: string
           user_id?: string | null

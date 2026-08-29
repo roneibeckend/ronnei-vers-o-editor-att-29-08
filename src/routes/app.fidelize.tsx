@@ -242,7 +242,41 @@ function FidelizePage() {
             <Mail className="h-3.5 w-3.5" />
             O reenvio vai para o e-mail usado na compra.
           </p>
+
+          {data.migratedToFidelize ? (
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+              <p className="flex items-center gap-2 font-semibold">
+                <ShieldAlert className="h-4 w-4 text-primary" />
+                Assinatura gerenciada pela Fidelize
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                {data.lifecycleStatus === "canceled"
+                  ? "Sua conta foi cancelada na Fidelize."
+                  : `Você alterou seu plano diretamente na Fidelize${
+                      data.lifecyclePlan ? ` (${fidelizePlanLabel(data.lifecyclePlan as never)})` : ""
+                    }.`}{" "}
+                {data.subscriptionCanceledAt
+                  ? "A cobrança recorrente aqui no Ronnei na Veia foi encerrada automaticamente — você não será cobrado em duplicidade."
+                  : "A cobrança recorrente aqui no Ronnei na Veia foi encerrada."}{" "}
+                A partir de agora, a Fidelize é responsável pela sua assinatura, cobranças e mudanças de plano.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
+              <p className="flex items-center gap-2 font-semibold text-amber-700">
+                <ShieldAlert className="h-4 w-4" />
+                Antes de mudar de plano na Fidelize
+              </p>
+              <p className="mt-1 text-amber-700/90">
+                Se você fizer upgrade, downgrade ou cancelar diretamente na Fidelize, sua assinatura contratada aqui
+                será <strong>encerrada automaticamente</strong> e a cobrança recorrente do Ronnei na Veia deixa de
+                existir. A partir daí, a Fidelize passa a ser responsável pela sua assinatura e pelas novas cobranças —
+                sem cobrança duplicada.
+              </p>
+            </div>
+          )}
         </CardContent>
+
 
       </Card>
     </div>
