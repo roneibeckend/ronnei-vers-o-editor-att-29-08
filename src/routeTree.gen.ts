@@ -31,6 +31,7 @@ import { Route as AppNotificacoesRouteImport } from './routes/app.notificacoes'
 import { Route as AppMinhasConsultoriasRouteImport } from './routes/app.minhas-consultorias'
 import { Route as AppMateriaisRouteImport } from './routes/app.materiais'
 import { Route as AppFinanceiroRouteImport } from './routes/app.financeiro'
+import { Route as AppFidelizeRouteImport } from './routes/app.fidelize'
 import { Route as AppCursosRouteImport } from './routes/app.cursos'
 import { Route as AppConsultoriasRouteImport } from './routes/app.consultorias'
 import { Route as AppCertificadosRouteImport } from './routes/app.certificados'
@@ -191,6 +192,11 @@ const AppMateriaisRoute = AppMateriaisRouteImport.update({
 const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFidelizeRoute = AppFidelizeRouteImport.update({
+  id: '/fidelize',
+  path: '/fidelize',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCursosRoute = AppCursosRouteImport.update({
@@ -497,6 +503,7 @@ export interface FileRoutesByFullPath {
   '/app/certificados': typeof AppCertificadosRoute
   '/app/consultorias': typeof AppConsultoriasRoute
   '/app/cursos': typeof AppCursosRouteWithChildren
+  '/app/fidelize': typeof AppFidelizeRoute
   '/app/financeiro': typeof AppFinanceiroRoute
   '/app/materiais': typeof AppMateriaisRoute
   '/app/minhas-consultorias': typeof AppMinhasConsultoriasRoute
@@ -568,6 +575,7 @@ export interface FileRoutesByTo {
   '/app/ao-vivo': typeof AppAoVivoRoute
   '/app/certificados': typeof AppCertificadosRoute
   '/app/consultorias': typeof AppConsultoriasRoute
+  '/app/fidelize': typeof AppFidelizeRoute
   '/app/financeiro': typeof AppFinanceiroRoute
   '/app/materiais': typeof AppMateriaisRoute
   '/app/minhas-consultorias': typeof AppMinhasConsultoriasRoute
@@ -644,6 +652,7 @@ export interface FileRoutesById {
   '/app/certificados': typeof AppCertificadosRoute
   '/app/consultorias': typeof AppConsultoriasRoute
   '/app/cursos': typeof AppCursosRouteWithChildren
+  '/app/fidelize': typeof AppFidelizeRoute
   '/app/financeiro': typeof AppFinanceiroRoute
   '/app/materiais': typeof AppMateriaisRoute
   '/app/minhas-consultorias': typeof AppMinhasConsultoriasRoute
@@ -721,6 +730,7 @@ export interface FileRouteTypes {
     | '/app/certificados'
     | '/app/consultorias'
     | '/app/cursos'
+    | '/app/fidelize'
     | '/app/financeiro'
     | '/app/materiais'
     | '/app/minhas-consultorias'
@@ -792,6 +802,7 @@ export interface FileRouteTypes {
     | '/app/ao-vivo'
     | '/app/certificados'
     | '/app/consultorias'
+    | '/app/fidelize'
     | '/app/financeiro'
     | '/app/materiais'
     | '/app/minhas-consultorias'
@@ -867,6 +878,7 @@ export interface FileRouteTypes {
     | '/app/certificados'
     | '/app/consultorias'
     | '/app/cursos'
+    | '/app/fidelize'
     | '/app/financeiro'
     | '/app/materiais'
     | '/app/minhas-consultorias'
@@ -1082,6 +1094,13 @@ declare module '@tanstack/react-router' {
       path: '/financeiro'
       fullPath: '/app/financeiro'
       preLoaderRoute: typeof AppFinanceiroRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/fidelize': {
+      id: '/app/fidelize'
+      path: '/fidelize'
+      fullPath: '/app/fidelize'
+      preLoaderRoute: typeof AppFidelizeRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/cursos': {
@@ -1558,6 +1577,7 @@ interface AppRouteChildren {
   AppCertificadosRoute: typeof AppCertificadosRoute
   AppConsultoriasRoute: typeof AppConsultoriasRoute
   AppCursosRoute: typeof AppCursosRouteWithChildren
+  AppFidelizeRoute: typeof AppFidelizeRoute
   AppFinanceiroRoute: typeof AppFinanceiroRoute
   AppMateriaisRoute: typeof AppMateriaisRoute
   AppMinhasConsultoriasRoute: typeof AppMinhasConsultoriasRoute
@@ -1576,6 +1596,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCertificadosRoute: AppCertificadosRoute,
   AppConsultoriasRoute: AppConsultoriasRoute,
   AppCursosRoute: AppCursosRouteWithChildren,
+  AppFidelizeRoute: AppFidelizeRoute,
   AppFinanceiroRoute: AppFinanceiroRoute,
   AppMateriaisRoute: AppMateriaisRoute,
   AppMinhasConsultoriasRoute: AppMinhasConsultoriasRoute,

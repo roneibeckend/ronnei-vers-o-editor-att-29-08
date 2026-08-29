@@ -16,7 +16,7 @@ export const createAsaasPaymentLink = createServerFn({ method: "POST" })
   .validator((data: unknown) => z.object({
     products: z.array(z.object({
       productId: z.string(),
-      productType: z.enum(['course', 'ebook']),
+      productType: z.enum(['course', 'ebook', 'fidelize']),
       title: z.string(),
       description: z.string().optional().nullable(),
       value: z.number().optional(),
@@ -35,8 +35,21 @@ export const createAsaasPaymentLink = createServerFn({ method: "POST" })
     try {
       // SECURITY: preços autoritativos vêm do banco, nunca do cliente.
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const pricedProducts: { productId: string; productType: 'course' | 'ebook'; title: string; value: number }[] = [];
+      const pricedProducts: { productId: string; productType: 'course' | 'ebook' | 'fidelize'; title: string; value: number }[] = [];
       for (const p of data.products) {
+        // Planos Fidelize não vivem no catálogo de conteúdo: preço autoritativo do catálogo de planos.
+        if (p.productType === 'fidelize') {
+          const { FIDELIZE_PLAN_CATALOG, isFidelizePlan } = await import("./fidelize-plans");
+          if (!isFidelizePlan(p.productId)) throw new Error("Plano Fidelize inválido.");
+          const planInfo = FIDELIZE_PLAN_CATALOG[p.productId];
+          pricedProducts.push({
+            productId: p.productId,
+            productType: 'fidelize',
+            title: planInfo.label,
+            value: planInfo.price,
+          });
+          continue;
+        }
         const table = p.productType === 'course' ? 'courses' : 'ebooks';
         const { data: row, error: priceError } = await supabaseAdmin
           .from(table)
@@ -98,6 +111,9 @@ export const createAsaasPaymentLink = createServerFn({ method: "POST" })
 
       // 100% DE DESCONTO: libera o acesso imediatamente, sem gerar cobrança no Asaas.
       if (totalValue <= 0) {
+        if (pricedProducts.some((p) => p.productType === 'fidelize')) {
+          throw new Error("Planos Fidelize não podem ser liberados gratuitamente.");
+        }
         for (const p of pricedProducts) {
           await grantAccess(p.productType, p.productId, context.userId);
         }

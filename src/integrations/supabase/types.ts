@@ -2056,6 +2056,60 @@ export type Database = {
         }
         Relationships: []
       }
+      fidelize_provisioning_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          fidelize_user_id: string | null
+          id: string
+          login_url: string | null
+          modules: Json
+          order_id: string | null
+          plan: string
+          request_payload: Json
+          response_payload: Json
+          slug: string | null
+          status: string
+          tenant_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          fidelize_user_id?: string | null
+          id?: string
+          login_url?: string | null
+          modules?: Json
+          order_id?: string | null
+          plan: string
+          request_payload?: Json
+          response_payload?: Json
+          slug?: string | null
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          fidelize_user_id?: string | null
+          id?: string
+          login_url?: string | null
+          modules?: Json
+          order_id?: string | null
+          plan?: string
+          request_payload?: Json
+          response_payload?: Json
+          slug?: string | null
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       financial_costs: {
         Row: {
           created_at: string

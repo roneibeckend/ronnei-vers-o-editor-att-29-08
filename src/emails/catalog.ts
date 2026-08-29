@@ -268,6 +268,20 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
       f("link", "URL da aula", "url", `${DASHBOARD}/aulas-ao-vivo`, true, ["access_link"]),
     ],
   },
+  {
+    event: "fidelize_access",
+    label: "Acesso à Fidelize liberado",
+    category: "Acesso",
+    description: "Conta criada automaticamente na Fidelize após o pagamento aprovado.",
+    fields: [
+      NAME(),
+      f("plan", "Plano contratado", "text", "Fidelize Pro", true, ["plano", "product_name"]),
+      f("login", "Login", "email", "joao@email.com", true, ["email"]),
+      f("temporary_password", "Senha temporária", "text", "Fd8x2Kq1", true, ["senha_temporaria"]),
+      f("login_url", "Link de acesso", "url", "https://app.fidelize.com.br/login", true, ["link", "url"]),
+      f("modules", "Módulos liberados", "text", "Cartão fidelidade, Campanhas, Relatórios", false, ["modulos"]),
+    ],
+  },
 ];
 
 export const EMAIL_CATALOG_MAP: Record<string, EmailCatalogEntry> = Object.fromEntries(
