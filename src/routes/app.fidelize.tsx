@@ -44,12 +44,12 @@ export const Route = createFileRoute("/app/fidelize")({
       {
         name: "description",
         content:
-          "Acompanhe seu plano Fidelize, data de ativação, status da conta e módulos liberados, e acesse a plataforma em um clique.",
+          "Acompanhe seu plano Fidelize, data de ativação, status da assinatura e acesse a plataforma em um clique.",
       },
       { property: "og:title", content: "Minha conta Fidelize | Ronnei na Veia" },
       {
         property: "og:description",
-        content: "Plano contratado, status da conta e módulos liberados da sua conta Fidelize.",
+        content: "Plano contratado, status da assinatura e acesso rápido à sua conta Fidelize.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
