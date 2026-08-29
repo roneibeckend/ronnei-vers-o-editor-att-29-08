@@ -27,10 +27,12 @@ export function ModuleMaterialsManager({
   moduleId,
   courseId,
   isPersisted,
+  lessonId = null,
 }: {
   moduleId: string;
   courseId: string;
   isPersisted: boolean;
+  lessonId?: string | null;
 }) {
   const [items, setItems] = useState<MaterialRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,16 +44,17 @@ export function ModuleMaterialsManager({
     if (isPersisted) load();
     else setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [moduleId, isPersisted]);
+  }, [moduleId, lessonId, isPersisted]);
 
   async function load() {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from("course_module_materials" as any)
         .select("id, title, file_url, file_name, file_size, mime_type, order_index")
-        .eq("module_id", moduleId)
-        .order("order_index");
+        .eq("module_id", moduleId);
+      query = lessonId ? query.eq("lesson_id", lessonId) : query.is("lesson_id", null);
+      const { data, error } = await query.order("order_index");
       if (error) throw error;
       setItems((data as any) || []);
     } catch (e: any) {
@@ -74,7 +77,9 @@ export function ModuleMaterialsManager({
     try {
       setUploading(true);
       const ext = file.name.split(".").pop() || "bin";
-      const path = `module-materials/${moduleId}/${crypto.randomUUID()}.${ext}`;
+      const path = lessonId
+        ? `lesson-materials/${lessonId}/${crypto.randomUUID()}.${ext}`
+        : `module-materials/${moduleId}/${crypto.randomUUID()}.${ext}`;
 
       const { error: upErr } = await supabase.storage
         .from(BUCKET)
@@ -89,6 +94,7 @@ export function ModuleMaterialsManager({
         .from("course_module_materials" as any)
         .insert({
           module_id: moduleId,
+          lesson_id: lessonId,
           course_id: courseId,
           title: title.trim() || file.name,
           file_url: path,
@@ -142,20 +148,22 @@ export function ModuleMaterialsManager({
       <div className="flex items-center gap-2">
         <Paperclip className="h-4 w-4 text-[#ff6a00]" />
         <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">
-          Materiais do módulo (PDF, DOCX, ZIP…)
+          {lessonId ? "Materiais da aula (PDF, DOCX, ZIP…)" : "Materiais do módulo (PDF, DOCX, ZIP…)"}
         </span>
       </div>
 
       {!isPersisted ? (
         <p className="text-xs text-white/40">
-          Salve o módulo primeiro para poder anexar arquivos.
+          {lessonId ? "Salve a aula primeiro para poder anexar arquivos." : "Salve o módulo primeiro para poder anexar arquivos."}
         </p>
       ) : (
         <>
           {loading ? (
             <div className="py-3 text-center text-xs text-white/40">Carregando anexos...</div>
           ) : items.length === 0 ? (
-            <p className="text-xs text-white/40">Nenhum anexo neste módulo ainda.</p>
+            <p className="text-xs text-white/40">
+              {lessonId ? "Nenhum anexo nesta aula ainda." : "Nenhum anexo neste módulo ainda."}
+            </p>
           ) : (
             <ul className="space-y-1.5">
               {items.map((item) => (

@@ -16,25 +16,32 @@ function formatSize(bytes?: number | null) {
   return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
-export function ModuleMaterialsList({ moduleId }: { moduleId: string }) {
+export function ModuleMaterialsList({
+  moduleId,
+  lessonId = null,
+}: {
+  moduleId?: string;
+  lessonId?: string | null;
+}) {
   const [items, setItems] = useState<Item[]>([]);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     (async () => {
-      const { data } = await supabase
+      let query = supabase
         .from("course_module_materials" as any)
         .select("id, title, file_name, file_size")
-        .eq("module_id", moduleId)
-        .eq("is_active", true)
-        .order("order_index");
+        .eq("is_active", true);
+      if (lessonId) query = query.eq("lesson_id", lessonId);
+      else if (moduleId) query = query.eq("module_id", moduleId).is("lesson_id", null);
+      const { data } = await query.order("order_index");
       if (active) setItems(((data as any) || []) as Item[]);
     })();
     return () => {
       active = false;
     };
-  }, [moduleId]);
+  }, [moduleId, lessonId]);
 
   if (items.length === 0) return null;
 
@@ -54,7 +61,7 @@ export function ModuleMaterialsList({ moduleId }: { moduleId: string }) {
   return (
     <div className="space-y-1 px-2">
       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-        Materiais do módulo
+        {lessonId ? "Materiais da aula" : "Materiais do módulo"}
       </p>
       <ul className="space-y-1">
         {items.map((item) => (
