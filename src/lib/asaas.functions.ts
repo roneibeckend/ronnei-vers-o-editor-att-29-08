@@ -148,7 +148,9 @@ export const createAsaasPaymentLink = createServerFn({ method: "POST" })
           description: `Acesso a: ${rawTitles.substring(0, 450)}`, // Descrição pode ser mais permissiva, mas limitamos tamanho
           value: totalValue,
           billingType: 'UNDEFINED',
-          chargeType: data.paymentType === 'recurring' ? 'RECURRENT' : 'DETACHED',
+          // Planos Fidelize são sempre assinatura mensal recorrente.
+          chargeType: isRecurring ? 'RECURRENT' : 'DETACHED',
+          ...(isRecurring ? { subscriptionCycle: 'MONTHLY' } : {}),
           dueDateLimitDays: data.dueDays || 3,
           endDate: null,
           notificationEnabled: true,
