@@ -3883,27 +3883,7 @@ export type Database = {
       }
     }
     Views: {
-      course_feedback_public: {
-        Row: {
-          comment: string | null
-          created_at: string | null
-          id: string | null
-          rating: number | null
-        }
-        Insert: {
-          comment?: string | null
-          created_at?: string | null
-          id?: string | null
-          rating?: number | null
-        }
-        Update: {
-          comment?: string | null
-          created_at?: string | null
-          id?: string | null
-          rating?: number | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       acquire_asaas_webhook_claim: {
