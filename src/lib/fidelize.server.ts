@@ -39,9 +39,10 @@ function normalizeBaseUrl(url: string) {
   return url.trim().replace(/\/+$/, "");
 }
 
-/** Lê a configuração salva da integração Fidelize. */
+/** Lê a configuração salva da integração Fidelize (descriptografando a API Key). */
 export async function getFidelizeConfig(): Promise<FidelizeConfig | null> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { decryptSecret } = await import("./fidelize-crypto.server");
   const { data } = await supabaseAdmin
     .from("integrations")
     .select("status, credentials, settings")
@@ -53,11 +54,22 @@ export async function getFidelizeConfig(): Promise<FidelizeConfig | null> {
   const credentials = (data.credentials || {}) as Record<string, string>;
   const settings = (data.settings || {}) as Record<string, string>;
   const baseUrl = settings["baseUrl"] || "";
-  const apiKey = credentials["apiKey"] || "";
+  const apiKey = await decryptSecret(credentials["apiKey"] || "");
   if (!baseUrl || !apiKey) return null;
 
   return { baseUrl: normalizeBaseUrl(baseUrl), apiKey, status: data.status ?? false };
 }
+
+/**
+ * Resolve o caminho de um endpoint respeitando a base informada pelo admin.
+ * A base pode ou não já conter `/api/public/integrations`.
+ */
+export function resolveFidelizePath(baseUrl: string, name: string): string {
+  const clean = normalizeBaseUrl(baseUrl);
+  const suffix = name.startsWith("/") ? name : `/${name}`;
+  return /\/api\/public\/integrations$/i.test(clean) ? suffix : `/api/public/integrations${suffix}`;
+}
+
 
 /**
  * Executa uma chamada autenticada na API do Fidelize com logging completo.
