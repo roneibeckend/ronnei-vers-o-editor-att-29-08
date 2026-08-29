@@ -684,10 +684,6 @@ const consultationCompleted: Builder = (d) =>
 
 /* ========================= FIDELIZE (acesso) =========================== */
 const fidelizeAccess: Builder = (d) => {
-  const modules = val(d, ["modules", "modulos"], "")
-    .split(/[,;]\s*/)
-    .filter(Boolean);
-
   return build({
     subject: "Seu acesso à Fidelize foi liberado",
     preview: "Sua conta na Fidelize está pronta — veja seu login e senha temporária.",
@@ -705,15 +701,12 @@ const fidelizeAccess: Builder = (d) => {
           { label: "Senha temporária", value: val(d, ["temporary_password", "senha_temporaria"], "-") },
         ],
       },
-      ...(modules.length
-        ? [
-            {
-              type: "details" as const,
-              title: "Módulos liberados",
-              rows: modules.map((m, i) => ({ label: `Módulo ${i + 1}`, value: m })),
-            },
-          ]
-        : []),
+      {
+        type: "text" as const,
+        text:
+          "<strong>Primeiros passos:</strong> entre com o login acima, cadastre seu estabelecimento e" +
+          " comece a cadastrar clientes para ativar o programa de fidelidade.",
+      },
       { type: "note", text: "Por segurança, altere sua senha temporária no primeiro acesso." },
     ],
     cta: { label: "Acessar a Fidelize", url: link(d, ["login_url", "link", "url"], `${LINKS.dashboard}/fidelize`) },
