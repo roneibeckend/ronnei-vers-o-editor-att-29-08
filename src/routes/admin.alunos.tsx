@@ -225,6 +225,29 @@ function AdminAlunosPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-white/40">{p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : "—"}</td>
+                  <td className="px-6 py-4">
+                    {p.fidelize ? (
+                      <div className="flex flex-col gap-1">
+                        <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-[#ff6a00]/10 text-[#ff6a00] w-fit">
+                          {p.fidelize.plan || "Fidelize"}
+                        </span>
+                        <span className={"text-[10px] font-medium " + (
+                          p.fidelize.subscription_status === 'active' ? 'text-emerald-400'
+                          : p.fidelize.subscription_status === 'canceled' ? 'text-red-400'
+                          : p.fidelize.subscription_status === 'overdue' ? 'text-amber-400'
+                          : 'text-white/40'
+                        )}>
+                          {p.fidelize.subscription_status === 'active' ? 'Ativa'
+                          : p.fidelize.subscription_status === 'canceled' ? 'Cancelada'
+                          : p.fidelize.subscription_status === 'overdue' ? 'Vencida'
+                          : p.fidelize.status === 'success' ? 'Ativa'
+                          : 'Pendente'}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-white/25">—</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Link
