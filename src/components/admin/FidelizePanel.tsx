@@ -666,7 +666,7 @@ export function FidelizePanel() {
 function FidelizePlansCard() {
   const listPlans = useServerFn(listFidelizePlansAdmin);
   const savePlans = useServerFn(saveFidelizePlans);
-  const [draft, setDraft] = useState<Record<string, { price: string; active: boolean }>>({});
+  const [draft, setDraft] = useState<Record<string, { price: string; active: boolean; coverUrl: string }>>({});
 
   const { data: plans, refetch } = useQuery({
     queryKey: ["fidelize_plans_admin"],
@@ -676,7 +676,12 @@ function FidelizePlansCard() {
   useEffect(() => {
     if (plans) {
       setDraft(
-        Object.fromEntries(plans.map((p) => [p.plan, { price: String(p.price), active: p.active }])),
+        Object.fromEntries(
+          plans.map((p) => [
+            p.plan,
+            { price: String(p.price), active: p.active, coverUrl: p.cover?.startsWith("http") ? p.cover : "" },
+          ]),
+        ),
       );
     }
   }, [plans]);
@@ -689,6 +694,7 @@ function FidelizePlansCard() {
             plan: p.plan,
             price: Number(String(draft[p.plan]?.price ?? p.price).replace(",", ".")),
             active: draft[p.plan]?.active ?? p.active,
+            coverUrl: draft[p.plan]?.coverUrl ?? "",
           })),
         },
       }),
@@ -711,12 +717,21 @@ function FidelizePlansCard() {
       </CardHeader>
       <CardContent className="space-y-3">
         {(plans || []).map((plan) => {
-          const state = draft[plan.plan] || { price: String(plan.price), active: plan.active };
+          const state =
+            draft[plan.plan] || { price: String(plan.price), active: plan.active, coverUrl: "" };
           return (
             <div
               key={plan.plan}
               className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/5 bg-black/40 p-3"
             >
+              <img
+                src={state.coverUrl || plan.cover}
+                alt={`Capa do plano ${plan.label}`}
+                loading="lazy"
+                width={1024}
+                height={576}
+                className="h-14 w-24 shrink-0 rounded-md object-cover"
+              />
               <div className="min-w-[180px]">
                 <p className="text-xs font-bold text-white">{plan.label}</p>
                 <p className="text-[10px] text-white/35">
@@ -741,6 +756,16 @@ function FidelizePlansCard() {
                 >
                   {state.active ? "Ativo" : "Inativo"}
                 </Button>
+              </div>
+              <div className="w-full">
+                <Input
+                  value={state.coverUrl}
+                  placeholder="URL da imagem de capa (deixe vazio para usar a capa padrão)"
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, [plan.plan]: { ...state, coverUrl: e.target.value } }))
+                  }
+                  className="h-8 bg-black/40 border-white/10 text-white text-xs"
+                />
               </div>
             </div>
           );
