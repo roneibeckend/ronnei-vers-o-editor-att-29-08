@@ -129,7 +129,7 @@ export async function fidelizeRequest<T = unknown>(
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
-        Authorization: `Bearer ${config.apiKey}`,
+        // Autenticação exclusivamente via x-api-key (sem Authorization Bearer).
         "x-api-key": config.apiKey,
       },
       ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
