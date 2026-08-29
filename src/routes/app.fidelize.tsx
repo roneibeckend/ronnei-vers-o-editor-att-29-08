@@ -289,12 +289,18 @@ function FidelizePage() {
   const SubscriptionIcon = subscription.icon;
   const isCanceled = subscriptionState === "canceled";
   const isOverdue = subscriptionState === "overdue";
-  const modules =
-    data.modules.length > 0
-      ? data.modules
-      : isFidelizePlan(data.plan)
-        ? FIDELIZE_PLAN_CATALOG[data.plan].modules
-        : [];
+  const planInfo = isFidelizePlan(data.plan) ? FIDELIZE_PLAN_CATALOG[data.plan] : null;
+  const planFeatures = data.modules.length > 0 ? data.modules : (planInfo?.modules ?? []);
+  const nextPlan =
+    planInfo?.plan === "starter"
+      ? FIDELIZE_PLAN_CATALOG.pro
+      : planInfo?.plan === "pro"
+        ? FIDELIZE_PLAN_CATALOG.premium
+        : null;
+  const nextPlanExtras = nextPlan
+    ? nextPlan.modules.filter((m) => !planFeatures.some((f) => f.toLowerCase() === m.toLowerCase()))
+    : [];
+
 
   return (
     <div className="space-y-6">
