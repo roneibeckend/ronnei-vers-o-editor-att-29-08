@@ -17,6 +17,8 @@ import { CourseCardSkeleton } from "@/components/ui/skeleton";
 import { PostPurchaseOffer } from "@/components/platform/PostPurchaseOffer";
 import { usePostPurchaseOfferStore } from "@/hooks/use-post-purchase-offer";
 import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
+import { FidelizeOffer } from "@/components/platform/FidelizeOffer";
+import { getMyFidelizeAccount } from "@/lib/fidelize-account.functions";
 import { VISIBLE_STATUSES, isComingSoon, COMING_SOON_NOTICE } from "@/lib/product-status";
 
 export const Route = createFileRoute("/app/")({
@@ -261,6 +263,8 @@ function Dashboard() {
           </div>
         </section>
       )}
+
+      <FidelizeHomeSection />
 
       <section id="novidades">
         <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:justify-between">
@@ -514,5 +518,30 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
       </div>
     </article>
     </>
+  );
+}
+
+function FidelizeHomeSection() {
+  const fetchAccount = useServerFn(getMyFidelizeAccount);
+  const { data: account, isLoading } = useQuery({
+    queryKey: ["fidelize-account"],
+    queryFn: () => fetchAccount(),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  if (isLoading || account) return null;
+
+  return (
+    <section id="fidelize">
+      <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:justify-between">
+        <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight break-words min-w-0">
+          Fidelize seus clientes
+        </h2>
+        <Link to="/app/fidelize" className="shrink-0 text-sm font-medium text-gold hover:underline">
+          Ver detalhes
+        </Link>
+      </div>
+      <FidelizeOffer compact />
+    </section>
   );
 }
