@@ -238,8 +238,8 @@ export async function fidelizeRequest<T = unknown>(
 }
 
 /** Ping de conexão: tenta os endpoints mais comuns até um responder. */
-export async function fidelizePing(config?: FidelizeConfig, testPath?: string) {
-  const candidates = testPath && testPath.trim() ? [testPath.trim()] : ["/health", "/ping", "/me", "/"];
+export async function fidelizePing(config?: FidelizeConfig) {
+  const candidates = ["/health", "/ping", "/me", "/"];
   let last: FidelizeCallResult | null = null;
 
   for (const path of candidates) {
@@ -255,13 +255,10 @@ export async function fidelizePing(config?: FidelizeConfig, testPath?: string) {
 
 /* ===================== Diagnóstico completo da integração ===================== */
 
-/** Telefone fictício usado apenas para sondar o endpoint de consulta de cliente. */
-const FIDELIZE_DIAGNOSTIC_PHONE = "00000000000";
-
 export type FidelizeCheckState = "ok" | "auth_error" | "unavailable" | "error";
 
 export type FidelizeCheck = {
-  key: "health" | "auth" | "provision-account" | "customer";
+  key: "health" | "auth" | "provision-account" | "magic-link";
   label: string;
   state: FidelizeCheckState;
   httpCode: number;
@@ -299,12 +296,10 @@ const STATE_LABEL: Record<FidelizeCheckState, string> = {
 };
 
 /**
- * Testa a conexão real: API Key, endpoint /provision-account e endpoint /customer.
+ * Testa a conexão real usando somente a URL base salva:
+ * /health, /ping-auth, /provision-account e /magic-link.
  */
-export async function runFidelizeDiagnostics(
-  config: FidelizeConfig,
-  testPath?: string,
-): Promise<FidelizeDiagnostics> {
+export async function runFidelizeDiagnostics(config: FidelizeConfig): Promise<FidelizeDiagnostics> {
   const started = Date.now();
   const checks: FidelizeCheck[] = [];
   let apiVersion: string | null = null;
@@ -338,15 +333,15 @@ export async function runFidelizeDiagnostics(
     return state;
   };
 
-  const healthPath = testPath?.trim() || resolveFidelizePath(config.baseUrl, "/health");
-  await probe("health", "API online (/health)", healthPath, "GET", true);
+  await probe("health", "API online (/health)", resolveFidelizePath(config.baseUrl, "/health"), "GET", true);
   await probe("auth", "Autenticação (/ping-auth)", resolveFidelizePath(config.baseUrl, "/ping-auth"), "GET");
 
   await probe("provision-account", "Provisionamento (/provision-account)", resolveFidelizePath(config.baseUrl, "/provision-account"), "POST");
   await probe(
-    "customer",
-    "Clientes (/customer-by-phone)",
-    resolveFidelizePath(config.baseUrl, `/customer-by-phone/${FIDELIZE_DIAGNOSTIC_PHONE}`),
+    "magic-link",
+    "Login automático (/magic-link)",
+    resolveFidelizePath(config.baseUrl, "/magic-link"),
+    "POST",
   );
 
   const authFailed = checks.some((c) => c.state === "auth_error");

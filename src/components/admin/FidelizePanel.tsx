@@ -80,7 +80,6 @@ export function FidelizePanel() {
 
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [testPath, setTestPath] = useState("");
   const [status, setStatus] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
   const [isTesting, setIsTesting] = useState(false);
@@ -114,7 +113,6 @@ export function FidelizePanel() {
   useEffect(() => {
     if (integration) {
       setBaseUrl(integration.baseUrl || "");
-      setTestPath(integration.testPath || "");
       setStatus(Boolean(integration.status));
     }
   }, [integration]);
@@ -122,7 +120,7 @@ export function FidelizePanel() {
   const urlValid = /^https?:\/\/[^\s]+\.[^\s]+/i.test(baseUrl.trim());
 
   const saveMutation = useMutation({
-    mutationFn: () => saveFn({ data: { baseUrl: baseUrl.trim(), apiKey, testPath, status } }),
+    mutationFn: () => saveFn({ data: { baseUrl: baseUrl.trim(), apiKey, status } }),
     onSuccess: () => {
       toast.success("Configurações do Fidelize salvas.");
       setApiKey("");
@@ -136,7 +134,7 @@ export function FidelizePanel() {
     try {
       setIsTesting(true);
       setTestResult(null);
-      const result = await testFn({ data: { baseUrl: baseUrl.trim(), apiKey, testPath } });
+      const result = await testFn({ data: { baseUrl: baseUrl.trim(), apiKey } });
       setTestResult(result);
       if (result.overall === "connected") toast.success(result.message);
       else toast.error(result.message);
@@ -302,7 +300,8 @@ export function FidelizePanel() {
                 <p className="text-[10px] text-white/35">
                   Exemplo: <code className="text-white/60">{URL_EXAMPLE}</code> — usada para{" "}
                   <code className="text-white/50">/provision-account</code>,{" "}
-                  <code className="text-white/50">/customer</code> e <code className="text-white/50">/health</code>.
+                  <code className="text-white/50">/magic-link</code>,{" "}
+                  <code className="text-white/50">/ping-auth</code> e <code className="text-white/50">/health</code>.
                 </p>
                 {baseUrl && !urlValid && (
                   <p className="text-[10px] text-red-400">URL inválida. Use o formato https://dominio.com/api/public/integrations</p>
@@ -327,17 +326,6 @@ export function FidelizePanel() {
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-[10px] uppercase tracking-widest text-white/50 flex items-center gap-2">
-                  <Terminal className="h-3 w-3" /> Endpoint de health (opcional)
-                </Label>
-                <Input
-                  value={testPath}
-                  onChange={(e) => setTestPath(e.target.value)}
-                  placeholder="/health (padrão)"
-                  className="bg-black/40 border-white/10 text-white"
-                />
-              </div>
 
               <div className="flex items-center justify-between rounded-lg border border-white/5 bg-black/40 p-3">
                 <div>

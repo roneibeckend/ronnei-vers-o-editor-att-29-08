@@ -29,7 +29,6 @@ export const getFidelizeIntegration = createServerFn({ method: "GET" })
         id: null,
         status: false,
         baseUrl: "",
-        testPath: "",
         hasApiKey: false,
         maskedApiKey: "",
         lastCheck: null as any,
@@ -45,7 +44,6 @@ export const getFidelizeIntegration = createServerFn({ method: "GET" })
       id: data.id,
       status: data.status ?? false,
       baseUrl: settings["baseUrl"] || "",
-      testPath: settings["testPath"] || "",
       hasApiKey: apiKey.trim().length > 3,
       maskedApiKey: maskApiKey(apiKey),
       lastCheck: (settings["lastCheck"] as any) ?? null,
@@ -64,7 +62,6 @@ export const saveFidelizeIntegration = createServerFn({ method: "POST" })
           .url("Informe uma URL válida, ex.: https://afidelize.seudominio.com/api/public/integrations")
           .refine((v) => /^https?:\/\//i.test(v), "A URL deve começar com http:// ou https://"),
         apiKey: z.string().optional().default(""),
-        testPath: z.string().optional().default(""),
         status: z.boolean(),
       })
       .parse(data),
@@ -94,7 +91,6 @@ export const saveFidelizeIntegration = createServerFn({ method: "POST" })
       settings: {
         ...((current?.settings || {}) as Record<string, unknown>),
         baseUrl: data.baseUrl.trim().replace(/\/+$/, ""),
-        testPath: data.testPath.trim(),
       },
       updated_at: new Date().toISOString(),
     };
@@ -126,7 +122,6 @@ export const testFidelizeConnection = createServerFn({ method: "POST" })
       .object({
         baseUrl: z.string().optional(),
         apiKey: z.string().optional(),
-        testPath: z.string().optional(),
       })
       .parse(data ?? {}),
   )
@@ -150,7 +145,7 @@ export const testFidelizeConnection = createServerFn({ method: "POST" })
       };
     }
 
-    const result = await runFidelizeDiagnostics({ baseUrl, apiKey, status: true }, data.testPath);
+    const result = await runFidelizeDiagnostics({ baseUrl, apiKey, status: true });
 
     // Persiste o último resultado para o selo/dashboard.
     const { data: current } = await supabaseAdmin
