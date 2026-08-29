@@ -496,44 +496,8 @@ function FidelizePage() {
             </div>
           )}
 
-          {(planInfo || planFeatures.length > 0) && (
-            <div className="rounded-xl border p-4">
-              <p className="text-sm font-semibold">O que o seu plano faz por você</p>
-              {planInfo?.description ? (
-                <p className="mt-1 text-sm text-muted-foreground">{planInfo.description}</p>
-              ) : null}
-              {planFeatures.length > 0 ? (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Inclui {planFeatures.slice(0, -1).join(", ")}
-                  {planFeatures.length > 1 ? " e " : ""}
-                  {planFeatures[planFeatures.length - 1]}.
-                </p>
-              ) : null}
-            </div>
-          )}
 
-          {nextPlan && nextPlanExtras.length > 0 && (
-            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-              <p className="text-sm font-semibold">
-                Dá para ir além com o {nextPlan.label}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {nextPlan.description} Além do que você já tem, o plano libera{" "}
-                {nextPlanExtras.slice(0, -1).join(", ")}
-                {nextPlanExtras.length > 1 ? " e " : ""}
-                {nextPlanExtras[nextPlanExtras.length - 1]}.
-              </p>
-              <Button
-                variant="outline"
-                className="mt-3 w-full sm:w-auto"
-                disabled={opening || data.status !== "success"}
-                onClick={handleAccess}
-              >
-                Fazer upgrade na Fidelize
-                <ExternalLink className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          )}
+
 
 
           <div className="flex flex-col gap-2 sm:flex-row">
