@@ -39,6 +39,7 @@ import { Route as AppConsultoriasRouteImport } from './routes/app.consultorias'
 import { Route as AppCertificadosRouteImport } from './routes/app.certificados'
 import { Route as AppAoVivoRouteImport } from './routes/app.ao-vivo'
 import { Route as AppAfiliadosRouteImport } from './routes/app.afiliados'
+import { Route as ApiTmpHibpRouteImport } from './routes/api/tmp-hibp'
 import { Route as ApiMaterialDownloadRouteImport } from './routes/api.material-download'
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminSuporteRouteImport } from './routes/admin.suporte'
@@ -237,6 +238,11 @@ const AppAfiliadosRoute = AppAfiliadosRouteImport.update({
   id: '/afiliados',
   path: '/afiliados',
   getParentRoute: () => AppRoute,
+} as any)
+const ApiTmpHibpRoute = ApiTmpHibpRouteImport.update({
+  id: '/api/tmp-hibp',
+  path: '/api/tmp-hibp',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMaterialDownloadRoute = ApiMaterialDownloadRouteImport.update({
   id: '/api/material-download',
@@ -524,6 +530,7 @@ export interface FileRoutesByFullPath {
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/api/material-download': typeof ApiMaterialDownloadRoute
+  '/api/tmp-hibp': typeof ApiTmpHibpRoute
   '/app/afiliados': typeof AppAfiliadosRouteWithChildren
   '/app/ao-vivo': typeof AppAoVivoRoute
   '/app/certificados': typeof AppCertificadosRoute
@@ -602,6 +609,7 @@ export interface FileRoutesByTo {
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/api/material-download': typeof ApiMaterialDownloadRoute
+  '/api/tmp-hibp': typeof ApiTmpHibpRoute
   '/app/ao-vivo': typeof AppAoVivoRoute
   '/app/certificados': typeof AppCertificadosRoute
   '/app/consultorias': typeof AppConsultoriasRoute
@@ -681,6 +689,7 @@ export interface FileRoutesById {
   '/admin/suporte': typeof AdminSuporteRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/api/material-download': typeof ApiMaterialDownloadRoute
+  '/api/tmp-hibp': typeof ApiTmpHibpRoute
   '/app/afiliados': typeof AppAfiliadosRouteWithChildren
   '/app/ao-vivo': typeof AppAoVivoRoute
   '/app/certificados': typeof AppCertificadosRoute
@@ -763,6 +772,7 @@ export interface FileRouteTypes {
     | '/admin/suporte'
     | '/admin/usuarios'
     | '/api/material-download'
+    | '/api/tmp-hibp'
     | '/app/afiliados'
     | '/app/ao-vivo'
     | '/app/certificados'
@@ -841,6 +851,7 @@ export interface FileRouteTypes {
     | '/admin/suporte'
     | '/admin/usuarios'
     | '/api/material-download'
+    | '/api/tmp-hibp'
     | '/app/ao-vivo'
     | '/app/certificados'
     | '/app/consultorias'
@@ -919,6 +930,7 @@ export interface FileRouteTypes {
     | '/admin/suporte'
     | '/admin/usuarios'
     | '/api/material-download'
+    | '/api/tmp-hibp'
     | '/app/afiliados'
     | '/app/ao-vivo'
     | '/app/certificados'
@@ -977,6 +989,7 @@ export interface RootRouteChildren {
   TermosDeUsoRoute: typeof TermosDeUsoRoute
   VerificarCertificadoRoute: typeof VerificarCertificadoRoute
   ApiMaterialDownloadRoute: typeof ApiMaterialDownloadRoute
+  ApiTmpHibpRoute: typeof ApiTmpHibpRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   ApiPublicConsultationRecordingsRoute: typeof ApiPublicConsultationRecordingsRoute
   ApiPublicConsultationRemindersRoute: typeof ApiPublicConsultationRemindersRoute
@@ -1203,6 +1216,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/afiliados'
       preLoaderRoute: typeof AppAfiliadosRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/api/tmp-hibp': {
+      id: '/api/tmp-hibp'
+      path: '/api/tmp-hibp'
+      fullPath: '/api/tmp-hibp'
+      preLoaderRoute: typeof ApiTmpHibpRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/material-download': {
       id: '/api/material-download'
@@ -1717,6 +1737,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermosDeUsoRoute: TermosDeUsoRoute,
   VerificarCertificadoRoute: VerificarCertificadoRoute,
   ApiMaterialDownloadRoute: ApiMaterialDownloadRoute,
+  ApiTmpHibpRoute: ApiTmpHibpRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   ApiPublicConsultationRecordingsRoute: ApiPublicConsultationRecordingsRoute,
   ApiPublicConsultationRemindersRoute: ApiPublicConsultationRemindersRoute,
