@@ -340,6 +340,8 @@ export async function runFidelizeDiagnostics(
 
   const healthPath = testPath?.trim() || resolveFidelizePath(config.baseUrl, "/health");
   await probe("health", "API online (/health)", healthPath, "GET", true);
+  await probe("auth", "Autenticação (/ping-auth)", resolveFidelizePath(config.baseUrl, "/ping-auth"), "GET");
+
   await probe("provision-account", "Provisionamento (/provision-account)", resolveFidelizePath(config.baseUrl, "/provision-account"), "POST");
   await probe(
     "customer",
