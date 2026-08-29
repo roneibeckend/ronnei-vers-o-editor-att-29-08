@@ -166,7 +166,12 @@ export async function fidelizeRequest<T = unknown>(
         response.headers.get("x-api-version") ||
         response.headers.get("api-version") ||
         (parsed && typeof parsed === "object" ? ((parsed as any).version ?? (parsed as any).api_version ?? null) : null),
-      error: response.ok ? null : `HTTP ${response.status} ${response.statusText}`,
+      error: response.ok
+        ? null
+        : response.status >= 300 && response.status < 400
+          ? `A URL da API redirecionou (HTTP ${response.status} → ${response.headers.get("location") ?? "destino desconhecido"}). Configure a URL final (https, sem redirect).`
+          : `HTTP ${response.status} ${response.statusText}`,
+
       timestamp,
     };
 
