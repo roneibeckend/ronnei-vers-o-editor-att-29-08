@@ -72,6 +72,7 @@ import { Route as AppAfiliadosLinksRouteImport } from './routes/app.afiliados.li
 import { Route as AppAfiliadosFinanceiroRouteImport } from './routes/app.afiliados.financeiro'
 import { Route as AppAfiliadosConfigRouteImport } from './routes/app.afiliados.config'
 import { Route as ApiPublicOpsRecoveryRouteImport } from './routes/api/public/ops-recovery'
+import { Route as ApiPublicFidelizeHealthRouteImport } from './routes/api/public/fidelize-health'
 import { Route as ApiPublicDriveVideoRouteImport } from './routes/api/public/drive-video'
 import { Route as ApiPublicDailyUpdatesReportRouteImport } from './routes/api/public/daily-updates-report'
 import { Route as ApiPublicDailyFinancialReportRouteImport } from './routes/api/public/daily-financial-report'
@@ -399,6 +400,11 @@ const ApiPublicOpsRecoveryRoute = ApiPublicOpsRecoveryRouteImport.update({
   path: '/api/public/ops-recovery',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicFidelizeHealthRoute = ApiPublicFidelizeHealthRouteImport.update({
+  id: '/api/public/fidelize-health',
+  path: '/api/public/fidelize-health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicDriveVideoRoute = ApiPublicDriveVideoRouteImport.update({
   id: '/api/public/drive-video',
   path: '/api/public/drive-video',
@@ -523,6 +529,7 @@ export interface FileRoutesByFullPath {
   '/api/public/daily-financial-report': typeof ApiPublicDailyFinancialReportRoute
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
+  '/api/public/fidelize-health': typeof ApiPublicFidelizeHealthRoute
   '/api/public/ops-recovery': typeof ApiPublicOpsRecoveryRoute
   '/app/afiliados/config': typeof AppAfiliadosConfigRoute
   '/app/afiliados/financeiro': typeof AppAfiliadosFinanceiroRoute
@@ -595,6 +602,7 @@ export interface FileRoutesByTo {
   '/api/public/daily-financial-report': typeof ApiPublicDailyFinancialReportRoute
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
+  '/api/public/fidelize-health': typeof ApiPublicFidelizeHealthRoute
   '/api/public/ops-recovery': typeof ApiPublicOpsRecoveryRoute
   '/app/afiliados/config': typeof AppAfiliadosConfigRoute
   '/app/afiliados/financeiro': typeof AppAfiliadosFinanceiroRoute
@@ -672,6 +680,7 @@ export interface FileRoutesById {
   '/api/public/daily-financial-report': typeof ApiPublicDailyFinancialReportRoute
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
+  '/api/public/fidelize-health': typeof ApiPublicFidelizeHealthRoute
   '/api/public/ops-recovery': typeof ApiPublicOpsRecoveryRoute
   '/app/afiliados/config': typeof AppAfiliadosConfigRoute
   '/app/afiliados/financeiro': typeof AppAfiliadosFinanceiroRoute
@@ -750,6 +759,7 @@ export interface FileRouteTypes {
     | '/api/public/daily-financial-report'
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
+    | '/api/public/fidelize-health'
     | '/api/public/ops-recovery'
     | '/app/afiliados/config'
     | '/app/afiliados/financeiro'
@@ -822,6 +832,7 @@ export interface FileRouteTypes {
     | '/api/public/daily-financial-report'
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
+    | '/api/public/fidelize-health'
     | '/api/public/ops-recovery'
     | '/app/afiliados/config'
     | '/app/afiliados/financeiro'
@@ -898,6 +909,7 @@ export interface FileRouteTypes {
     | '/api/public/daily-financial-report'
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
+    | '/api/public/fidelize-health'
     | '/api/public/ops-recovery'
     | '/app/afiliados/config'
     | '/app/afiliados/financeiro'
@@ -934,6 +946,7 @@ export interface RootRouteChildren {
   ApiPublicDailyFinancialReportRoute: typeof ApiPublicDailyFinancialReportRoute
   ApiPublicDailyUpdatesReportRoute: typeof ApiPublicDailyUpdatesReportRoute
   ApiPublicDriveVideoRoute: typeof ApiPublicDriveVideoRoute
+  ApiPublicFidelizeHealthRoute: typeof ApiPublicFidelizeHealthRoute
   ApiPublicOpsRecoveryRoute: typeof ApiPublicOpsRecoveryRoute
   ApiPublicManifestWebmanifestRoute: typeof ApiPublicManifestWebmanifestRoute
   ApiPublicWebhooksAsaasRoute: typeof ApiPublicWebhooksAsaasRoute
@@ -1383,6 +1396,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicOpsRecoveryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/fidelize-health': {
+      id: '/api/public/fidelize-health'
+      path: '/api/public/fidelize-health'
+      fullPath: '/api/public/fidelize-health'
+      preLoaderRoute: typeof ApiPublicFidelizeHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/drive-video': {
       id: '/api/public/drive-video'
       path: '/api/public/drive-video'
@@ -1631,6 +1651,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicDailyFinancialReportRoute: ApiPublicDailyFinancialReportRoute,
   ApiPublicDailyUpdatesReportRoute: ApiPublicDailyUpdatesReportRoute,
   ApiPublicDriveVideoRoute: ApiPublicDriveVideoRoute,
+  ApiPublicFidelizeHealthRoute: ApiPublicFidelizeHealthRoute,
   ApiPublicOpsRecoveryRoute: ApiPublicOpsRecoveryRoute,
   ApiPublicManifestWebmanifestRoute: ApiPublicManifestWebmanifestRoute,
   ApiPublicWebhooksAsaasRoute: ApiPublicWebhooksAsaasRoute,
