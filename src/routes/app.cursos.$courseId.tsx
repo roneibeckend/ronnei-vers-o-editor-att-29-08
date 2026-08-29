@@ -778,7 +778,7 @@ function CoursePage() {
                     </div>
                   )}
 
-                  {isEnrolledInCourse(course.id) && <ModuleMaterialsList moduleId={m.id} />}
+                  {hasAccess && <ModuleMaterialsList moduleId={m.id} />}
                 </div>
 
                 <ul className="space-y-1">
