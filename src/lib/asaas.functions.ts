@@ -183,7 +183,7 @@ export const verifyAsaasPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data: unknown) => z.object({
     productId: z.string(),
-    productType: z.enum(['course', 'ebook']),
+    productType: z.enum(['course', 'ebook', 'fidelize']),
   }).parse(data))
   .handler(async ({ data, context }) => {
     try {
@@ -197,6 +197,39 @@ export const verifyAsaasPayment = createServerFn({ method: "POST" })
 
       if (!payment) {
         return { confirmed: false, message: "Nenhum pagamento confirmado encontrado ainda." };
+      }
+
+      // Fidelize: provisiona a conta (mesmo fluxo do webhook Asaas).
+      if (data.productType === 'fidelize') {
+        const { provisionFidelizeAccount } = await import("./fidelize-provisioning.server");
+        const { isFidelizePlan } = await import("./fidelize-plans");
+        if (!isFidelizePlan(data.productId)) {
+          return { confirmed: false, message: "Plano Fidelize inválido." };
+        }
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: profile } = await supabaseAdmin
+          .from("profiles")
+          .select("name, email, phone")
+          .eq("id", context.userId)
+          .maybeSingle();
+        const email = (profile as any)?.email || (context.claims as any)?.email || payment.customerEmail;
+        if (!email) {
+          return { confirmed: false, message: "E-mail do aluno não encontrado para ativar a Fidelize." };
+        }
+        const result = await provisionFidelizeAccount({
+          orderId: String(payment.id ?? `manual:${context.userId}:${data.productId}`),
+          userId: context.userId,
+          plan: data.productId,
+          name: (profile as any)?.name || "Cliente",
+          email,
+          phone: (profile as any)?.phone || null,
+        });
+        return {
+          confirmed: result.success,
+          message: result.success
+            ? "Pagamento confirmado e conta Fidelize ativada."
+            : "Pagamento encontrado, mas houve falha ao ativar sua conta Fidelize. Nossa equipe já foi avisada.",
+        };
       }
 
       const granted = await grantAccess(data.productType, data.productId, context.userId);
