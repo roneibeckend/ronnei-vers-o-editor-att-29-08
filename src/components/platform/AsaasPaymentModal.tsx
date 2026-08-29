@@ -29,6 +29,8 @@ export function AsaasPaymentModal() {
   const navigate = useNavigate();
   const completeCheckout = useServerFn(completePendingCheckout);
   const probeCheckout = useServerFn(checkAsaasCheckoutHealth);
+  const fetchFidelizeAccount = useServerFn(getMyFidelizeAccount);
+  const queryClient = useQueryClient();
 
 
   React.useEffect(() => {
@@ -46,9 +48,28 @@ export function AsaasPaymentModal() {
     return () => { active = false; };
   }, [isOpen, paymentUrl, probeCheckout]);
 
+  // Fidelize: confirma quando o provisionamento aparece (webhook do Asaas -> provision-account)
+  React.useEffect(() => {
+    if (!isOpen || productType !== 'fidelize' || (status as string) === 'confirmed') return;
+    let active = true;
+    const check = async () => {
+      try {
+        const account: any = await fetchFidelizeAccount();
+        if (active && account) {
+          setStatus('confirmed');
+          queryClient.invalidateQueries({ queryKey: ['fidelize-account'] });
+        }
+      } catch {
+        /* silencioso: seguimos tentando */
+      }
+    };
+    const interval = window.setInterval(check, 4000);
+    return () => { active = false; clearInterval(interval); };
+  }, [isOpen, productType, status, setStatus, fetchFidelizeAccount, queryClient]);
+
   // Polling: revalida as matrículas e confirma automaticamente após o webhook
   React.useEffect(() => {
-    if (!isOpen || !productId || !productType || (status as string) === 'confirmed') return;
+    if (!isOpen || !productId || !productType || productType === 'fidelize' || (status as string) === 'confirmed') return;
 
     const check = async () => {
       // Avoid double confirm
@@ -107,7 +128,14 @@ export function AsaasPaymentModal() {
     if (status === 'confirmed' && productId && productType) {
       const timer = setTimeout(() => {
         closePayment();
-        navigate({ to: productType === 'course' ? `/app/cursos/${productId}` : `/app/ebooks/${productId}` });
+        navigate({
+          to:
+            productType === 'fidelize'
+              ? '/app/fidelize'
+              : productType === 'course'
+                ? `/app/cursos/${productId}`
+                : `/app/ebooks/${productId}`,
+        });
       }, 3000);
       return () => clearTimeout(timer);
     }
@@ -150,7 +178,7 @@ export function AsaasPaymentModal() {
           </DialogTitle>
           <DialogDescription>
             {status === 'confirmed'
-              ? 'Seu acesso já está liberado.'
+              ? (productType === 'fidelize' ? 'Sua conta Fidelize está sendo criada.' : 'Seu acesso já está liberado.')
               : 'Finalize o pagamento na página segura do Asaas. Esta janela acompanha a confirmação automaticamente.'}
           </DialogDescription>
         </DialogHeader>
@@ -168,7 +196,9 @@ export function AsaasPaymentModal() {
               </div>
               <h2 className="text-2xl font-black mb-2">Sucesso!</h2>
               <p className="text-muted-foreground max-w-sm">
-                Seu pagamento foi confirmado e o acesso ao conteúdo já está liberado.
+                {productType === 'fidelize'
+                  ? 'Pagamento confirmado! Estamos criando sua conta na Fidelize agora — os dados de acesso chegam no seu e-mail e também aparecem na sua área Fidelize.'
+                  : 'Seu pagamento foi confirmado e o acesso ao conteúdo já está liberado.'}
               </p>
               <div className="mt-6 flex items-center gap-2 text-fire font-medium">
                 Redirecionando você agora <ArrowRight className="h-4 w-4" />
