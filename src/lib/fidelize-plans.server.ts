@@ -76,7 +76,7 @@ export async function saveFidelizePlanOverrides(
   if (current?.id) {
     const { error } = await supabaseAdmin
       .from("integrations")
-      .update({ settings, updated_at: new Date().toISOString() })
+      .update({ settings: settings as never, updated_at: new Date().toISOString() })
       .eq("id", current.id);
     if (error) throw error;
   } else {
@@ -87,7 +87,7 @@ export async function saveFidelizePlanOverrides(
         category: "fidelize",
         status: false,
         credentials: {},
-        settings,
+        settings: settings as never,
       },
     ]);
     if (error) throw error;
