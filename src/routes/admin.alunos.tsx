@@ -74,17 +74,33 @@ function AdminAlunosPage() {
 
       const rows = data || [];
       let roles: { user_id: string; role: string }[] = [];
+      let fidelizeLogs: { user_id: string; plan: string; subscription_status: string | null; status: string }[] = [];
       if (rows.length) {
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('user_id, role')
-          .in('user_id', rows.map(r => r.id));
-        roles = roleData || [];
+        const userIds = rows.map(r => r.id);
+        const [roleData, fidelizeData] = await Promise.all([
+          supabase.from('user_roles').select('user_id, role').in('user_id', userIds),
+          supabase
+            .from('fidelize_provisioning_logs')
+            .select('user_id, plan, subscription_status, status')
+            .in('user_id', userIds)
+            .order('created_at', { ascending: false })
+            .limit(userIds.length * 2),
+        ]);
+        roles = roleData?.data || [];
+
+        // Mantém apenas o log mais recente por usuário
+        const seen = new Set<string>();
+        fidelizeLogs = (fidelizeData?.data || []).filter((log: any) => {
+          if (seen.has(log.user_id)) return false;
+          seen.add(log.user_id);
+          return true;
+        }) as typeof fidelizeLogs;
       }
 
       setProfiles(rows.map(r => ({
         ...r,
         role: roles.find(x => x.user_id === r.id)?.role || 'student',
+        fidelize: fidelizeLogs.find(x => x.user_id === r.id) || null,
       })));
       setTotalCount(count || 0);
     } catch (error: any) {
@@ -170,6 +186,7 @@ function AdminAlunosPage() {
                   <th className="px-6 py-4 font-bold text-white/40 uppercase tracking-widest text-[10px] w-[15%] min-w-[100px]">Status</th>
                   <th className="px-6 py-4 font-bold text-white/40 uppercase tracking-widest text-[10px] w-[25%] min-w-[200px]">Contato</th>
                   <th className="px-6 py-4 font-bold text-white/40 uppercase tracking-widest text-[10px] w-[15%] min-w-[120px]">Matrícula</th>
+                  <th className="px-6 py-4 font-bold text-white/40 uppercase tracking-widest text-[10px] w-[15%] min-w-[120px]">Fidelize</th>
                   <th className="px-6 py-4 font-bold text-white/40 uppercase tracking-widest text-[10px] text-right w-[15%] min-w-[150px]">Ações</th>
                 </tr>
               </thead>
@@ -208,6 +225,29 @@ function AdminAlunosPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-white/40">{p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : "—"}</td>
+                  <td className="px-6 py-4">
+                    {p.fidelize ? (
+                      <div className="flex flex-col gap-1">
+                        <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-[#ff6a00]/10 text-[#ff6a00] w-fit">
+                          {p.fidelize.plan || "Fidelize"}
+                        </span>
+                        <span className={"text-[10px] font-medium " + (
+                          p.fidelize.subscription_status === 'active' ? 'text-emerald-400'
+                          : p.fidelize.subscription_status === 'canceled' ? 'text-red-400'
+                          : p.fidelize.subscription_status === 'overdue' ? 'text-amber-400'
+                          : 'text-white/40'
+                        )}>
+                          {p.fidelize.subscription_status === 'active' ? 'Ativa'
+                          : p.fidelize.subscription_status === 'canceled' ? 'Cancelada'
+                          : p.fidelize.subscription_status === 'overdue' ? 'Vencida'
+                          : p.fidelize.status === 'success' ? 'Ativa'
+                          : 'Pendente'}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-white/25">—</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Link
@@ -236,7 +276,7 @@ function AdminAlunosPage() {
               ))}
               {profiles.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-white/20 uppercase tracking-widest text-[10px] font-bold">
+                  <td colSpan={6} className="px-6 py-12 text-center text-white/20 uppercase tracking-widest text-[10px] font-bold">
                     Nenhum aluno encontrado
                   </td>
                 </tr>
