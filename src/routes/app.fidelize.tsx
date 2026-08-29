@@ -55,13 +55,46 @@ const STATUS_MAP: Record<string, { label: string; className: string; icon: typeo
 function FidelizePage() {
   const fetchAccount = useServerFn(getMyFidelizeAccount);
   const resendAccess = useServerFn(resendMyFidelizeAccess);
+  const revealCredentials = useServerFn(revealMyFidelizeCredentials);
   const queryClient = useQueryClient();
   const [resending, setResending] = useState(false);
+  const [revealing, setRevealing] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [credentials, setCredentials] = useState<{
+    temporaryPassword: string | null;
+    autoLoginUrl: string | null;
+  } | null>(null);
   const { data, isLoading } = useQuery({
     queryKey: ["fidelize-account"],
     queryFn: () => fetchAccount(),
     refetchInterval: (query) => ((query.state.data as any)?.status === "pending" ? 15000 : false),
   });
+
+  const handleReveal = async () => {
+    if (showPassword) {
+      setShowPassword(false);
+      return;
+    }
+    if (credentials?.temporaryPassword) {
+      setShowPassword(true);
+      return;
+    }
+    setRevealing(true);
+    try {
+      const result: any = await revealCredentials();
+      setCredentials({
+        temporaryPassword: result?.temporaryPassword ?? null,
+        autoLoginUrl: result?.autoLoginUrl ?? null,
+      });
+      if (result?.temporaryPassword) setShowPassword(true);
+      else toast.info(result?.message || "Senha temporária indisponível.");
+    } catch {
+      toast.error("Não foi possível exibir a senha agora.");
+    } finally {
+      setRevealing(false);
+    }
+  };
+
 
   const copy = async (value: string, label: string) => {
     try {
