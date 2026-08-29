@@ -33,7 +33,6 @@ import {
   requestMyFidelizeReactivation,
 } from "@/lib/fidelize-account.functions";
 import { useCheckout } from "@/hooks/use-checkout";
-import { usePaymentModal } from "@/hooks/use-payment-modal";
 import { fidelizePlanLabel } from "@/lib/fidelize-plans";
 import { friendlyFidelizeError } from "@/lib/fidelize-messages";
 
@@ -87,7 +86,6 @@ function FidelizePage() {
   const cancelSubscription = useServerFn(cancelMyFidelizeSubscription);
   const requestReactivation = useServerFn(requestMyFidelizeReactivation);
   const { openCheckout } = useCheckout();
-  const { openPayment } = usePaymentModal();
   const [credentials, setCredentials] = useState<{
     temporaryPassword: string | null;
     autoLoginUrl: string | null;
