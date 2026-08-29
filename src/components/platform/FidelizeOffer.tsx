@@ -139,7 +139,7 @@ export function FidelizeOffer({ compact = false }: { compact?: boolean }) {
             )}
             <Button className="mt-auto w-full" onClick={() => handleBuy(plan)} disabled={busy === plan.plan}>
               {busy === plan.plan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Contratar agora
+              {plan.ctaLabel || "Contratar agora"}
             </Button>
           </CardContent>
         </Card>
