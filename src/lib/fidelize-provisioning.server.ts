@@ -248,3 +248,98 @@ export async function deleteFidelizeTestAccount(logId: string) {
 
   return { success: true, message: remoteMessage };
 }
+
+/**
+ * Reenvia os dados de acesso da conta Fidelize do aluno.
+ * Tenta o endpoint de reenvio da Fidelize e, em seguida, dispara o e-mail de acesso.
+ * Toda tentativa fica auditada em system_logs (source: "fidelize").
+ */
+export async function resendFidelizeAccess(userId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  const { data: row } = await supabaseAdmin
+    .from("fidelize_provisioning_logs")
+    .select("id, plan, tenant_id, login_url, modules, status, request_payload, response_payload, order_id")
+    .eq("user_id", userId)
+    .eq("status", "success")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!row) {
+    return { success: false, message: "Não encontramos uma conta Fidelize ativa para o seu cadastro." };
+  }
+
+  const record = row as Record<string, any>;
+  const request = (record["request_payload"] || {}) as Record<string, any>;
+  const previous = (record["response_payload"] || {}) as Record<string, any>;
+  const email = request["email"] as string | undefined;
+  const name = (request["name"] as string) || "Aluno";
+  const plan = record["plan"] as FidelizePlan;
+
+  if (!email) {
+    return { success: false, message: "Não encontramos o e-mail usado na criação da sua conta. Fale com o suporte." };
+  }
+
+  const config = await getFidelizeConfig();
+  let remote: any = null;
+  let remoteOk = false;
+
+  if (config) {
+    const call = await fidelizeRequest<any>(resolveFidelizePath(config.baseUrl, "/resend-access"), {
+      method: "POST",
+      config,
+      body: { email, tenant_id: record["tenant_id"] ?? null, source: "ronnei" },
+      context: { operation: "resend_access", userId, logId: record["id"] },
+    });
+    remote = (call.data || {}) as Record<string, any>;
+    // 404/405 significam que a Fidelize não expõe esse endpoint — seguimos com o nosso e-mail.
+    remoteOk = call.success || call.httpCode === 404 || call.httpCode === 405;
+  }
+
+  const loginUrl = remote?.login_url || record["login_url"] || previous["login_url"] || "";
+  const modules = Array.isArray(record["modules"]) ? (record["modules"] as string[]) : [];
+
+  try {
+    const { triggerEmailOnce } = await import("./resend.server");
+    await triggerEmailOnce({
+      event: "fidelize_access",
+      to: email,
+      data: {
+        name,
+        plan: fidelizePlanLabel(plan),
+        login: remote?.login || email,
+        temporary_password: remote?.temporary_password || "Use sua senha atual ou a opção “Esqueci minha senha”.",
+        login_url: loginUrl,
+        modules: modules.join(", "),
+      },
+      idempotencyKey: `fidelize_access_resend_${record["id"]}_${Date.now()}`,
+    });
+  } catch (emailError) {
+    await logSystemEvent({
+      level: "error",
+      source: "fidelize",
+      message: "Falha ao reenviar o e-mail de acesso da Fidelize.",
+      details: { logId: record["id"], error: String((emailError as Error)?.message ?? emailError) },
+      userId,
+    });
+    return {
+      success: false,
+      message: "Não conseguimos enviar o e-mail agora. Tente novamente em alguns minutos.",
+    };
+  }
+
+  await logSystemEvent({
+    level: "info",
+    source: "fidelize",
+    message: `Reenvio de acesso Fidelize solicitado pelo aluno (${email})`,
+    details: { logId: record["id"], remoteOk, tenantId: record["tenant_id"] ?? null },
+    userId,
+  });
+
+  return {
+    success: true,
+    message: `Enviamos os dados de acesso para ${email}. Verifique também a caixa de spam.`,
+    email,
+  };
+}
