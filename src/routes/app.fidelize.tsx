@@ -58,17 +58,18 @@ function FidelizePage() {
       <div className="space-y-6">
         <PageHeader title="Fidelize" subtitle="Programa de fidelidade para o seu negócio." />
         <Card>
-          <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
-            <Sparkles className="h-10 w-10 text-primary" />
+          <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
+            <Sparkles className="h-9 w-9 text-primary" />
             <div>
-              <p className="text-lg font-semibold">Você ainda não tem uma conta Fidelize</p>
+              <p className="text-lg font-semibold">Escolha seu plano Fidelize</p>
               <p className="text-sm text-muted-foreground">
-                Após a aprovação do pagamento de um plano Fidelize, sua conta é criada automaticamente e os dados de
-                acesso chegam no seu e-mail.
+                Após a aprovação do pagamento, sua conta é criada automaticamente e os dados de acesso chegam no seu
+                e-mail.
               </p>
             </div>
           </CardContent>
         </Card>
+        <FidelizeOffer />
       </div>
     );
   }
