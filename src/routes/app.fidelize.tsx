@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/platform/Shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FidelizeOffer } from "@/components/platform/FidelizeOffer";
 import { getMyFidelizeAccount } from "@/lib/fidelize-account.functions";
 import { FIDELIZE_PLAN_CATALOG, fidelizePlanLabel, isFidelizePlan } from "@/lib/fidelize-plans";
 
@@ -58,17 +59,18 @@ function FidelizePage() {
       <div className="space-y-6">
         <PageHeader title="Fidelize" subtitle="Programa de fidelidade para o seu negócio." />
         <Card>
-          <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
-            <Sparkles className="h-10 w-10 text-primary" />
+          <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
+            <Sparkles className="h-9 w-9 text-primary" />
             <div>
-              <p className="text-lg font-semibold">Você ainda não tem uma conta Fidelize</p>
+              <p className="text-lg font-semibold">Escolha seu plano Fidelize</p>
               <p className="text-sm text-muted-foreground">
-                Após a aprovação do pagamento de um plano Fidelize, sua conta é criada automaticamente e os dados de
-                acesso chegam no seu e-mail.
+                Após a aprovação do pagamento, sua conta é criada automaticamente e os dados de acesso chegam no seu
+                e-mail.
               </p>
             </div>
           </CardContent>
         </Card>
+        <FidelizeOffer />
       </div>
     );
   }

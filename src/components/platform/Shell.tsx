@@ -30,6 +30,7 @@ import {
   Wallet,
   Video,
   CalendarClock,
+  Sparkles,
 } from "lucide-react";
 import { student } from "@/lib/platform-data";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,6 +59,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
       { to: "/app", label: "Início", icon: Home, exact: true },
       { to: "/app/receitas", label: "Receitas", icon: ChefHat },
       { to: "/app/materiais", label: "Recursos", icon: Library },
+      { to: "/app/fidelize", label: "Fidelize", icon: Sparkles },
     ],
   },
   {

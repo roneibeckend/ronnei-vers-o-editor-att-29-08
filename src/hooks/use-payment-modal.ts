@@ -6,7 +6,7 @@ interface PaymentState {
   paymentUrl: string | null;
   title: string;
   productId: string | null;
-  productType: 'course' | 'ebook' | null;
+  productType: 'course' | 'ebook' | 'fidelize' | 'consultation' | null;
   /** Valor real cobrado no Asaas (BRL). */
   value: number | null;
   /** ID real do pedido/link de pagamento no Asaas. */
@@ -17,7 +17,7 @@ interface PaymentState {
     url: string,
     title: string,
     productId: string,
-    productType: 'course' | 'ebook',
+    productType: 'course' | 'ebook' | 'fidelize' | 'consultation',
     order?: { value?: number | null; transactionId?: string | null; onClose?: () => void },
   ) => void;
   closePayment: () => void;
