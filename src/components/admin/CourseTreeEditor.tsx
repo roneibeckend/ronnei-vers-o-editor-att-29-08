@@ -18,6 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { VideoUpload } from "./VideoUpload";
+import { ModuleMaterialsManager } from "./ModuleMaterialsManager";
+
 import {
   Dialog,
   DialogContent,
@@ -298,6 +300,12 @@ export function CourseTreeEditor({ courseId }: CourseTreeEditorProps) {
                 onChange={e => setEditingModule({...editingModule, description: e.target.value})}
                 className="w-full bg-white/5 border border-white/10 p-3 rounded-lg outline-none focus:border-[#ff6a00] h-24" 
               />
+              <ModuleMaterialsManager
+                moduleId={editingModule.id}
+                courseId={courseId}
+                isPersisted={modules.some(m => m.id === editingModule.id)}
+              />
+
               <DialogFooter>
                 <button type="submit" disabled={isSaving} className="w-full py-3 rounded-lg bg-[#ff6a00] text-black font-bold disabled:opacity-50">{isSaving ? "Salvando..." : "Salvar"}</button>
               </DialogFooter>
