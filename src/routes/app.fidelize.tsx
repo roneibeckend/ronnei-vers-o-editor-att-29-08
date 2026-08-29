@@ -133,14 +133,14 @@ function FidelizePage() {
       <PageHeader title="Minha conta Fidelize" subtitle="Plano, status e módulos liberados." />
 
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div>
-            <CardTitle className="text-xl">{fidelizePlanLabel(data.plan)}</CardTitle>
+        <CardHeader className="flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0">
+            <CardTitle className="text-xl break-words">{fidelizePlanLabel(data.plan)}</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
               Ativado em {new Date(data.activatedAt).toLocaleDateString("pt-BR")}
             </p>
           </div>
-          <Badge className={status.className}>
+          <Badge className={`${status.className} shrink-0`}>
             <StatusIcon className="mr-1 h-3.5 w-3.5" />
             {status.label}
           </Badge>
@@ -148,8 +148,8 @@ function FidelizePage() {
         <CardContent className="space-y-5">
           {data.status === "failed" && (
             <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-              Não conseguimos concluir a ativação automática{data.errorMessage ? `: ${data.errorMessage}` : "."} Nossa
-              equipe já foi avisada — fale com o suporte se precisar de agilidade.
+              {friendlyFidelizeError(data.errorMessage)} Nossa equipe já foi avisada — fale com o suporte se precisar de
+              agilidade.
             </p>
           )}
           {data.status === "pending" && (
@@ -157,6 +157,51 @@ function FidelizePage() {
               Estamos criando sua conta na Fidelize. Isso leva alguns instantes — esta página atualiza sozinha.
             </p>
           )}
+
+          <div className="space-y-3 rounded-xl border p-4">
+            <p className="text-sm font-semibold">Seus dados de acesso</p>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">E-mail (login)</p>
+                <p className="break-all text-sm font-medium">{data.email ?? "Não informado"}</p>
+              </div>
+              {data.email && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  onClick={() => copy(data.email!, "Login")}
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copiar login
+                </Button>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">URL de acesso</p>
+                <p className="break-all text-sm font-medium">{data.loginUrl ?? "Disponível no e-mail de acesso"}</p>
+              </div>
+              {data.loginUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  onClick={() => copy(data.loginUrl!, "Link de acesso")}
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copiar URL
+                </Button>
+              )}
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Por segurança, a senha temporária só é enviada por e-mail. Use “Reenviar acesso” se não encontrar a
+              mensagem.
+            </p>
+          </div>
 
           {modules.length > 0 && (
             <div>
@@ -172,13 +217,33 @@ function FidelizePage() {
             </div>
           )}
 
-          <Button asChild disabled={!data.loginUrl} className="w-full sm:w-auto">
-            <a href={data.loginUrl ?? "#"} target="_blank" rel="noopener noreferrer">
-              Acessar Fidelize
-              <ExternalLink className="ml-2 h-4 w-4" />
-            </a>
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button asChild disabled={!data.loginUrl} className="w-full sm:w-auto">
+              <a href={data.loginUrl ?? "#"} target="_blank" rel="noopener noreferrer">
+                Acessar Fidelize
+                <ExternalLink className="ml-2 h-4 w-4" />
+              </a>
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={handleResend}
+              disabled={resending || data.status !== "success"}
+            >
+              {resending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              Reenviar acesso
+            </Button>
+          </div>
+          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Mail className="h-3.5 w-3.5" />
+            O reenvio vai para o e-mail usado na compra.
+          </p>
         </CardContent>
+
       </Card>
     </div>
   );
