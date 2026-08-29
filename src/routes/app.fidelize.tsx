@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FidelizeOffer } from "@/components/platform/FidelizeOffer";
+import { FidelizePlanFeatures } from "@/components/platform/FidelizePlanFeatures";
 import {
   getMyFidelizeAccount,
   resendMyFidelizeAccess,
@@ -33,7 +34,7 @@ import {
 } from "@/lib/fidelize-account.functions";
 import { createAsaasPaymentLink } from "@/lib/asaas.functions";
 import { usePaymentModal } from "@/hooks/use-payment-modal";
-import { FIDELIZE_PLAN_CATALOG, fidelizePlanLabel, isFidelizePlan } from "@/lib/fidelize-plans";
+import { fidelizePlanLabel } from "@/lib/fidelize-plans";
 import { friendlyFidelizeError } from "@/lib/fidelize-messages";
 
 
@@ -289,17 +290,6 @@ function FidelizePage() {
   const SubscriptionIcon = subscription.icon;
   const isCanceled = subscriptionState === "canceled";
   const isOverdue = subscriptionState === "overdue";
-  const planInfo = isFidelizePlan(data.plan) ? FIDELIZE_PLAN_CATALOG[data.plan] : null;
-  const planFeatures = data.modules.length > 0 ? data.modules : (planInfo?.modules ?? []);
-  const nextPlan =
-    planInfo?.plan === "starter"
-      ? FIDELIZE_PLAN_CATALOG.pro
-      : planInfo?.plan === "pro"
-        ? FIDELIZE_PLAN_CATALOG.premium
-        : null;
-  const nextPlanExtras = nextPlan
-    ? nextPlan.modules.filter((m) => !planFeatures.some((f) => f.toLowerCase() === m.toLowerCase()))
-    : [];
 
 
   return (
@@ -496,44 +486,8 @@ function FidelizePage() {
             </div>
           )}
 
-          {(planInfo || planFeatures.length > 0) && (
-            <div className="rounded-xl border p-4">
-              <p className="text-sm font-semibold">O que o seu plano faz por você</p>
-              {planInfo?.description ? (
-                <p className="mt-1 text-sm text-muted-foreground">{planInfo.description}</p>
-              ) : null}
-              {planFeatures.length > 0 ? (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Inclui {planFeatures.slice(0, -1).join(", ")}
-                  {planFeatures.length > 1 ? " e " : ""}
-                  {planFeatures[planFeatures.length - 1]}.
-                </p>
-              ) : null}
-            </div>
-          )}
 
-          {nextPlan && nextPlanExtras.length > 0 && (
-            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-              <p className="text-sm font-semibold">
-                Dá para ir além com o {nextPlan.label}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {nextPlan.description} Além do que você já tem, o plano libera{" "}
-                {nextPlanExtras.slice(0, -1).join(", ")}
-                {nextPlanExtras.length > 1 ? " e " : ""}
-                {nextPlanExtras[nextPlanExtras.length - 1]}.
-              </p>
-              <Button
-                variant="outline"
-                className="mt-3 w-full sm:w-auto"
-                disabled={opening || data.status !== "success"}
-                onClick={handleAccess}
-              >
-                Fazer upgrade na Fidelize
-                <ExternalLink className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          )}
+
 
 
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -570,6 +524,15 @@ function FidelizePage() {
             <Mail className="h-3.5 w-3.5" />
             O reenvio vai para o e-mail usado na compra.
           </p>
+
+          <FidelizePlanFeatures
+            plan={data.plan}
+            enabled={data.status === "success"}
+            onUpgrade={handleAccess}
+            upgradeDisabled={opening || data.status !== "success"}
+          />
+
+
 
           {data.migratedToFidelize ? (
             <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
