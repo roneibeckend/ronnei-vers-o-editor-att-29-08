@@ -26,6 +26,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
 
 import { LessonPlayer } from "@/components/platform/LessonPlayer";
+import { resolveLessonVideo } from "@/lib/video-source";
 import { ModuleMaterialsList } from "@/components/platform/ModuleMaterialsList";
 
 function LessonMaterials({ lessonId }: { lessonId: string }) {
@@ -469,6 +470,14 @@ function CoursePage() {
   const nextLessonForPrefetch = flat.findIndex((l: any) => l.id === active?.id) + 1;
   const next = nextLessonForPrefetch < flat.length ? flat[nextLessonForPrefetch] : null;
   const prev = (flat.findIndex((l: any) => l.id === active?.id) || 0) > 0 ? flat[flat.findIndex((l: any) => l.id === active?.id) - 1] : null;
+  const hasLessonVideo =
+    resolveLessonVideo({
+      provider: (active as any)?.video_provider,
+      videoId: (active as any)?.video_id,
+      videoUrl: signedLessonUrl || (active as any)?.video_url || "",
+      aspect: (active as any)?.video_aspect,
+    }).kind !== "none";
+
 
 
   if (isLoadingEnrollments) {
@@ -610,22 +619,24 @@ function CoursePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className="overflow-hidden rounded-none sm:rounded-2xl bg-black/20 min-h-[400px]"
+            className={`overflow-hidden rounded-none sm:rounded-2xl bg-black/20 ${hasLessonVideo ? "min-h-[400px]" : ""}`}
           >
             <div ref={lessonTopRef} className="scroll-mt-24" />
-            {isLoadingSignedUrl ? (
-              <div className="aspect-video w-full rounded-2xl bg-white/5 animate-pulse" />
-            ) : (
-              <LessonPlayer
-                videoId={active.id}
-                title={active.title}
-                poster={course.cover_url || ""}
-                videoUrl={signedLessonUrl || active.video_url || ""}
-                provider={(active as any).video_provider}
-                providerVideoId={(active as any).video_id}
-                aspect={(active as any).video_aspect}
-                className="w-full"
-              />
+            {hasLessonVideo && (
+              isLoadingSignedUrl ? (
+                <div className="aspect-video w-full rounded-2xl bg-white/5 animate-pulse" />
+              ) : (
+                <LessonPlayer
+                  videoId={active.id}
+                  title={active.title}
+                  poster={course.cover_url || ""}
+                  videoUrl={signedLessonUrl || active.video_url || ""}
+                  provider={(active as any).video_provider}
+                  providerVideoId={(active as any).video_id}
+                  aspect={(active as any).video_aspect}
+                  className="w-full"
+                />
+              )
             )}
 
 
