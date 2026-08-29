@@ -14,7 +14,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 
-const SITE_URL = "https://ronneinv.lovable.app";
+const SITE_URL = "https://ronneinaveia.com.br";
 
 export const Route = createFileRoute("/google")({
   head: () => ({

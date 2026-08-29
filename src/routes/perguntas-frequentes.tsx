@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, HelpCircle } from "lucide-react";
 import { useState } from "react";
 
-const SITE_URL = "https://espetinhonaveia.lovable.app";
+const SITE_URL = "https://ronneinaveia.com.br";
 
 export const Route = createFileRoute("/perguntas-frequentes")({
   head: () => ({

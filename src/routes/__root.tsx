@@ -185,7 +185,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "@context": "https://schema.org",
           "@type": "Organization",
           name: "Espetinho na Veia",
-          url: "https://espetinhonaveia.lovable.app",
+          url: "https://ronneinaveia.com.br",
           description:
             "Educação prática para montar, temperar, precificar e vender espetinhos com alta margem.",
           email: "contato@espetinhonaveia.com",
