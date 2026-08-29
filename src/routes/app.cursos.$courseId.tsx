@@ -469,6 +469,14 @@ function CoursePage() {
   const nextLessonForPrefetch = flat.findIndex((l: any) => l.id === active?.id) + 1;
   const next = nextLessonForPrefetch < flat.length ? flat[nextLessonForPrefetch] : null;
   const prev = (flat.findIndex((l: any) => l.id === active?.id) || 0) > 0 ? flat[flat.findIndex((l: any) => l.id === active?.id) - 1] : null;
+  const hasLessonVideo =
+    resolveLessonVideo({
+      provider: (active as any)?.video_provider,
+      videoId: (active as any)?.video_id,
+      videoUrl: signedLessonUrl || (active as any)?.video_url || "",
+      aspect: (active as any)?.video_aspect,
+    }).kind !== "none";
+
 
 
   if (isLoadingEnrollments) {
