@@ -15,18 +15,28 @@ export type FidelizePlanRecord = {
   cover: string;
   tagline: string;
   highlight: boolean;
+  /** Texto do botão de compra exibido ao aluno. */
+  ctaLabel: string;
+  /** Ordem de exibição dos cards (menor primeiro). */
+  sortOrder: number;
   /** true quando o preço/status foi personalizado pelo admin. */
   customized: boolean;
 };
 
-type PlanOverride = Partial<{
+export type FidelizePlanOverride = Partial<{
   price: number;
   active: boolean;
   label: string;
   description: string;
   coverUrl: string;
   tagline: string;
+  modules: string[];
+  highlight: boolean;
+  ctaLabel: string;
+  sortOrder: number;
 }>;
+
+type PlanOverride = FidelizePlanOverride;
 
 export async function getFidelizePlanRecords(): Promise<FidelizePlanRecord[]> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
