@@ -316,6 +316,7 @@ function IntegrationsPage() {
 
   const filtered = integrations?.filter(i => {
     if (activeCategory === 'email') return false; // email category is handled by panel
+    if (i.category === 'fidelize') return false; // possui aba dedicada
     return i.type === activeCategory;
   }) || [];
 
