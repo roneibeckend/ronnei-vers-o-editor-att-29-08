@@ -535,6 +535,15 @@ function FidelizePage() {
             O reenvio vai para o e-mail usado na compra.
           </p>
 
+          <FidelizePlanFeatures
+            plan={data.plan}
+            enabled={data.status === "success"}
+            onUpgrade={handleAccess}
+            upgradeDisabled={opening || data.status !== "success"}
+          />
+
+
+
           {data.migratedToFidelize ? (
             <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
               <p className="flex items-center gap-2 font-semibold">
