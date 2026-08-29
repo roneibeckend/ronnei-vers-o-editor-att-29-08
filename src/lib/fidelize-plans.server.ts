@@ -95,11 +95,22 @@ export async function saveFidelizePlanOverrides(
   const plans = { ...((settings["plans"] || {}) as Record<string, PlanOverride>) };
 
   for (const item of input) {
+    if (item.reset) {
+      delete plans[item.plan];
+      continue;
+    }
     plans[item.plan] = {
       ...(plans[item.plan] || {}),
       price: item.price,
       active: item.active,
+      label: item.label?.trim() || undefined,
+      tagline: item.tagline?.trim() || undefined,
+      description: item.description?.trim() || undefined,
       coverUrl: item.coverUrl?.trim() || undefined,
+      ctaLabel: item.ctaLabel?.trim() || undefined,
+      modules: item.modules?.map((m) => m.trim()).filter(Boolean),
+      highlight: item.highlight,
+      sortOrder: item.sortOrder,
     };
   }
   settings["plans"] = plans;
