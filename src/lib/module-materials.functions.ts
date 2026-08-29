@@ -71,14 +71,25 @@ export const getModuleMaterialDownloadUrl = createServerFn({ method: "POST" })
 
       if (!mod) throw new Error("Módulo não encontrado.");
 
-      const { data: enrollment } = await supabaseAdmin
-        .from("course_enrollments")
-        .select("id")
-        .eq("course_id", (mod as any).course_id)
-        .eq("user_id", context.userId)
+      const { data: course } = await supabaseAdmin
+        .from("courses")
+        .select("id, price, status")
+        .eq("id", (mod as any).course_id)
         .maybeSingle();
 
-      if (!enrollment) throw new Error("Você não possui matrícula neste curso.");
+      const isFreeCourse =
+        !!course && Number((course as any).price || 0) === 0 && (course as any).status === "active";
+
+      if (!isFreeCourse) {
+        const { data: enrollment } = await supabaseAdmin
+          .from("course_enrollments")
+          .select("id")
+          .eq("course_id", (mod as any).course_id)
+          .eq("user_id", context.userId)
+          .maybeSingle();
+
+        if (!enrollment) throw new Error("Você não possui matrícula neste curso.");
+      }
     }
 
     const { bucket, path } = resolveStoragePath((material as any).file_url);
