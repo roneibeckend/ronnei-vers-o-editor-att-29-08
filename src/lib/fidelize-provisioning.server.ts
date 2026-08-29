@@ -4,6 +4,8 @@
 import { fidelizeRequest, resolveFidelizePath, getFidelizeConfig } from "./fidelize.server";
 import { logSystemEvent } from "./system-log.server";
 import { FIDELIZE_PLAN_CATALOG, fidelizePlanLabel, isFidelizePlan, type FidelizePlan } from "./fidelize-plans";
+import { isFidelizeAlreadyExists } from "./fidelize-messages";
+
 
 export type ProvisionInput = {
   orderId: string;
