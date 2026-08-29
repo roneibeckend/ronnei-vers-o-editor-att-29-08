@@ -7,7 +7,7 @@
 import { logSystemEvent } from "./system-log.server";
 import { fidelizePlanLabel, isFidelizePlan } from "./fidelize-plans";
 
-export type FidelizeLifecycleEventType = "upgrade" | "downgrade" | "cancellation";
+export type FidelizeLifecycleEventType = "upgrade" | "downgrade" | "cancellation" | "reactivation";
 
 export type FidelizeLifecyclePayload = {
   eventId?: string | null;
@@ -34,6 +34,28 @@ const EVENT_ALIASES: Record<string, FidelizeLifecycleEventType> = {
   "subscription.canceled": "cancellation",
   "subscription.cancelled": "cancellation",
   account_canceled: "cancellation",
+  // Reativação / retomada da assinatura na Fidelize.
+  reactivate: "reactivation",
+  reactivated: "reactivation",
+  reactivation: "reactivation",
+  resubscribe: "reactivation",
+  resubscribed: "reactivation",
+  resumed: "reactivation",
+  renewed: "reactivation",
+  "subscription.reactivate": "reactivation",
+  "subscription.reactivated": "reactivation",
+  "subscription.reactivation": "reactivation",
+  "subscription.resumed": "reactivation",
+  "subscription.resume": "reactivation",
+  "subscription.renewed": "reactivation",
+  "subscription.resubscribed": "reactivation",
+  subscription_reactivated: "reactivation",
+  subscription_resumed: "reactivation",
+  subscription_renewed: "reactivation",
+  "account.reactivated": "reactivation",
+  account_reactivated: "reactivation",
+  "plan.reactivated": "reactivation",
+  plan_reactivated: "reactivation",
 };
 
 export function normalizeLifecycleEvent(value: string | null | undefined): FidelizeLifecycleEventType | null {
@@ -188,7 +210,8 @@ export async function handleFidelizeLifecycleEvent(payload: FidelizeLifecyclePay
   }
 
   const now = new Date().toISOString();
-  const lifecycleStatus = eventType === "cancellation" ? "canceled" : eventType;
+  const lifecycleStatus =
+    eventType === "cancellation" ? "canceled" : eventType === "reactivation" ? "reactivated" : eventType;
   const newPlan = payload.newPlan && isFidelizePlan(payload.newPlan) ? payload.newPlan : null;
 
   await supabaseAdmin
@@ -259,7 +282,13 @@ export async function handleFidelizeLifecycleEvent(payload: FidelizeLifecyclePay
     await notifyAdmin({
       type: "system",
       severity: eventType === "cancellation" ? "warning" : "info",
-      title: `Fidelize: ${eventType === "cancellation" ? "cancelamento" : eventType} do aluno`,
+      title: `Fidelize: ${
+        eventType === "cancellation"
+          ? "cancelamento"
+          : eventType === "reactivation"
+            ? "reativação"
+            : eventType
+      } do aluno`,
       body: `A Fidelize informou ${eventType}. ${cancelResult.canceled.length} assinatura(s) cancelada(s) no Asaas.`,
       link: "/admin/integracoes",
       dedupKey: `fidelize_lifecycle_${payload.eventId ?? record["id"]}`,
