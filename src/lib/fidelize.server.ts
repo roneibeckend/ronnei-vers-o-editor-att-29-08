@@ -297,6 +297,7 @@ export async function runFidelizeDiagnostics(
     label: string,
     path: string,
     method: "GET" | "POST" = "GET",
+    strict = false,
   ) => {
     const result = await fidelizeRequest(path, {
       method,
@@ -306,7 +307,7 @@ export async function runFidelizeDiagnostics(
     });
     apiVersion = apiVersion || result.apiVersion || null;
     if (result.httpCode > 0) lastResponseAt = result.timestamp;
-    const state = classify(result.httpCode, result.success);
+    const state = classify(result.httpCode, result.success, strict);
     checks.push({
       key,
       label,
@@ -320,9 +321,13 @@ export async function runFidelizeDiagnostics(
   };
 
   const healthPath = testPath?.trim() || resolveFidelizePath(config.baseUrl, "/health");
-  await probe("health", "API online (/health)", healthPath);
+  await probe("health", "API online (/health)", healthPath, "GET", true);
   await probe("provision-account", "Provisionamento (/provision-account)", resolveFidelizePath(config.baseUrl, "/provision-account"), "POST");
-  await probe("customer", "Clientes (/customer)", resolveFidelizePath(config.baseUrl, "/customer"));
+  await probe(
+    "customer",
+    "Clientes (/customer-by-phone)",
+    resolveFidelizePath(config.baseUrl, `/customer-by-phone/${FIDELIZE_DIAGNOSTIC_PHONE}`),
+  );
 
   const authFailed = checks.some((c) => c.state === "auth_error");
   const anyOk = checks.some((c) => c.state === "ok");
