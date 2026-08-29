@@ -332,7 +332,7 @@ function FidelizePage() {
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button
               className="w-full sm:w-auto"
-              disabled={!data.loginUrl || opening}
+              disabled={opening || data.status !== "success"}
               onClick={handleAccess}
             >
               {opening ? (
@@ -355,6 +355,10 @@ function FidelizePage() {
               Reenviar acesso
             </Button>
           </div>
+          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <ExternalLink className="h-3.5 w-3.5" />
+            Login único: ao clicar em “Acessar Fidelize” você entra automaticamente, sem digitar senha.
+          </p>
           <p className="flex items-center gap-2 text-xs text-muted-foreground">
             <Mail className="h-3.5 w-3.5" />
             O reenvio vai para o e-mail usado na compra.
