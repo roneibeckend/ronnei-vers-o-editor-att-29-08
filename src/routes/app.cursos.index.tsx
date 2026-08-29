@@ -188,28 +188,18 @@ function CoursesPage() {
 
       const pendingCoupon = localStorage.getItem('pending_coupon_code') || undefined;
 
-      const result = await createPaymentLink({
-        data: {
-          products,
-          affiliateRef: getAffiliateRef() || undefined,
-          paymentType: item.payment_type || 'unique',
-          dueDays: item.due_days || 3,
-          couponCode: pendingCoupon,
-        }
+      openCheckout({
+        productId: item.id,
+        productType: type,
+        title: item.title,
+        cover: (item as any).cover_url ?? (item as any).cover ?? null,
+        description: item.description ?? null,
+        value: products.reduce((acc: number, p: any) => acc + (p.value || 0), 0),
+        recurring: item.payment_type === 'recurring',
+        affiliateRef: getAffiliateRef() || null,
+        extraItems: products.slice(1).map((p: any) => ({ productId: p.productId, productType: p.productType })),
+        couponCode: pendingCoupon || null,
       });
-
-      if ((result as any).free) {
-        localStorage.removeItem('pending_coupon_code');
-        toast.success("Cupom aplicado! Acesso liberado gratuitamente. 🎉");
-        await queryClient.invalidateQueries({ queryKey: ["course-enrollments"] });
-        await queryClient.invalidateQueries({ queryKey: ["ebook-enrollments"] });
-        navigate({ to: type === 'course' ? `/app/cursos/${item.id}` : `/app/ebooks/${item.id}` });
-        return;
-      }
-
-      if (result.url) {
-        openPayment(result.url, item.title, item.id, type, { value: (result as any).value, transactionId: result.id });
-      }
     } catch (error: any) {
       console.error("Erro ao processar compra:", error);
       toast.error(error.message || "Erro ao gerar link de pagamento.");
