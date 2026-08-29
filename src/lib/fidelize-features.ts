@@ -232,6 +232,23 @@ function titleCase(raw: string) {
     .join(" ");
 }
 
+/** Recursos internos que não devem aparecer para o cliente. */
+const HIDDEN_FEATURES = new Set([
+  "reviews_reply",
+  "reviews_categories",
+  "reviews_public_page",
+  "customer_import",
+  "customer_export",
+  "customer_segments",
+  "whatsapp_inbox",
+  "whatsapp_notifications",
+  "custom_stamp_icons",
+]);
+
+export function isHiddenFeature(raw: string): boolean {
+  return HIDDEN_FEATURES.has(String(raw).trim().toLowerCase().replace(/[\s-]+/g, "_"));
+}
+
 /** Normaliza uma chave crua da API para a chave canônica do catálogo. */
 export function canonicalFeatureKey(raw: string): string {
   const key = String(raw).trim().toLowerCase().replace(/[\s-]+/g, "_");
@@ -252,6 +269,7 @@ export function describeFeatures(keys: readonly string[]): FidelizeFeature[] {
   const list: FidelizeFeature[] = [];
   for (const raw of keys) {
     if (!raw || typeof raw !== "string") continue;
+    if (isHiddenFeature(raw)) continue;
     const feature = describeFeature(raw);
     if (seen.has(feature.key)) continue;
     seen.add(feature.key);
