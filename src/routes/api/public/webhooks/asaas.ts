@@ -285,6 +285,78 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
             return Response.json({ received: true, processed: result.ok, type: 'consultation' });
           }
 
+          // FIDELIZE: provisiona automaticamente a conta do aluno no sistema Fidelize.
+          if (productType === 'fidelize') {
+            const { provisionFidelizeAccount } = await import('@/lib/fidelize-provisioning.server');
+            const { isFidelizePlan, fidelizePlanLabel } = await import('@/lib/fidelize-plans');
+
+            const plan = productId;
+            if (!isFidelizePlan(plan)) {
+              throw new Error(`Plano Fidelize inválido na referência do Asaas: ${plan}`);
+            }
+
+            const { data: profile } = await supabaseAdmin
+              .from('profiles')
+              .select('name, email, phone')
+              .eq('id', userId)
+              .maybeSingle();
+
+            const email = (profile as any)?.email || verifiedPayment.customerEmail;
+            if (!email) {
+              throw new Error('E-mail do aluno não encontrado para provisionar a Fidelize.');
+            }
+
+            const result = await provisionFidelizeAccount({
+              orderId: paymentId,
+              userId,
+              plan,
+              name: (profile as any)?.name || 'Cliente',
+              email,
+              phone: (profile as any)?.phone || null,
+            });
+
+            await supabaseAdmin
+              .from('asaas_webhook_events')
+              .update({
+                status: result.success ? 'completed' : 'failed',
+                processed_at: new Date().toISOString(),
+                last_error: result.success ? null : result.error ?? 'Falha no provisionamento da Fidelize',
+              })
+              .eq('event_id', eventId as string)
+              .eq('claim_token', claimToken as string)
+              .eq('status', 'processing');
+
+            try {
+              const { notifyAdmin, formatMoney } = await import('@/lib/admin-notify.server');
+              await notifyAdmin({
+                type: 'sale',
+                severity: result.success ? 'success' : 'warning',
+                title: `🏷️ ${fidelizePlanLabel(plan)} — ${formatMoney(amount)}`,
+                body: result.success
+                  ? `Conta provisionada automaticamente para ${email}.`
+                  : `Pagamento aprovado, mas o provisionamento falhou: ${result.error}`,
+                entityType: 'payment',
+                entityId: paymentId,
+                link: '/admin/integracoes',
+                dedupKey: `fidelize-sale:${paymentId}`,
+                metadata: { plan, userId, paymentId, amount },
+              });
+            } catch (notifyErr) {
+              console.warn('[Webhook Asaas] Falha ao notificar venda Fidelize:', notifyErr);
+            }
+
+            if (!result.success) {
+              await logSystemError(
+                'webhook_asaas',
+                'Falha ao provisionar conta Fidelize',
+                new Error(String(result.error ?? 'erro desconhecido')),
+                { eventId, paymentId, plan, userId },
+              );
+            }
+
+            return Response.json({ received: true, processed: result.success, type: 'fidelize' });
+          }
+
           const productTable = productType === 'course'
             ? 'courses'
             : productType === 'ebook'
