@@ -38,8 +38,15 @@ function redact(value: unknown): unknown {
 }
 
 function normalizeBaseUrl(url: string) {
-  return url.trim().replace(/\/+$/, "");
+  const clean = url.trim().replace(/\/+$/, "");
+  // http:// gera 301 para https e o redirect converte POST em GET (causa de 405
+  // em /provision-account). Forçamos https, exceto em hosts locais.
+  if (/^http:\/\//i.test(clean) && !/^http:\/\/(localhost|127\.0\.0\.1)/i.test(clean)) {
+    return clean.replace(/^http:\/\//i, "https://");
+  }
+  return clean;
 }
+
 
 /** Lê a configuração salva da integração Fidelize (descriptografando a API Key). */
 export async function getFidelizeConfig(): Promise<FidelizeConfig | null> {
