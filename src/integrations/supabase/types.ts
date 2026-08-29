@@ -1462,6 +1462,7 @@ export type Database = {
           file_url: string
           id: string
           is_active: boolean
+          lesson_id: string | null
           mime_type: string | null
           module_id: string
           order_index: number
@@ -1477,6 +1478,7 @@ export type Database = {
           file_url: string
           id?: string
           is_active?: boolean
+          lesson_id?: string | null
           mime_type?: string | null
           module_id: string
           order_index?: number
@@ -1492,6 +1494,7 @@ export type Database = {
           file_url?: string
           id?: string
           is_active?: boolean
+          lesson_id?: string | null
           mime_type?: string | null
           module_id?: string
           order_index?: number
@@ -1499,6 +1502,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "course_module_materials_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "course_lessons"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "course_module_materials_module_id_fkey"
             columns: ["module_id"]
