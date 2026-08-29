@@ -391,7 +391,7 @@ export const simulateFidelizePurchase = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { provisionFidelizeAccount } = await import("./fidelize-provisioning.server");
     const { fidelizePlanLabel } = await import("./fidelize-plans");
-    const { getFidelizePlansWithOverrides } = await import("./fidelize-plans.server");
+    const { getFidelizePlanRecord } = await import("./fidelize-plans.server");
 
     const email = data.email.trim().toLowerCase();
 
@@ -405,8 +405,7 @@ export const simulateFidelizePurchase = createServerFn({ method: "POST" })
       throw new Error(`Nenhum aluno cadastrado com o e-mail ${email}.`);
     }
 
-    const plans = await getFidelizePlansWithOverrides();
-    const amount = Number(plans.find((p: any) => p.id === data.plan)?.price ?? 0);
+    const amount = Number((await getFidelizePlanRecord(data.plan)).price ?? 0);
 
     const paymentId = `sim_${Date.now()}`;
 
