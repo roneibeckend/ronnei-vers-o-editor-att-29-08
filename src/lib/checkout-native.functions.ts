@@ -175,7 +175,7 @@ async function fulfill(
     const result = await provisionFidelizeAccount({
       orderId: paymentId,
       userId: context.userId,
-      plan: productId,
+      plan: productId as any,
       name: (profile as any)?.name || "Cliente",
       email,
       phone: (profile as any)?.phone || null,
