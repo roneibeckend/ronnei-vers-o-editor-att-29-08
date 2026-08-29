@@ -2192,6 +2192,7 @@ export type Database = {
       }
       fidelize_provisioning_logs: {
         Row: {
+          cancel_requested_at: string | null
           created_at: string
           duration_ms: number | null
           endpoint: string | null
@@ -2199,25 +2200,32 @@ export type Database = {
           fidelize_user_id: string | null
           id: string
           is_test: boolean
+          last_payment_at: string | null
+          last_payment_id: string | null
           lifecycle_plan: string | null
           lifecycle_status: string
           login_url: string | null
           migrated_at: string | null
           migrated_to_fidelize: boolean
           modules: Json
+          next_due_date: string | null
           order_id: string | null
+          overdue_since: string | null
           plan: string
+          reactivated_at: string | null
           request_payload: Json
           response_payload: Json
           slug: string | null
           status: string
           subscription_canceled_at: string | null
           subscription_id: string | null
+          subscription_status: string
           tenant_id: string | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          cancel_requested_at?: string | null
           created_at?: string
           duration_ms?: number | null
           endpoint?: string | null
@@ -2225,25 +2233,32 @@ export type Database = {
           fidelize_user_id?: string | null
           id?: string
           is_test?: boolean
+          last_payment_at?: string | null
+          last_payment_id?: string | null
           lifecycle_plan?: string | null
           lifecycle_status?: string
           login_url?: string | null
           migrated_at?: string | null
           migrated_to_fidelize?: boolean
           modules?: Json
+          next_due_date?: string | null
           order_id?: string | null
+          overdue_since?: string | null
           plan: string
+          reactivated_at?: string | null
           request_payload?: Json
           response_payload?: Json
           slug?: string | null
           status?: string
           subscription_canceled_at?: string | null
           subscription_id?: string | null
+          subscription_status?: string
           tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          cancel_requested_at?: string | null
           created_at?: string
           duration_ms?: number | null
           endpoint?: string | null
@@ -2251,20 +2266,26 @@ export type Database = {
           fidelize_user_id?: string | null
           id?: string
           is_test?: boolean
+          last_payment_at?: string | null
+          last_payment_id?: string | null
           lifecycle_plan?: string | null
           lifecycle_status?: string
           login_url?: string | null
           migrated_at?: string | null
           migrated_to_fidelize?: boolean
           modules?: Json
+          next_due_date?: string | null
           order_id?: string | null
+          overdue_since?: string | null
           plan?: string
+          reactivated_at?: string | null
           request_payload?: Json
           response_payload?: Json
           slug?: string | null
           status?: string
           subscription_canceled_at?: string | null
           subscription_id?: string | null
+          subscription_status?: string
           tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
