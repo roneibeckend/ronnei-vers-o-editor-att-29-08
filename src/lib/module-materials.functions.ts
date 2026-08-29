@@ -78,7 +78,7 @@ export const getModuleMaterialDownloadUrl = createServerFn({ method: "POST" })
         .maybeSingle();
 
       const isFreeCourse =
-        !!course && Number((course as any).price || 0) === 0 && (course as any).status === "published";
+        !!course && Number((course as any).price || 0) === 0 && (course as any).status === "active";
 
       if (!isFreeCourse) {
         const { data: enrollment } = await supabaseAdmin
