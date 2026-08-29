@@ -368,3 +368,84 @@ export const runFidelizeHealthNow = createServerFn({ method: "POST" })
 
     return result;
   });
+
+/**
+ * Simula uma compra aprovada de um plano Fidelize.
+ * Executa exatamente o mesmo fluxo do webhook Asaas (PAYMENT_CONFIRMED):
+ * resolve o perfil do aluno → provisiona a conta na Fidelize → notifica o admin.
+ * Nenhuma cobrança é criada no Asaas.
+ */
+export const simulateFidelizePurchase = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        email: z.string().email("E-mail do aluno inválido."),
+        plan: z.enum(["starter", "pro", "premium"]),
+        sendEmail: z.boolean().optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context as never);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { provisionFidelizeAccount } = await import("./fidelize-provisioning.server");
+    const { fidelizePlanLabel } = await import("./fidelize-plans");
+    const { getFidelizePlanRecord } = await import("./fidelize-plans.server");
+
+    const email = data.email.trim().toLowerCase();
+
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("id, name, email, phone")
+      .ilike("email", email)
+      .maybeSingle();
+
+    if (!profile) {
+      throw new Error(`Nenhum aluno cadastrado com o e-mail ${email}.`);
+    }
+
+    const amount = Number((await getFidelizePlanRecord(data.plan)).price ?? 0);
+
+    const paymentId = `sim_${Date.now()}`;
+
+    const result = await provisionFidelizeAccount({
+      orderId: paymentId,
+      userId: (profile as any).id,
+      plan: data.plan,
+      name: (profile as any).name || "Cliente",
+      email: (profile as any).email || email,
+      phone: (profile as any).phone || null,
+      isTest: data.sendEmail === false,
+    });
+
+    try {
+      const { notifyAdmin, formatMoney } = await import("./admin-notify.server");
+      await notifyAdmin({
+        type: "sale",
+        severity: result.success ? "success" : "warning",
+        title: `🧪 Simulação — ${fidelizePlanLabel(data.plan)} (${formatMoney(amount)})`,
+        body: result.success
+          ? `Simulação de pagamento aprovado: conta provisionada para ${email}.`
+          : `Simulação falhou no provisionamento: ${result.error}`,
+        entityType: "payment",
+        entityId: paymentId,
+        link: "/admin/integracoes",
+        dedupKey: `fidelize-sim:${paymentId}`,
+        metadata: { plan: data.plan, userId: (profile as any).id, paymentId, amount, simulated: true },
+      });
+    } catch {
+      /* notificação é best-effort */
+    }
+
+    const { logSystemEvent } = await import("./system-log.server");
+    await logSystemEvent({
+      level: result.success ? "info" : "error",
+      source: "fidelize",
+      message: `Simulação de compra aprovada (${data.plan}) para ${email}`,
+      details: { paymentId, plan: data.plan, amount, status: result.status, error: result.error ?? null },
+      userId: (profile as any).id,
+    });
+
+    return { ...result, email, paymentId, amount, plan: data.plan };
+  });
