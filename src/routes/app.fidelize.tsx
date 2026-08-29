@@ -1,14 +1,28 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Clock, ExternalLink, Loader2, ShieldAlert, Sparkles } from "lucide-react";
+import {
+  CheckCircle2,
+  Clock,
+  Copy,
+  ExternalLink,
+  Loader2,
+  Mail,
+  RefreshCw,
+  ShieldAlert,
+  Sparkles,
+} from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/platform/Shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FidelizeOffer } from "@/components/platform/FidelizeOffer";
-import { getMyFidelizeAccount } from "@/lib/fidelize-account.functions";
+import { getMyFidelizeAccount, resendMyFidelizeAccess } from "@/lib/fidelize-account.functions";
 import { FIDELIZE_PLAN_CATALOG, fidelizePlanLabel, isFidelizePlan } from "@/lib/fidelize-plans";
+import { friendlyFidelizeError } from "@/lib/fidelize-messages";
+
 
 export const Route = createFileRoute("/app/fidelize")({
   head: () => ({
