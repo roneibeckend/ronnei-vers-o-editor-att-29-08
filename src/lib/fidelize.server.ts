@@ -20,6 +20,8 @@ export type FidelizeCallResult<T = unknown> = {
   rawBody: string | null;
   error: string | null;
   timestamp: string;
+  /** Versão da API informada pelo Fidelize (header ou corpo), quando disponível. */
+  apiVersion?: string | null;
 };
 
 const MAX_BODY_LOG = 2000;
@@ -150,6 +152,10 @@ export async function fidelizeRequest<T = unknown>(
       method,
       data: parsed,
       rawBody: rawBody.slice(0, MAX_BODY_LOG),
+      apiVersion:
+        response.headers.get("x-api-version") ||
+        response.headers.get("api-version") ||
+        (parsed && typeof parsed === "object" ? ((parsed as any).version ?? (parsed as any).api_version ?? null) : null),
       error: response.ok ? null : `HTTP ${response.status} ${response.statusText}`,
       timestamp,
     };
