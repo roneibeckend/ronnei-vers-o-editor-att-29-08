@@ -723,6 +723,26 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
 });
 
 /**
+ * Reflete na área do aluno os sinais negativos da assinatura recorrente Fidelize
+ * (fatura vencida, cobrança cancelada/estornada, assinatura removida no Asaas).
+ */
+async function syncFidelizeSubscriptionSignal(payment: any, status: 'overdue' | 'canceled') {
+  if (!payment) return;
+  const parsed = parseExternalReference(payment?.externalReference);
+  if (parsed?.productType !== 'fidelize') return;
+
+  let userId = parsed.userId as string | null;
+  if (!userId) {
+    const { apiKey, baseUrl } = await getAsaasConfig();
+    userId = await resolveUserFromPayment(payment, baseUrl, apiKey);
+  }
+  if (!userId) return;
+
+  const { applyFidelizeSubscriptionSignal } = await import('@/lib/fidelize-subscription.server');
+  await applyFidelizeSubscriptionSignal({ userId, status, paymentId: payment?.id ?? null });
+}
+
+/**
  * Envia e-mails de cobrança (fatura gerada, vencendo ou atrasada) para o aluno
  * dono do pagamento, com idempotência por evento do Asaas.
  */
