@@ -276,7 +276,7 @@ function AdminAlunosPage() {
               ))}
               {profiles.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-white/20 uppercase tracking-widest text-[10px] font-bold">
+                  <td colSpan={6} className="px-6 py-12 text-center text-white/20 uppercase tracking-widest text-[10px] font-bold">
                     Nenhum aluno encontrado
                   </td>
                 </tr>
