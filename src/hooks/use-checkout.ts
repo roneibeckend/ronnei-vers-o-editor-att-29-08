@@ -16,6 +16,9 @@ export interface CheckoutProduct {
   value?: number | null;
   recurring?: boolean;
   affiliateRef?: string | null;
+  /** Itens adicionais (order bump/upsell) cobrados na mesma transação. */
+  extraItems?: { productId: string; productType: CheckoutProductType; discountPercent?: number }[];
+  couponCode?: string | null;
   onSuccess?: (() => void) | null;
 }
 

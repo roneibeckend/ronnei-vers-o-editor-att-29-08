@@ -105,7 +105,10 @@ function CheckoutBody({ product, onClose }: { product: CheckoutProduct; onClose:
         const res: any = await checkStatus({
           data: {
             paymentId: charge.paymentId,
-            product: { productId: product.productId, productType: product.productType },
+            products: [
+              { productId: product.productId, productType: product.productType },
+              ...(product.extraItems ?? []),
+            ],
           },
         });
         if (active && res?.confirmed) setConfirmed(true);
@@ -168,7 +171,11 @@ function CheckoutBody({ product, onClose }: { product: CheckoutProduct; onClose:
       const [mm, yy] = form.expiry.split("/");
       const result: any = await createCheckout({
         data: {
-          product: { productId: product.productId, productType: product.productType },
+          products: [
+            { productId: product.productId, productType: product.productType },
+            ...(product.extraItems ?? []),
+          ],
+          couponCode: product.couponCode || undefined,
           method,
           recurring: product.recurring === true || product.productType === "fidelize",
           affiliateRef: product.affiliateRef || undefined,
