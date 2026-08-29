@@ -186,6 +186,7 @@ function AdminAlunosPage() {
                   <th className="px-6 py-4 font-bold text-white/40 uppercase tracking-widest text-[10px] w-[15%] min-w-[100px]">Status</th>
                   <th className="px-6 py-4 font-bold text-white/40 uppercase tracking-widest text-[10px] w-[25%] min-w-[200px]">Contato</th>
                   <th className="px-6 py-4 font-bold text-white/40 uppercase tracking-widest text-[10px] w-[15%] min-w-[120px]">Matrícula</th>
+                  <th className="px-6 py-4 font-bold text-white/40 uppercase tracking-widest text-[10px] w-[15%] min-w-[120px]">Fidelize</th>
                   <th className="px-6 py-4 font-bold text-white/40 uppercase tracking-widest text-[10px] text-right w-[15%] min-w-[150px]">Ações</th>
                 </tr>
               </thead>
