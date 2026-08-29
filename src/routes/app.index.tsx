@@ -532,7 +532,16 @@ function FidelizeHomeSection() {
     staleTime: 1000 * 60 * 5,
   });
 
-  if (isLoading || account) return null;
+  // Só escondemos a oferta quando o aluno tem uma conta Fidelize realmente ativa.
+  // Provisionamentos com falha, cancelados ou pendentes continuam vendo os planos.
+  const acc = account as any;
+  const hasActiveAccount =
+    !!acc &&
+    acc.status === "success" &&
+    acc.lifecycleStatus !== "canceled" &&
+    acc.subscriptionStatus !== "canceled";
+
+  if (isLoading || hasActiveAccount) return null;
 
   return (
     <section id="fidelize">
