@@ -79,17 +79,26 @@ function isFresh(expiresAt: string | null): boolean {
 }
 
 /** Constrói a URL de autologin a partir de um token quando a API só devolve o token. */
-function buildFromToken(baseLoginUrl: string | null, token: string | null): string | null {
-  if (!token) return null;
-  const base = baseLoginUrl && /^https?:\/\//i.test(baseLoginUrl) ? baseLoginUrl : null;
-  if (!base) return null;
-  try {
-    const origin = new URL(base).origin;
-    return `${origin}/auth/autologin?token=${encodeURIComponent(token)}`;
-  } catch {
-    return null;
-  }
+function buildFromToken(origin: string | null, token: string | null): string | null {
+  if (!token || !origin) return null;
+  return `${origin}/auth/autologin?token=${encodeURIComponent(token)}`;
 }
+
+/** Origem (protocolo + host) da aplicação Fidelize, derivada da URL da API. */
+function originFrom(...urls: (string | null | undefined)[]): string | null {
+  for (const value of urls) {
+    if (typeof value !== "string" || !/^https?:\/\//i.test(value) || /PLACEHOLDER/i.test(value)) {
+      continue;
+    }
+    try {
+      return new URL(value).origin;
+    } catch {
+      /* tenta o próximo */
+    }
+  }
+  return null;
+}
+
 
 /**
  * Devolve o melhor destino de acesso à Fidelize para um aluno, com auditoria.
