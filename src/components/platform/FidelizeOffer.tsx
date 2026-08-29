@@ -46,7 +46,7 @@ export function FidelizeOffer({ compact = false }: { compact?: boolean }) {
             },
           ],
           affiliateRef: getAffiliateRef() || undefined,
-          paymentType: "unique",
+          paymentType: "recurring",
         },
       });
       if (result?.url) {
@@ -120,7 +120,7 @@ export function FidelizeOffer({ compact = false }: { compact?: boolean }) {
           <CardContent className="flex flex-1 flex-col gap-4 pb-5">
             <div className="flex items-end gap-2">
               <p className="text-3xl font-bold leading-none">{brl(plan.price)}</p>
-              <span className="pb-0.5 text-xs text-muted-foreground">pagamento único</span>
+              <span className="pb-0.5 text-xs text-muted-foreground">/mês · assinatura mensal</span>
             </div>
             {!compact && (
               <ul className="flex-1 space-y-1.5 text-sm text-muted-foreground">

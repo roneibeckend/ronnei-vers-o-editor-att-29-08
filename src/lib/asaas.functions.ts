@@ -111,6 +111,9 @@ export const createAsaasPaymentLink = createServerFn({ method: "POST" })
 
       const totalValue = Math.round(pricedProducts.reduce((acc, p) => acc + p.value, 0) * 100) / 100;
       const mainProduct = pricedProducts[0];
+      // Fidelize é assinatura mensal: força recorrência mesmo se o cliente pedir avulso.
+      const isRecurring = data.paymentType === 'recurring'
+        || pricedProducts.some((p) => p.productType === 'fidelize');
 
       // 100% DE DESCONTO: libera o acesso imediatamente, sem gerar cobrança no Asaas.
       if (totalValue <= 0) {
@@ -148,7 +151,9 @@ export const createAsaasPaymentLink = createServerFn({ method: "POST" })
           description: `Acesso a: ${rawTitles.substring(0, 450)}`, // Descrição pode ser mais permissiva, mas limitamos tamanho
           value: totalValue,
           billingType: 'UNDEFINED',
-          chargeType: data.paymentType === 'recurring' ? 'RECURRENT' : 'DETACHED',
+          // Planos Fidelize são sempre assinatura mensal recorrente.
+          chargeType: isRecurring ? 'RECURRENT' : 'DETACHED',
+          ...(isRecurring ? { subscriptionCycle: 'MONTHLY' } : {}),
           dueDateLimitDays: data.dueDays || 3,
           endDate: null,
           notificationEnabled: true,

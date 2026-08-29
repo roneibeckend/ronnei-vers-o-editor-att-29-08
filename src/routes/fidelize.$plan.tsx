@@ -56,7 +56,7 @@ function FidelizePlanPage() {
       const result: any = await createPaymentLink({
         data: {
           products: [{ productId: plan, productType: "fidelize", title: info.label }],
-          paymentType: "unique",
+          paymentType: "recurring",
         },
       });
       if (result?.url) window.location.href = result.url;
@@ -96,7 +96,10 @@ function FidelizePlanPage() {
           <p className="text-muted-foreground">{info.description}</p>
         </CardHeader>
         <CardContent className="space-y-6">
-          <p className="text-4xl font-bold">R$ {info.price.toFixed(2).replace(".", ",")}</p>
+          <p className="text-4xl font-bold">
+            R$ {info.price.toFixed(2).replace(".", ",")}
+            <span className="ml-2 align-middle text-sm font-normal text-muted-foreground">/mês · assinatura mensal</span>
+          </p>
           <ul className="space-y-2 text-sm text-muted-foreground">
             {info.modules.map((m) => (
               <li key={m} className="flex items-start gap-2">
