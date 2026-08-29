@@ -1,7 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Play, ShoppingCart, Sparkles, Lock, Loader2, CalendarDays } from "lucide-react";
-import { usePaymentModal } from "@/hooks/use-payment-modal";
-import { createAsaasPaymentLink } from "@/lib/asaas.functions";
+import { useCheckout } from "@/hooks/use-checkout";
 import { savePendingCheckout, getPendingCheckout, completePendingCheckout } from "@/lib/checkout.functions";
 import { useServerFn } from "@tanstack/react-start";
 
@@ -38,11 +37,10 @@ function Dashboard() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [discountPercentage, setDiscountPercentage] = useState(15);
   const { isEnabled: isOfferEnabled } = usePostPurchaseOfferStore();
-  const createPaymentLink = useServerFn(createAsaasPaymentLink);
   const saveCheckout = useServerFn(savePendingCheckout);
   const getPending = useServerFn(getPendingCheckout);
   const completeCheckout = useServerFn(completePendingCheckout);
-  const { openPayment } = usePaymentModal();
+  const { openCheckout } = useCheckout();
 
   const executeCheckout = async (targetItem: any, additionalItems: any[]) => {
     try {
@@ -75,19 +73,18 @@ function Dashboard() {
         }))
       ];
 
-      const result = await createPaymentLink({
-        data: {
-          products,
-          affiliateRef: getAffiliateRef() || undefined,
-          paymentType: targetItem.payment_type || 'unique',
-          dueDays: targetItem.due_days || 3,
-          couponCode: localStorage.getItem('pending_coupon_code') || undefined,
-        }
+      openCheckout({
+        productId: targetItem.id,
+        productType: targetItem.type,
+        title: targetItem.title,
+        cover: (targetItem as any).cover_url ?? (targetItem as any).cover ?? null,
+        description: targetItem.description ?? null,
+        value: products.reduce((acc: number, p: any) => acc + (p.value || 0), 0),
+        recurring: targetItem.payment_type === 'recurring',
+        affiliateRef: getAffiliateRef() || null,
+        extraItems: products.slice(1).map((p: any) => ({ productId: p.productId, productType: p.productType, discountPercent: discountPercentage })),
+        couponCode: localStorage.getItem('pending_coupon_code') || null,
       });
-      
-      if (result.url) {
-        openPayment(result.url, targetItem.title, targetItem.id, targetItem.type, { value: (result as any).value, transactionId: result.id });
-      }
     } catch (error: any) {
       console.error("Erro ao processar compra:", error);
       toast.error(error.message || "Erro ao gerar link de pagamento.");
@@ -309,9 +306,8 @@ function Dashboard() {
 
 function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boolean }) {
   const { isEnabled: isOfferEnabled } = usePostPurchaseOfferStore();
-  const createPaymentLink = useServerFn(createAsaasPaymentLink);
   const saveCheckout = useServerFn(savePendingCheckout);
-  const { openPayment } = usePaymentModal();
+  const { openCheckout } = useCheckout();
   const [isProcessing, setIsProcessing] = useState(false);
   const [showOffer, setShowOffer] = useState(false);
   const [discountPercentage, setDiscountPercentage] = useState(15);
@@ -377,28 +373,18 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
 
       const pendingCoupon = localStorage.getItem('pending_coupon_code') || undefined;
 
-      const result = await createPaymentLink({
-        data: {
-          products,
-          affiliateRef: getAffiliateRef() || undefined,
-          paymentType: item.payment_type || 'unique',
-          dueDays: item.due_days || 3,
-          couponCode: pendingCoupon,
-        }
+      openCheckout({
+        productId: item.id,
+        productType: item.type,
+        title: item.title,
+        cover: (item as any).cover_url ?? (item as any).cover ?? null,
+        description: item.description ?? null,
+        value: products.reduce((acc: number, p: any) => acc + (p.value || 0), 0),
+        recurring: item.payment_type === 'recurring',
+        affiliateRef: getAffiliateRef() || null,
+        extraItems: products.slice(1).map((p: any) => ({ productId: p.productId, productType: p.productType, discountPercent: discountPercentage })),
+        couponCode: pendingCoupon || null,
       });
-
-      if ((result as any).free) {
-        localStorage.removeItem('pending_coupon_code');
-        toast.success("Cupom aplicado! Acesso liberado gratuitamente. 🎉");
-        await queryClient.invalidateQueries({ queryKey: ["course-enrollments"] });
-        await queryClient.invalidateQueries({ queryKey: ["ebook-enrollments"] });
-        navigate({ to: item.type === 'course' ? `/app/cursos/${item.id}` : `/app/ebooks/${item.id}` });
-        return;
-      }
-
-      if (result.url) {
-        openPayment(result.url, item.title, item.id, item.type, { value: (result as any).value, transactionId: result.id });
-      }
     } catch (error: any) {
       console.error("Erro ao processar compra:", error);
       toast.error(error.message || "Erro ao gerar link de pagamento.");

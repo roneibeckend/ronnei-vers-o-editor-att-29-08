@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { listFidelizePlans } from "@/lib/fidelize-products.functions";
-import { createAsaasPaymentLink } from "@/lib/asaas.functions";
+import { useCheckout } from "@/hooks/use-checkout";
 
 const SITE = "https://ronneinaveia.com.br";
 
@@ -38,7 +38,7 @@ function FidelizePlanPage() {
   const { plan } = useParams({ from: "/fidelize/$plan" });
   const navigate = useNavigate();
   const fetchPlans = useServerFn(listFidelizePlans);
-  const createPaymentLink = useServerFn(createAsaasPaymentLink);
+  const { openCheckout } = useCheckout();
   const [loading, setLoading] = useState(false);
 
   const { data, isLoading } = useQuery({ queryKey: ["fidelize-plans-public"], queryFn: () => fetchPlans() });
@@ -53,14 +53,16 @@ function FidelizePlanPage() {
         navigate({ to: "/login", search: { redirectTo: `/fidelize/${plan}` } as never });
         return;
       }
-      const result: any = await createPaymentLink({
-        data: {
-          products: [{ productId: plan, productType: "fidelize", title: info.label }],
-          paymentType: "recurring",
-        },
+      openCheckout({
+        productId: plan,
+        productType: "fidelize",
+        title: info.label,
+        cover: (info as any).cover ?? null,
+        description: info.description,
+        benefits: info.modules,
+        value: info.price,
+        recurring: true,
       });
-      if (result?.url) window.location.href = result.url;
-      else toast.error("Não foi possível iniciar o pagamento.");
     } catch (err: any) {
       toast.error(err?.message || "Não foi possível iniciar o pagamento.");
     } finally {

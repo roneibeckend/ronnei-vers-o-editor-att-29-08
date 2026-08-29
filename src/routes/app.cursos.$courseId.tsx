@@ -7,14 +7,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { needsSignedUrl } from "@/lib/video-source";
 import { VISIBLE_STATUSES, isComingSoon, COMING_SOON_NOTICE } from "@/lib/product-status";
 import { useEnrollments } from "@/hooks/use-enrollments";
-import { createAsaasPaymentLink } from "@/lib/asaas.functions";
 import { CouponInput, type AppliedCoupon } from "@/components/platform/CouponInput";
 import { getAffiliateRef } from "@/hooks/use-affiliate-tracking";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProgress } from "@/hooks/use-progress";
-import { usePaymentModal } from "@/hooks/use-payment-modal";
+import { useCheckout } from "@/hooks/use-checkout";
 import { FeedbackModal } from "@/components/platform/FeedbackModal";
 import { FeedbackSummary } from "@/components/platform/FeedbackSummary";
 import { FeedbackList } from "@/components/platform/FeedbackList";
@@ -101,8 +100,7 @@ function CoursePage() {
   useEffect(() => {
     syncWithDatabase();
   }, [syncWithDatabase]);
-  const createPaymentLink = useServerFn(createAsaasPaymentLink);
-  const { openPayment } = usePaymentModal();
+  const { openCheckout } = useCheckout();
   const getSignedUrl = useServerFn(getSignedVideoUrl);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showOpeningVideo, setShowOpeningVideo] = useState(false);
@@ -171,26 +169,18 @@ function CoursePage() {
         }
       });
 
-      const result = await createPaymentLink({
-        data: {
-          products,
-          affiliateRef: getAffiliateRef() || undefined,
-          paymentType: course.payment_type || 'unique',
-          dueDays: course.due_days || 3,
-          couponCode: appliedCoupon?.code || localStorage.getItem('pending_coupon_code') || undefined,
-        }
+      openCheckout({
+        productId: course.id,
+        productType: 'course',
+        title: course.title,
+        cover: (course as any).cover_url ?? (course as any).cover ?? null,
+        description: course.description ?? null,
+        value: products.reduce((acc: number, p: any) => acc + (p.value || 0), 0),
+        recurring: course.payment_type === 'recurring',
+        affiliateRef: getAffiliateRef() || null,
+        extraItems: products.slice(1).map((p: any) => ({ productId: p.productId, productType: p.productType, discountPercent: discount })),
+        couponCode: appliedCoupon?.code || localStorage.getItem('pending_coupon_code') || null,
       });
-
-      if ((result as any).free) {
-        toast.success("Cupom aplicado! Acesso liberado gratuitamente. 🎉");
-        await queryClient.invalidateQueries({ queryKey: ["course-enrollments"] });
-        await queryClient.invalidateQueries({ queryKey: ["ebook-enrollments"] });
-        return;
-      }
-
-      if (result.url) {
-        openPayment(result.url, course.title, course.id, 'course', { value: (result as any).value, transactionId: result.id });
-      }
     } catch (error: any) {
       console.error("Erro ao processar compra:", error);
       toast.error(error.message || "Erro ao gerar link de pagamento.");

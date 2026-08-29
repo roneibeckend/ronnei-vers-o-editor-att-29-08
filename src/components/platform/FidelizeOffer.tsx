@@ -2,13 +2,11 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, Loader2, Sparkles } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { listFidelizePlans } from "@/lib/fidelize-products.functions";
-import { createAsaasPaymentLink } from "@/lib/asaas.functions";
-import { usePaymentModal } from "@/hooks/use-payment-modal";
+import { useCheckout } from "@/hooks/use-checkout";
 import { getAffiliateRef } from "@/hooks/use-affiliate-tracking";
 
 const brl = (v: number) => `R$ ${v.toFixed(2).replace(".", ",")}`;
@@ -25,43 +23,25 @@ export function useFidelizePlans() {
 /** Lista os planos Fidelize ativos com checkout dentro da área de membros. */
 export function FidelizeOffer({ compact = false }: { compact?: boolean }) {
   const { data, isLoading } = useFidelizePlans();
-  const createPaymentLink = useServerFn(createAsaasPaymentLink);
-  const { openPayment } = usePaymentModal();
+  const { openCheckout } = useCheckout();
   const [busy, setBusy] = useState<string | null>(null);
 
   const plans = (data || []).filter((p: any) => p.active);
 
-  const handleBuy = async (plan: any) => {
-    try {
-      setBusy(plan.plan);
-      const result: any = await createPaymentLink({
-        data: {
-          products: [
-            {
-              productId: plan.plan,
-              productType: "fidelize",
-              title: plan.label,
-              description: plan.description,
-              value: plan.price,
-            },
-          ],
-          affiliateRef: getAffiliateRef() || undefined,
-          paymentType: "recurring",
-        },
-      });
-      if (result?.url) {
-        openPayment(result.url, plan.label, plan.plan, "fidelize", {
-          value: result.value,
-          transactionId: result.id,
-        });
-      } else {
-        toast.error("Não foi possível iniciar o pagamento.");
-      }
-    } catch (err: any) {
-      toast.error(err?.message || "Não foi possível iniciar o pagamento.");
-    } finally {
-      setBusy(null);
-    }
+  const handleBuy = (plan: any) => {
+    setBusy(plan.plan);
+    openCheckout({
+      productId: plan.plan,
+      productType: "fidelize",
+      title: plan.label,
+      cover: plan.cover,
+      description: plan.description,
+      benefits: plan.modules,
+      value: plan.price,
+      recurring: true,
+      affiliateRef: getAffiliateRef() || null,
+    });
+    setBusy(null);
   };
 
   if (isLoading) {

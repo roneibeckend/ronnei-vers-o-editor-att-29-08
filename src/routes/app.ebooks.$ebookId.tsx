@@ -13,13 +13,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { isComingSoon, COMING_SOON_NOTICE } from "@/lib/product-status";
 import { useEnrollments } from "@/hooks/use-enrollments";
 import { useProgress } from "@/hooks/use-progress";
-import { createAsaasPaymentLink } from "@/lib/asaas.functions";
 import { CouponInput, type AppliedCoupon } from "@/components/platform/CouponInput";
 import { getAffiliateRef } from "@/hooks/use-affiliate-tracking";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { usePaymentModal } from "@/hooks/use-payment-modal";
+import { useCheckout } from "@/hooks/use-checkout";
 import { PostPurchaseOffer } from "@/components/platform/PostPurchaseOffer";
 import { FeedbackSummary } from "@/components/platform/FeedbackSummary";
 import { FeedbackList } from "@/components/platform/FeedbackList";
@@ -161,9 +160,8 @@ function EbookReaderPage() {
   }, []);
 
   const registerDownload = useServerFn(registerEbookDownload);
-  const createPaymentLink = useServerFn(createAsaasPaymentLink);
   const getSignedUrl = useServerFn(getSignedVideoUrl);
-  const { openPayment } = usePaymentModal();
+  const { openCheckout } = useCheckout();
   const [signedIntroUrl, setSignedIntroUrl] = useState<string | null>(null);
   const generateCertFn = useServerFn(generateCertificate);
   const introNeedsSigning = needsSignedUrl(ebook?.opening_video_url);
@@ -487,26 +485,18 @@ function EbookReaderPage() {
         }
       });
 
-      const result = await createPaymentLink({
-        data: {
-          products,
-          affiliateRef: getAffiliateRef() || undefined,
-          paymentType: ebook.payment_type || 'unique',
-          dueDays: ebook.due_days || 3,
-          couponCode: appliedCoupon?.code || localStorage.getItem('pending_coupon_code') || undefined,
-        }
+      openCheckout({
+        productId: ebook.id,
+        productType: 'ebook',
+        title: ebook.title,
+        cover: (ebook as any).cover_url ?? (ebook as any).cover ?? null,
+        description: ebook.description ?? null,
+        value: products.reduce((acc: number, p: any) => acc + (p.value || 0), 0),
+        recurring: ebook.payment_type === 'recurring',
+        affiliateRef: getAffiliateRef() || null,
+        extraItems: products.slice(1).map((p: any) => ({ productId: p.productId, productType: p.productType, discountPercent: discount })),
+        couponCode: appliedCoupon?.code || localStorage.getItem('pending_coupon_code') || null,
       });
-
-      if ((result as any).free) {
-        toast.success("Cupom aplicado! Acesso liberado gratuitamente. 🎉");
-        await queryClient.invalidateQueries({ queryKey: ["course-enrollments"] });
-        await queryClient.invalidateQueries({ queryKey: ["ebook-enrollments"] });
-        return;
-      }
-
-      if (result.url) {
-        openPayment(result.url, ebook.title, ebook.id, 'ebook', { value: (result as any).value, transactionId: result.id });
-      }
     } catch (error: any) {
       console.error("Erro ao processar compra:", error);
       toast.error(error.message || "Erro ao gerar link de pagamento.");
