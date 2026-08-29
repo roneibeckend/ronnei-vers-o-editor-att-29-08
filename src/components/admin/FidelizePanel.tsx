@@ -394,6 +394,9 @@ export function FidelizePanel() {
         </CardContent>
       </Card>
 
+      {/* ---------- Produtos / planos ---------- */}
+      <FidelizePlansCard />
+
       {/* ---------- Provisionamento de teste ---------- */}
       <Card className="bg-[#111] border-white/5">
         <CardHeader className="flex flex-row items-center justify-between">
