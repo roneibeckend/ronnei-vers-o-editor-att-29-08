@@ -112,7 +112,7 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
             SUBSCRIPTION_INACTIVATED: 'canceled',
           };
 
-          if (negativeEvents[eventType]) {
+          if (verifiedRequest && negativeEvents[eventType]) {
             try {
               await syncFidelizeSubscriptionSignal(body.payment ?? body.subscription, negativeEvents[eventType]!);
             } catch (signalError) {
@@ -120,7 +120,8 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
             }
           }
 
-          if (invoiceEvents[eventType]) {
+          if (verifiedRequest && invoiceEvents[eventType]) {
+
             try {
               await sendInvoiceEmail(invoiceEvents[eventType]!, eventId as string, body.payment);
             } catch (invoiceError) {
