@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://espetinhonaveia.lovable.app/</loc>
+    <loc>https://ronneinaveia.com.br/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://espetinhonaveia.lovable.app/perguntas-frequentes</loc>
+    <loc>https://ronneinaveia.com.br/perguntas-frequentes</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://espetinhonaveia.lovable.app/termos-de-uso</loc>
-    <changefreq>yearly</changefreq>
-    <priority>0.3</priority>
+    <loc>https://ronneinaveia.com.br/verificar-certificado</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://espetinhonaveia.lovable.app/politica-de-privacidade</loc>
+    <loc>https://ronneinaveia.com.br/google</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
