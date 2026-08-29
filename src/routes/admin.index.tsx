@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FidelizeRevenueCard } from "@/components/admin/FidelizeRevenueCard";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({ meta: [{ title: "Visão Geral · Admin" }] }),
@@ -119,6 +120,8 @@ function AdminDashboard() {
           </div>
         ))}
       </div>
+
+      {isAdmin && <FidelizeRevenueCard />}
 
       <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-3">
         <div className="p-4 sm:p-6 rounded-xl border border-white/5 bg-[#111] 2xl:col-span-2">
