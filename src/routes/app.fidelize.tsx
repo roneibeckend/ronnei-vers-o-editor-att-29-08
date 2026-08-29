@@ -112,35 +112,31 @@ function FidelizePage() {
     }
   };
 
-  // Abre a Fidelize já autenticado quando a API devolve um link/token de autologin.
-  // Fallback (hoje): a API só devolve login_url + senha temporária, então abrimos
-  // o login com o e-mail preenchido e copiamos a senha — o cliente só cola.
+  // Login único: pede ao servidor a melhor URL de acesso (autologin → magic-link → login).
   const handleAccess = async () => {
-    if (!data?.loginUrl) return;
     const tab = window.open("", "_blank", "noopener,noreferrer");
     setOpening(true);
     try {
-      let target = credentials?.autoLoginUrl ?? null;
-      let password = credentials?.temporaryPassword ?? null;
-      if (!target || !password) {
-        const result: any = await revealCredentials();
-        password = result?.temporaryPassword ?? password;
-        target = result?.autoLoginUrl ?? target;
-        setCredentials({ temporaryPassword: password, autoLoginUrl: target });
+      const result: any = await getAccessUrl();
+      const url: string | null = result?.url ?? data?.loginUrl ?? null;
+      if (!url) {
+        tab?.close();
+        toast.error(result?.message || "Não foi possível abrir a Fidelize agora.");
+        return;
       }
-      if (!target && password) {
-        try {
-          await navigator.clipboard.writeText(password);
-          toast.success("Senha copiada! É só colar na tela de login da Fidelize.");
-        } catch {
-          toast.info("Use o botão “Mostrar senha” para copiar sua senha temporária.");
-        }
+      if (result?.method === "autologin" || result?.method === "magic-link") {
+        toast.success("Entrando na Fidelize automaticamente — sem senha.");
+      } else if (result?.message) {
+        toast.info(result.message);
       }
-      const url = target ?? data.loginUrl;
       if (tab) tab.location.href = url;
       else window.open(url, "_blank", "noopener,noreferrer");
     } catch {
-      if (tab) tab.location.href = data.loginUrl;
+      if (data?.loginUrl && tab) tab.location.href = data.loginUrl;
+      else {
+        tab?.close();
+        toast.error("Não foi possível abrir a Fidelize agora. Tente novamente.");
+      }
     } finally {
       setOpening(false);
     }
