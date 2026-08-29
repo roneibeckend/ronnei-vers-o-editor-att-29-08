@@ -56,7 +56,7 @@ function FidelizePage() {
   if (!data) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Fidelize" description="Programa de fidelidade para o seu negócio." />
+        <PageHeader title="Fidelize" subtitle="Programa de fidelidade para o seu negócio." />
         <Card>
           <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
             <Sparkles className="h-10 w-10 text-primary" />
@@ -84,7 +84,7 @@ function FidelizePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Minha conta Fidelize" description="Plano, status e módulos liberados." />
+      <PageHeader title="Minha conta Fidelize" subtitle="Plano, status e módulos liberados." />
 
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-4">
