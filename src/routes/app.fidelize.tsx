@@ -7,6 +7,8 @@ import {
   Clock,
   Copy,
   ExternalLink,
+  Eye,
+  EyeOff,
   Loader2,
   Mail,
   RefreshCw,
@@ -19,7 +21,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FidelizeOffer } from "@/components/platform/FidelizeOffer";
-import { getMyFidelizeAccount, resendMyFidelizeAccess } from "@/lib/fidelize-account.functions";
+import {
+  getMyFidelizeAccount,
+  resendMyFidelizeAccess,
+  revealMyFidelizeCredentials,
+} from "@/lib/fidelize-account.functions";
 import { FIDELIZE_PLAN_CATALOG, fidelizePlanLabel, isFidelizePlan } from "@/lib/fidelize-plans";
 import { friendlyFidelizeError } from "@/lib/fidelize-messages";
 
@@ -55,13 +61,47 @@ const STATUS_MAP: Record<string, { label: string; className: string; icon: typeo
 function FidelizePage() {
   const fetchAccount = useServerFn(getMyFidelizeAccount);
   const resendAccess = useServerFn(resendMyFidelizeAccess);
+  const revealCredentials = useServerFn(revealMyFidelizeCredentials);
   const queryClient = useQueryClient();
   const [resending, setResending] = useState(false);
+  const [revealing, setRevealing] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [credentials, setCredentials] = useState<{
+    temporaryPassword: string | null;
+    autoLoginUrl: string | null;
+  } | null>(null);
   const { data, isLoading } = useQuery({
     queryKey: ["fidelize-account"],
     queryFn: () => fetchAccount(),
     refetchInterval: (query) => ((query.state.data as any)?.status === "pending" ? 15000 : false),
   });
+
+  const handleReveal = async () => {
+    if (showPassword) {
+      setShowPassword(false);
+      return;
+    }
+    if (credentials?.temporaryPassword) {
+      setShowPassword(true);
+      return;
+    }
+    setRevealing(true);
+    try {
+      const result: any = await revealCredentials();
+      setCredentials({
+        temporaryPassword: result?.temporaryPassword ?? null,
+        autoLoginUrl: result?.autoLoginUrl ?? null,
+      });
+      if (result?.temporaryPassword) setShowPassword(true);
+      else toast.info(result?.message || "Senha temporária indisponível.");
+    } catch {
+      toast.error("Não foi possível exibir a senha agora.");
+    } finally {
+      setRevealing(false);
+    }
+  };
+
 
   const copy = async (value: string, label: string) => {
     try {
@@ -69,6 +109,31 @@ function FidelizePage() {
       toast.success(`${label} copiado.`);
     } catch {
       toast.error("Não foi possível copiar. Copie manualmente.");
+    }
+  };
+
+  // Abre a Fidelize já autenticado quando a API devolve um link/token de autologin.
+  const handleAccess = async () => {
+    if (!data?.loginUrl) return;
+    const tab = window.open("", "_blank", "noopener,noreferrer");
+    setOpening(true);
+    try {
+      let target = credentials?.autoLoginUrl ?? null;
+      if (!target) {
+        const result: any = await revealCredentials();
+        setCredentials({
+          temporaryPassword: result?.temporaryPassword ?? null,
+          autoLoginUrl: result?.autoLoginUrl ?? null,
+        });
+        target = result?.autoLoginUrl ?? null;
+      }
+      const url = target ?? data.loginUrl;
+      if (tab) tab.location.href = url;
+      else window.open(url, "_blank", "noopener,noreferrer");
+    } catch {
+      if (tab) tab.location.href = data.loginUrl;
+    } finally {
+      setOpening(false);
     }
   };
 
@@ -181,6 +246,46 @@ function FidelizePage() {
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Senha temporária</p>
+                <p className="break-all font-mono text-sm font-medium">
+                  {credentials?.temporaryPassword
+                    ? showPassword
+                      ? credentials.temporaryPassword
+                      : "•".repeat(Math.max(8, credentials.temporaryPassword.length))
+                    : "••••••••"}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  onClick={handleReveal}
+                  disabled={revealing || data.status !== "success"}
+                >
+                  {revealing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : showPassword ? (
+                    <EyeOff className="mr-2 h-4 w-4" />
+                  ) : (
+                    <Eye className="mr-2 h-4 w-4" />
+                  )}
+                  {showPassword ? "Ocultar" : "Mostrar senha"}
+                </Button>
+                {showPassword && credentials?.temporaryPassword && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copy(credentials.temporaryPassword!, "Senha")}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">URL de acesso</p>
                 <p className="break-all text-sm font-medium">{data.loginUrl ?? "Disponível no e-mail de acesso"}</p>
               </div>
@@ -198,10 +303,10 @@ function FidelizePage() {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Por segurança, a senha temporária só é enviada por e-mail. Use “Reenviar acesso” se não encontrar a
-              mensagem.
+              A mesma senha enviada por e-mail. Recomendamos trocá-la no primeiro acesso à Fidelize.
             </p>
           </div>
+
 
           {modules.length > 0 && (
             <div>
@@ -218,11 +323,16 @@ function FidelizePage() {
           )}
 
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button asChild disabled={!data.loginUrl} className="w-full sm:w-auto">
-              <a href={data.loginUrl ?? "#"} target="_blank" rel="noopener noreferrer">
-                Acessar Fidelize
-                <ExternalLink className="ml-2 h-4 w-4" />
-              </a>
+            <Button
+              className="w-full sm:w-auto"
+              disabled={!data.loginUrl || opening}
+              onClick={handleAccess}
+            >
+              {opening ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Acessar Fidelize
+              <ExternalLink className="ml-2 h-4 w-4" />
             </Button>
             <Button
               variant="outline"

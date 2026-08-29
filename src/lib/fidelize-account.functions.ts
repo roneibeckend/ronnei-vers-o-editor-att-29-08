@@ -47,3 +47,63 @@ export const resendMyFidelizeAccess = createServerFn({ method: "POST" })
     const { resendFidelizeAccess } = await import("./fidelize-provisioning.server");
     return resendFidelizeAccess(context.userId);
   });
+
+/**
+ * Revela a senha temporária (e o link de acesso direto, quando a Fidelize
+ * devolve um token de autologin) da conta do próprio aluno.
+ */
+export const revealMyFidelizeCredentials = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("fidelize_provisioning_logs")
+      .select("id, login_url, request_payload, response_payload, status")
+      .eq("user_id", context.userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return { success: false, message: "Nenhuma conta Fidelize encontrada." };
+
+    const row = data as Record<string, any>;
+    const response = (row["response_payload"] || {}) as Record<string, any>;
+    const request = (row["request_payload"] || {}) as Record<string, any>;
+    const password =
+      response["temporary_password"] || response["password"] || response["temp_password"] || null;
+
+    return {
+      success: Boolean(password),
+      login: (response["login"] as string) || (request["email"] as string) || null,
+      temporaryPassword: (password as string) || null,
+      autoLoginUrl: buildAutoLoginUrl(response, row["login_url"], request["email"]),
+      message: password
+        ? null
+        : "A Fidelize não devolveu uma senha temporária para esta conta. Use “Esqueci minha senha” na plataforma ou reenvie o acesso.",
+    };
+  });
+
+/** Monta a URL de acesso com autologin (token da Fidelize) ou, no mínimo, com o e-mail pré-preenchido. */
+function buildAutoLoginUrl(
+  response: Record<string, any>,
+  loginUrl: string | null | undefined,
+  email: string | null | undefined,
+): string | null {
+  const direct =
+    response["autologin_url"] || response["auto_login_url"] || response["sso_url"] || response["magic_link"];
+  if (typeof direct === "string" && direct.startsWith("http")) return direct;
+
+  const base = (loginUrl as string) || (response["login_url"] as string) || null;
+  if (!base || !base.startsWith("http")) return null;
+
+  try {
+    const url = new URL(base);
+    const token =
+      response["autologin_token"] || response["access_token"] || response["login_token"] || response["token"];
+    if (typeof token === "string" && token) url.searchParams.set("token", token);
+    if (email) url.searchParams.set("email", String(email));
+    return url.toString();
+  } catch {
+    return base;
+  }
+}
