@@ -304,7 +304,7 @@ function FidelizePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Minha conta Fidelize" subtitle="Plano, status e módulos liberados." />
+      <PageHeader title="Minha conta Fidelize" subtitle="Plano contratado, status da assinatura e acesso rápido." />
 
       <Card>
         <CardHeader className="flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
