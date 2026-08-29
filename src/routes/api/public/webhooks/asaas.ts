@@ -325,6 +325,32 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
               throw new Error('E-mail do aluno não encontrado para provisionar a Fidelize.');
             }
 
+            // RENOVAÇÃO MENSAL: se a conta já existe, não reprovisiona — apenas
+            // renova o acesso e atualiza o status da assinatura do aluno.
+            const { applyFidelizeRecurringPayment } = await import('@/lib/fidelize-subscription.server');
+            const renewal = await applyFidelizeRecurringPayment({
+              userId,
+              paymentId,
+              plan,
+              dueDate: verifiedPayment.dueDate ?? null,
+              subscriptionId: verifiedPayment.subscription ?? null,
+            });
+
+            if (renewal.renewal) {
+              await supabaseAdmin
+                .from('asaas_webhook_events')
+                .update({
+                  status: 'completed',
+                  processed_at: new Date().toISOString(),
+                  last_error: null,
+                })
+                .eq('event_id', eventId as string)
+                .eq('claim_token', claimToken as string)
+                .eq('status', 'processing');
+
+              return Response.json({ received: true, processed: true, type: 'fidelize', renewal: true });
+            }
+
             const result = await provisionFidelizeAccount({
               orderId: paymentId,
               userId,
