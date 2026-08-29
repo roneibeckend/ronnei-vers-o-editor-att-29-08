@@ -2059,9 +2059,12 @@ export type Database = {
       fidelize_provisioning_logs: {
         Row: {
           created_at: string
+          duration_ms: number | null
+          endpoint: string | null
           error_message: string | null
           fidelize_user_id: string | null
           id: string
+          is_test: boolean
           login_url: string | null
           modules: Json
           order_id: string | null
@@ -2076,9 +2079,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          duration_ms?: number | null
+          endpoint?: string | null
           error_message?: string | null
           fidelize_user_id?: string | null
           id?: string
+          is_test?: boolean
           login_url?: string | null
           modules?: Json
           order_id?: string | null
@@ -2093,9 +2099,12 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          duration_ms?: number | null
+          endpoint?: string | null
           error_message?: string | null
           fidelize_user_id?: string | null
           id?: string
+          is_test?: boolean
           login_url?: string | null
           modules?: Json
           order_id?: string | null
@@ -3882,6 +3891,7 @@ export type Database = {
       trigger_consultation_recordings: { Args: never; Returns: undefined }
       trigger_consultation_reminders: { Args: never; Returns: undefined }
       trigger_daily_report: { Args: never; Returns: undefined }
+      trigger_fidelize_health: { Args: never; Returns: undefined }
       trigger_ops_recovery: { Args: never; Returns: undefined }
       update_expired_live_classes: { Args: never; Returns: undefined }
       validate_coupon: {

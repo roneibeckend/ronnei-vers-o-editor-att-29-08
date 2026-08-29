@@ -1,11 +1,9 @@
 // Provisionamento automático de contas na Fidelize após pagamento aprovado.
 // Toda chamada é auditada em public.fidelize_provisioning_logs e em system_logs.
 
-import { fidelizeRequest } from "./fidelize.server";
+import { fidelizeRequest, resolveFidelizePath, getFidelizeConfig } from "./fidelize.server";
 import { logSystemEvent } from "./system-log.server";
 import { FIDELIZE_PLAN_CATALOG, fidelizePlanLabel, isFidelizePlan, type FidelizePlan } from "./fidelize-plans";
-
-const PROVISION_PATH = "/api/public/integrations/provision-account";
 
 export type ProvisionInput = {
   orderId: string;
@@ -14,6 +12,8 @@ export type ProvisionInput = {
   name: string;
   email: string;
   phone?: string | null;
+  /** Conta de teste criada pelo admin (não dispara e-mail ao aluno). */
+  isTest?: boolean;
 };
 
 export type ProvisionResult = {
@@ -22,6 +22,11 @@ export type ProvisionResult = {
   tenantId?: string | null;
   loginUrl?: string | null;
   error?: string | null;
+  logId?: string | null;
+  login?: string | null;
+  temporaryPassword?: string | null;
+  modules?: string[];
+  durationMs?: number;
 };
 
 function normalizeModules(response: any, plan: FidelizePlan): string[] {
@@ -54,6 +59,12 @@ export async function provisionFidelizeAccount(input: ProvisionInput): Promise<P
     return { success: true, status: "skipped" };
   }
 
+  const config = await getFidelizeConfig();
+  if (!config) {
+    return { success: false, status: "failed", error: "Integração Fidelize não configurada." };
+  }
+  const provisionPath = resolveFidelizePath(config.baseUrl, "/provision-account");
+
   const requestPayload = {
     name: input.name,
     email: input.email,
@@ -69,6 +80,8 @@ export async function provisionFidelizeAccount(input: ProvisionInput): Promise<P
     plan: input.plan,
     request_payload: requestPayload as never,
     status: "pending",
+    is_test: Boolean(input.isTest),
+    endpoint: provisionPath,
   };
 
   let logId: string | null = (existing as any)?.id ?? null;
@@ -87,10 +100,11 @@ export async function provisionFidelizeAccount(input: ProvisionInput): Promise<P
   }
 
   // 3. Chamada ao endpoint de provisionamento.
-  const call = await fidelizeRequest<any>(PROVISION_PATH, {
+  const call = await fidelizeRequest<any>(provisionPath, {
     method: "POST",
     body: requestPayload,
-    context: { operation: "provision_account", orderId: input.orderId, userId: input.userId },
+    config,
+    context: { operation: "provision_account", orderId: input.orderId, userId: input.userId, isTest: Boolean(input.isTest) },
   });
 
   const response = (call.data || {}) as Record<string, any>;
@@ -106,6 +120,8 @@ export async function provisionFidelizeAccount(input: ProvisionInput): Promise<P
     response_payload: (call.data ?? { raw: call.rawBody }) as never,
     status: ok ? "success" : "failed",
     error_message: ok ? null : call.error || response?.message || "Falha no provisionamento da Fidelize.",
+    duration_ms: call.durationMs,
+    endpoint: provisionPath,
     updated_at: new Date().toISOString(),
   };
 
@@ -134,7 +150,21 @@ export async function provisionFidelizeAccount(input: ProvisionInput): Promise<P
     return { success: false, status: "failed", error: update.error_message };
   }
 
-  // 4. E-mail com os dados de acesso.
+  // 4. E-mail com os dados de acesso (contas de teste não enviam e-mail).
+  if (input.isTest) {
+    return {
+      success: true,
+      status: "success",
+      tenantId: update.tenant_id,
+      loginUrl: update.login_url,
+      logId,
+      login: response?.login || input.email,
+      temporaryPassword: response?.temporary_password || null,
+      modules,
+      durationMs: call.durationMs,
+    };
+  }
+
   try {
     const { triggerEmailOnce } = await import("./resend.server");
     await triggerEmailOnce({
@@ -165,5 +195,47 @@ export async function provisionFidelizeAccount(input: ProvisionInput): Promise<P
     status: "success",
     tenantId: update.tenant_id,
     loginUrl: update.login_url,
+    logId,
+    modules,
+    durationMs: call.durationMs,
   };
+}
+
+/** Remove uma conta de teste criada pelo painel (Fidelize + registro local). */
+export async function deleteFidelizeTestAccount(logId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  const { data: row } = await supabaseAdmin
+    .from("fidelize_provisioning_logs")
+    .select("id, is_test, tenant_id, fidelize_user_id, request_payload")
+    .eq("id", logId)
+    .maybeSingle();
+
+  if (!row) return { success: false, error: "Registro não encontrado." };
+  if (!(row as any).is_test) return { success: false, error: "Apenas contas de teste podem ser removidas." };
+
+  const config = await getFidelizeConfig();
+  let remoteMessage = "Conta removida apenas do histórico local.";
+
+  if (config) {
+    const identifier = (row as any).fidelize_user_id || (row as any).tenant_id;
+    const call = await fidelizeRequest(resolveFidelizePath(config.baseUrl, "/provision-account"), {
+      method: "DELETE",
+      config,
+      body: {
+        tenant_id: (row as any).tenant_id ?? null,
+        user_id: (row as any).fidelize_user_id ?? null,
+        email: ((row as any).request_payload as any)?.email ?? null,
+        source: "ronnei",
+      },
+      context: { operation: "delete_test_account", logId, identifier },
+    });
+    remoteMessage = call.success
+      ? "Conta de teste removida na Fidelize."
+      : `Fidelize não confirmou a exclusão (HTTP ${call.httpCode}). Registro local removido.`;
+  }
+
+  await supabaseAdmin.from("fidelize_provisioning_logs").delete().eq("id", logId);
+
+  return { success: true, message: remoteMessage };
 }
