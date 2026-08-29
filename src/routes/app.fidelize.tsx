@@ -44,12 +44,12 @@ export const Route = createFileRoute("/app/fidelize")({
       {
         name: "description",
         content:
-          "Acompanhe seu plano Fidelize, data de ativação, status da conta e módulos liberados, e acesse a plataforma em um clique.",
+          "Acompanhe seu plano Fidelize, data de ativação, status da assinatura e acesse a plataforma em um clique.",
       },
       { property: "og:title", content: "Minha conta Fidelize | Ronnei na Veia" },
       {
         property: "og:description",
-        content: "Plano contratado, status da conta e módulos liberados da sua conta Fidelize.",
+        content: "Plano contratado, status da assinatura e acesso rápido à sua conta Fidelize.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -289,16 +289,22 @@ function FidelizePage() {
   const SubscriptionIcon = subscription.icon;
   const isCanceled = subscriptionState === "canceled";
   const isOverdue = subscriptionState === "overdue";
-  const modules =
-    data.modules.length > 0
-      ? data.modules
-      : isFidelizePlan(data.plan)
-        ? FIDELIZE_PLAN_CATALOG[data.plan].modules
-        : [];
+  const planInfo = isFidelizePlan(data.plan) ? FIDELIZE_PLAN_CATALOG[data.plan] : null;
+  const planFeatures = data.modules.length > 0 ? data.modules : (planInfo?.modules ?? []);
+  const nextPlan =
+    planInfo?.plan === "starter"
+      ? FIDELIZE_PLAN_CATALOG.pro
+      : planInfo?.plan === "pro"
+        ? FIDELIZE_PLAN_CATALOG.premium
+        : null;
+  const nextPlanExtras = nextPlan
+    ? nextPlan.modules.filter((m) => !planFeatures.some((f) => f.toLowerCase() === m.toLowerCase()))
+    : [];
+
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Minha conta Fidelize" subtitle="Plano, status e módulos liberados." />
+      <PageHeader title="Minha conta Fidelize" subtitle="Plano contratado, status da assinatura e acesso rápido." />
 
       <Card>
         <CardHeader className="flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -490,19 +496,45 @@ function FidelizePage() {
             </div>
           )}
 
-          {modules.length > 0 && (
-            <div>
-              <p className="mb-2 text-sm font-semibold">Módulos liberados</p>
-              <ul className="grid gap-2 sm:grid-cols-2">
-                {modules.map((m) => (
-                  <li key={m} className="flex items-center gap-2 rounded-lg border p-2.5 text-sm">
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                    {m}
-                  </li>
-                ))}
-              </ul>
+          {(planInfo || planFeatures.length > 0) && (
+            <div className="rounded-xl border p-4">
+              <p className="text-sm font-semibold">O que o seu plano faz por você</p>
+              {planInfo?.description ? (
+                <p className="mt-1 text-sm text-muted-foreground">{planInfo.description}</p>
+              ) : null}
+              {planFeatures.length > 0 ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Inclui {planFeatures.slice(0, -1).join(", ")}
+                  {planFeatures.length > 1 ? " e " : ""}
+                  {planFeatures[planFeatures.length - 1]}.
+                </p>
+              ) : null}
             </div>
           )}
+
+          {nextPlan && nextPlanExtras.length > 0 && (
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+              <p className="text-sm font-semibold">
+                Dá para ir além com o {nextPlan.label}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {nextPlan.description} Além do que você já tem, o plano libera{" "}
+                {nextPlanExtras.slice(0, -1).join(", ")}
+                {nextPlanExtras.length > 1 ? " e " : ""}
+                {nextPlanExtras[nextPlanExtras.length - 1]}.
+              </p>
+              <Button
+                variant="outline"
+                className="mt-3 w-full sm:w-auto"
+                disabled={opening || data.status !== "success"}
+                onClick={handleAccess}
+              >
+                Fazer upgrade na Fidelize
+                <ExternalLink className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          )}
+
 
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button
