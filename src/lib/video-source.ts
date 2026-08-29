@@ -14,7 +14,10 @@ export function isExternalVideoUrl(url?: string | null): boolean {
     value.includes('youtube-nocookie.com') ||
     value.includes('youtu.be') ||
     value.includes('drive.google.com') ||
-    value.includes('vimeo.com')
+    value.includes('vimeo.com') ||
+    // Bunny Stream CDN (pull zone) — URL pública, nunca passa por assinatura.
+    value.includes('b-cdn.net') ||
+    value.includes('mediadelivery.net')
   );
 }
 
@@ -92,9 +95,15 @@ export function resolveLessonVideo(input: {
     provider === 'bunny' ||
     (provider === 'auto' && (Boolean(id) || url.includes('mediadelivery.net')));
 
+  // URL direta do CDN do Bunny (playlist HLS / mp4): toca no player nativo,
+  // pois o embed em iframe exige o libraryId numérico, que a URL não contém.
+  if (url.includes('b-cdn.net')) {
+    return { kind: 'file', src: url, aspect, needsSigning: false };
+  }
+
   if (isBunny) {
     // A URL completa contém o libraryId, então tem prioridade sobre o ID puro.
-    const fromUrl = url.includes('mediadelivery.net') || url.includes('b-cdn.net') ? url : '';
+    const fromUrl = url.includes('mediadelivery.net') ? url : '';
     const src = buildBunnyEmbedUrl(fromUrl || id) || buildBunnyEmbedUrl(id);
     if (src) return { kind: 'bunny', src, aspect, needsSigning: false };
   }

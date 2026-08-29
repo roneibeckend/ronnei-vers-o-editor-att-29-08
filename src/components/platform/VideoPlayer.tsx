@@ -209,6 +209,41 @@ export function VideoPlayer({
     }
   }, []);
 
+  // Streams HLS (.m3u8 do Bunny Stream): Safari/iOS tocam nativamente, os demais
+  // navegadores precisam do hls.js anexado ao <video>.
+  const isHls = !isEmbed && /\.m3u8(\?|$)/i.test(playableSrc);
+  useEffect(() => {
+    if (!isHls) return;
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = playableSrc;
+      return;
+    }
+    let destroyed = false;
+    let instance: any = null;
+    void import('hls.js').then(({ default: Hls }) => {
+      if (destroyed || !Hls.isSupported()) return;
+      instance = new Hls({ enableWorker: true });
+      instance.loadSource(playableSrc);
+      instance.attachMedia(video);
+      instance.on(Hls.Events.ERROR, (_e: unknown, data: any) => {
+        if (!data?.fatal) return;
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) instance.startLoad();
+        else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) instance.recoverMediaError();
+        else setHasError(true);
+      });
+    });
+    return () => {
+      destroyed = true;
+      try {
+        instance?.destroy();
+      } catch {
+        /* nada a limpar */
+      }
+    };
+  }, [isHls, playableSrc]);
+
   // Come back online → resume where playback stopped.
   useEffect(() => {
     if (isEmbed || !started) return;
@@ -539,7 +574,7 @@ export function VideoPlayer({
       <video
         key={playableSrc}
         ref={videoRef}
-        src={playableSrc}
+        {...(isHls ? {} : { src: playableSrc })}
         poster={autoStart ? undefined : cleanPoster}
         title={title}
         className={cn('h-full w-full bg-black', fit === 'contain' ? 'object-contain' : 'object-cover')}
