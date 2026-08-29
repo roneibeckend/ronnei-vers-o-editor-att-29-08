@@ -7,6 +7,8 @@ import {
   Clock,
   Copy,
   ExternalLink,
+  Eye,
+  EyeOff,
   Loader2,
   Mail,
   RefreshCw,
@@ -19,7 +21,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FidelizeOffer } from "@/components/platform/FidelizeOffer";
-import { getMyFidelizeAccount, resendMyFidelizeAccess } from "@/lib/fidelize-account.functions";
+import {
+  getMyFidelizeAccount,
+  resendMyFidelizeAccess,
+  revealMyFidelizeCredentials,
+} from "@/lib/fidelize-account.functions";
 import { FIDELIZE_PLAN_CATALOG, fidelizePlanLabel, isFidelizePlan } from "@/lib/fidelize-plans";
 import { friendlyFidelizeError } from "@/lib/fidelize-messages";
 
@@ -59,6 +65,7 @@ function FidelizePage() {
   const queryClient = useQueryClient();
   const [resending, setResending] = useState(false);
   const [revealing, setRevealing] = useState(false);
+  const [opening, setOpening] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [credentials, setCredentials] = useState<{
     temporaryPassword: string | null;
@@ -102,6 +109,31 @@ function FidelizePage() {
       toast.success(`${label} copiado.`);
     } catch {
       toast.error("Não foi possível copiar. Copie manualmente.");
+    }
+  };
+
+  // Abre a Fidelize já autenticado quando a API devolve um link/token de autologin.
+  const handleAccess = async () => {
+    if (!data?.loginUrl) return;
+    const tab = window.open("", "_blank", "noopener,noreferrer");
+    setOpening(true);
+    try {
+      let target = credentials?.autoLoginUrl ?? null;
+      if (!target) {
+        const result: any = await revealCredentials();
+        setCredentials({
+          temporaryPassword: result?.temporaryPassword ?? null,
+          autoLoginUrl: result?.autoLoginUrl ?? null,
+        });
+        target = result?.autoLoginUrl ?? null;
+      }
+      const url = target ?? data.loginUrl;
+      if (tab) tab.location.href = url;
+      else window.open(url, "_blank", "noopener,noreferrer");
+    } catch {
+      if (tab) tab.location.href = data.loginUrl;
+    } finally {
+      setOpening(false);
     }
   };
 
@@ -291,11 +323,16 @@ function FidelizePage() {
           )}
 
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button asChild disabled={!data.loginUrl} className="w-full sm:w-auto">
-              <a href={data.loginUrl ?? "#"} target="_blank" rel="noopener noreferrer">
-                Acessar Fidelize
-                <ExternalLink className="ml-2 h-4 w-4" />
-              </a>
+            <Button
+              className="w-full sm:w-auto"
+              disabled={!data.loginUrl || opening}
+              onClick={handleAccess}
+            >
+              {opening ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Acessar Fidelize
+              <ExternalLink className="ml-2 h-4 w-4" />
             </Button>
             <Button
               variant="outline"
