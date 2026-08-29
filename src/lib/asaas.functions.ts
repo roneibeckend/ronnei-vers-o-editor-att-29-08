@@ -16,7 +16,7 @@ export const createAsaasPaymentLink = createServerFn({ method: "POST" })
   .validator((data: unknown) => z.object({
     products: z.array(z.object({
       productId: z.string(),
-      productType: z.enum(['course', 'ebook']),
+      productType: z.enum(['course', 'ebook', 'fidelize']),
       title: z.string(),
       description: z.string().optional().nullable(),
       value: z.number().optional(),
@@ -111,6 +111,9 @@ export const createAsaasPaymentLink = createServerFn({ method: "POST" })
 
       // 100% DE DESCONTO: libera o acesso imediatamente, sem gerar cobrança no Asaas.
       if (totalValue <= 0) {
+        if (pricedProducts.some((p) => p.productType === 'fidelize')) {
+          throw new Error("Planos Fidelize não podem ser liberados gratuitamente.");
+        }
         for (const p of pricedProducts) {
           await grantAccess(p.productType, p.productId, context.userId);
         }
