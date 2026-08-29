@@ -18,6 +18,9 @@ import { completePendingCheckout } from "@/lib/checkout.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { gtmPurchase } from "@/lib/gtm";
+import { getMyFidelizeAccount } from "@/lib/fidelize-account.functions";
+import { useQueryClient } from "@tanstack/react-query";
+
 
 
 export function AsaasPaymentModal() {
