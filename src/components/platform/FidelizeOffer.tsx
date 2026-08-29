@@ -83,20 +83,45 @@ export function FidelizeOffer({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
       {plans.map((plan: any) => (
-        <Card key={plan.plan} className="flex flex-col">
-          <CardHeader className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-lg">{plan.label}</CardTitle>
-              <Badge variant="secondary" className="gap-1">
+        <Card
+          key={plan.plan}
+          className={`group relative flex flex-col overflow-hidden p-0 transition-colors ${
+            plan.highlight ? "border-primary/60 shadow-lg shadow-primary/10" : "hover:border-primary/40"
+          }`}
+        >
+          <div className="relative aspect-video w-full overflow-hidden">
+            <img
+              src={plan.cover}
+              alt={`Capa do ${plan.label}`}
+              loading="lazy"
+              width={1024}
+              height={576}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+            <div className="absolute left-3 top-3 flex gap-2">
+              <Badge variant="secondary" className="gap-1 backdrop-blur">
                 <Sparkles className="h-3 w-3" /> Fidelize
               </Badge>
+              {plan.highlight && <Badge className="backdrop-blur">Mais escolhido</Badge>}
             </div>
+            <p className="absolute bottom-2 left-3 right-3 truncate text-xs font-medium uppercase tracking-widest text-muted-foreground">
+              {plan.tagline}
+            </p>
+          </div>
+
+          <CardHeader className="space-y-1 pt-4">
+            <CardTitle className="text-lg">{plan.label}</CardTitle>
             <p className="text-sm text-muted-foreground">{plan.description}</p>
           </CardHeader>
-          <CardContent className="flex flex-1 flex-col gap-4">
-            <p className="text-3xl font-bold">{brl(plan.price)}</p>
+
+          <CardContent className="flex flex-1 flex-col gap-4 pb-5">
+            <div className="flex items-end gap-2">
+              <p className="text-3xl font-bold leading-none">{brl(plan.price)}</p>
+              <span className="pb-0.5 text-xs text-muted-foreground">pagamento único</span>
+            </div>
             {!compact && (
               <ul className="flex-1 space-y-1.5 text-sm text-muted-foreground">
                 {plan.modules.map((m: string) => (
@@ -105,6 +130,12 @@ export function FidelizeOffer({ compact = false }: { compact?: boolean }) {
                   </li>
                 ))}
               </ul>
+            )}
+            {compact && (
+              <p className="text-xs text-muted-foreground">
+                {plan.modules.slice(0, 3).join(" · ")}
+                {plan.modules.length > 3 ? ` · +${plan.modules.length - 3}` : ""}
+              </p>
             )}
             <Button className="mt-auto w-full" onClick={() => handleBuy(plan)} disabled={busy === plan.plan}>
               {busy === plan.plan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
