@@ -26,6 +26,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
 
 import { LessonPlayer } from "@/components/platform/LessonPlayer";
+import { resolveLessonVideo } from "@/lib/video-source";
 import { ModuleMaterialsList } from "@/components/platform/ModuleMaterialsList";
 
 function LessonMaterials({ lessonId }: { lessonId: string }) {
