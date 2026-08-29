@@ -137,6 +137,17 @@ function ResetPasswordPage() {
 
     setLoading(true);
     try {
+      // Bloqueia senhas presentes em vazamentos públicos (k-anonymity).
+      const { checkLeakedPassword } = await import("@/lib/leaked-password.functions");
+      const leak = await checkLeakedPassword({ data: { password } });
+      if (leak.leaked) {
+        setLoading(false);
+        toast.error("Senha comprometida", {
+          description: "Esta senha aparece em vazamentos públicos. Escolha outra senha.",
+        });
+        return;
+      }
+
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) throw updateError;
 
