@@ -58,6 +58,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
       { to: "/app", label: "Início", icon: Home, exact: true },
       { to: "/app/receitas", label: "Receitas", icon: ChefHat },
       { to: "/app/materiais", label: "Recursos", icon: Library },
+      { to: "/app/fidelize", label: "Fidelize", icon: Sparkles },
     ],
   },
   {
