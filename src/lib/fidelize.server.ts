@@ -261,12 +261,15 @@ export type FidelizeDiagnostics = {
   lastResponseAt: string | null;
 };
 
-function classify(httpCode: number, success: boolean): FidelizeCheckState {
+function classify(httpCode: number, success: boolean, strict = false): FidelizeCheckState {
   if (success) return "ok";
   if (httpCode === 401 || httpCode === 403) return "auth_error";
-  if (httpCode === 404 || httpCode === 0) return "unavailable";
-  // 400/405/422 indicam que o endpoint existe, mas rejeitou o payload de sondagem.
-  if (httpCode === 400 || httpCode === 405 || httpCode === 422) return "ok";
+  if (httpCode === 0) return "unavailable";
+  // 400/404/405/422 indicam que a API respondeu, mas rejeitou o payload/rota de sondagem.
+  // Isso é erro do teste, não indisponibilidade da integração (exceto no /health).
+  if (httpCode === 400 || httpCode === 404 || httpCode === 405 || httpCode === 422) {
+    return strict && httpCode === 404 ? "unavailable" : "ok";
+  }
   return "error";
 }
 
