@@ -260,9 +260,11 @@ export async function handleFidelizeLifecycleEvent(payload: FidelizeLifecyclePay
       type: "system",
       severity: eventType === "cancellation" ? "warning" : "info",
       title: `Fidelize: ${eventType === "cancellation" ? "cancelamento" : eventType} do aluno`,
-      message: `A Fidelize informou ${eventType}. ${cancelResult.canceled.length} assinatura(s) cancelada(s) no Asaas.`,
+      body: `A Fidelize informou ${eventType}. ${cancelResult.canceled.length} assinatura(s) cancelada(s) no Asaas.`,
+      link: "/admin/integracoes",
+      dedupKey: `fidelize_lifecycle_${payload.eventId ?? record["id"]}`,
       metadata: { userId: record["user_id"], eventId: payload.eventId },
-    } as never);
+    });
   } catch {
     /* notificação é best-effort */
   }
