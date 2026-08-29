@@ -46,7 +46,36 @@ export const getMyFidelizeAccount = createServerFn({ method: "GET" })
     };
   });
 
+/** Recursos reais do plano contratado (plan_modules vindos da Fidelize). */
+export const getMyFidelizePlanModules = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data } = await context.supabase
+      .from("fidelize_provisioning_logs")
+      .select("tenant_id, plan, status")
+      .eq("user_id", context.userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const row = (data || null) as Record<string, any> | null;
+    const tenantId = row?.["tenant_id"] as string | undefined;
+    if (!tenantId) {
+      return { success: false, planModules: [] as string[], plan: (row?.["plan"] as string) ?? null, error: null };
+    }
+
+    const { getFidelizeTenantModules } = await import("./fidelize-provisioning-info.server");
+    const result = await getFidelizeTenantModules(tenantId);
+    return {
+      success: result.success,
+      planModules: result.planModules,
+      plan: result.plan ?? ((row?.["plan"] as string) ?? null),
+      error: result.error,
+    };
+  });
+
 /** Retorna a melhor URL de acesso (login único) à Fidelize para o aluno logado. */
+
 export const getMyFidelizeAccessUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
