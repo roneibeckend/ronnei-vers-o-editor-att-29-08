@@ -82,7 +82,7 @@ function Dashboard() {
         value: products.reduce((acc: number, p: any) => acc + (p.value || 0), 0),
         recurring: targetItem.payment_type === 'recurring',
         affiliateRef: getAffiliateRef() || null,
-        extraItems: products.slice(1).map((p: any) => ({ productId: p.productId, productType: p.productType })),
+        extraItems: products.slice(1).map((p: any) => ({ productId: p.productId, productType: p.productType, discountPercent: discountPercentage })),
         couponCode: localStorage.getItem('pending_coupon_code') || null,
       });
     } catch (error: any) {
@@ -382,7 +382,7 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
         value: products.reduce((acc: number, p: any) => acc + (p.value || 0), 0),
         recurring: item.payment_type === 'recurring',
         affiliateRef: getAffiliateRef() || null,
-        extraItems: products.slice(1).map((p: any) => ({ productId: p.productId, productType: p.productType })),
+        extraItems: products.slice(1).map((p: any) => ({ productId: p.productId, productType: p.productType, discountPercent: discountPercentage })),
         couponCode: pendingCoupon || null,
       });
     } catch (error: any) {

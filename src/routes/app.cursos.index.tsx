@@ -195,7 +195,7 @@ function CoursesPage() {
         value: products.reduce((acc: number, p: any) => acc + (p.value || 0), 0),
         recurring: item.payment_type === 'recurring',
         affiliateRef: getAffiliateRef() || null,
-        extraItems: products.slice(1).map((p: any) => ({ productId: p.productId, productType: p.productType })),
+        extraItems: products.slice(1).map((p: any) => ({ productId: p.productId, productType: p.productType, discountPercent: discount })),
         couponCode: pendingCoupon || null,
       });
     } catch (error: any) {
