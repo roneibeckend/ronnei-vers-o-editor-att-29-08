@@ -113,19 +113,28 @@ function FidelizePage() {
   };
 
   // Abre a Fidelize já autenticado quando a API devolve um link/token de autologin.
+  // Fallback (hoje): a API só devolve login_url + senha temporária, então abrimos
+  // o login com o e-mail preenchido e copiamos a senha — o cliente só cola.
   const handleAccess = async () => {
     if (!data?.loginUrl) return;
     const tab = window.open("", "_blank", "noopener,noreferrer");
     setOpening(true);
     try {
       let target = credentials?.autoLoginUrl ?? null;
-      if (!target) {
+      let password = credentials?.temporaryPassword ?? null;
+      if (!target || !password) {
         const result: any = await revealCredentials();
-        setCredentials({
-          temporaryPassword: result?.temporaryPassword ?? null,
-          autoLoginUrl: result?.autoLoginUrl ?? null,
-        });
-        target = result?.autoLoginUrl ?? null;
+        password = result?.temporaryPassword ?? password;
+        target = result?.autoLoginUrl ?? target;
+        setCredentials({ temporaryPassword: password, autoLoginUrl: target });
+      }
+      if (!target && password) {
+        try {
+          await navigator.clipboard.writeText(password);
+          toast.success("Senha copiada! É só colar na tela de login da Fidelize.");
+        } catch {
+          toast.info("Use o botão “Mostrar senha” para copiar sua senha temporária.");
+        }
       }
       const url = target ?? data.loginUrl;
       if (tab) tab.location.href = url;
