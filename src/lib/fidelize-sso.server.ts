@@ -127,12 +127,16 @@ export async function getFidelizeAccessTarget(userId: string): Promise<FidelizeA
 
   const response = (row["response_payload"] || {}) as Record<string, any>;
   const request = (row["request_payload"] || {}) as Record<string, any>;
-  const loginUrl = (row["login_url"] as string) || (response["login_url"] as string) || null;
+  const rawLoginUrl = (row["login_url"] as string) || (response["login_url"] as string) || null;
   const email = (request["email"] as string) || (response["login"] as string) || null;
+
+  const config = await getFidelizeConfig();
+  const origin = originFrom(config?.baseUrl, rawLoginUrl);
+  const loginUrl = sanitizeUrl(rawLoginUrl, origin);
 
   // 1. Autologin devolvido no provisionamento (só vale enquanto o token não expirar).
   const provisionedExpiry = pickExpiry(response);
-  const provisionedUrl = pickUrl(response) ?? buildFromToken(loginUrl, pickToken(response));
+  const provisionedUrl = pickUrl(response, origin) ?? buildFromToken(origin, pickToken(response));
   if (provisionedUrl && isFresh(provisionedExpiry)) {
     await auditAccess(userId, row, "autologin", provisionedExpiry);
     return {
@@ -145,33 +149,30 @@ export async function getFidelizeAccessTarget(userId: string): Promise<FidelizeA
   }
 
   // 2. Magic link — gera um novo token de acesso automático.
-  if (email) {
-    const config = await getFidelizeConfig();
-    if (config) {
-      const path = resolveFidelizePath(config.baseUrl, "/magic-link");
-      const call = await fidelizeRequest<any>(path, {
-        method: "POST",
-        body: { email, source: "ronnei" },
-        config,
-        context: { operation: "magic_link", userId },
-      });
+  if (email && config) {
+    const path = resolveFidelizePath(config.baseUrl, "/magic-link");
+    const call = await fidelizeRequest<any>(path, {
+      method: "POST",
+      body: { email, source: "ronnei" },
+      config,
+      context: { operation: "magic_link", userId },
+    });
 
-      const payload = (call.data || {}) as Record<string, any>;
-      const magicUrl = pickUrl(payload) ?? buildFromToken(loginUrl, pickToken(payload));
-      if (call.success && magicUrl) {
-        const expiresAt = pickExpiry(payload);
-        await auditAccess(userId, row, "magic-link", expiresAt);
-        return { success: true, url: magicUrl, method: "magic-link", expiresAt, message: null };
-      }
-
-      await logSystemEvent({
-        level: "warning",
-        source: "fidelize",
-        message: "Magic link da Fidelize indisponível — usando login tradicional.",
-        details: { httpCode: call.httpCode, error: call.error, endpoint: path },
-        userId,
-      });
+    const payload = (call.data || {}) as Record<string, any>;
+    const magicUrl = pickUrl(payload, origin) ?? buildFromToken(origin, pickToken(payload));
+    if (call.success && magicUrl) {
+      const expiresAt = pickExpiry(payload);
+      await auditAccess(userId, row, "magic-link", expiresAt);
+      return { success: true, url: magicUrl, method: "magic-link", expiresAt, message: null };
     }
+
+    await logSystemEvent({
+      level: "warning",
+      source: "fidelize",
+      message: "Magic link da Fidelize indisponível — usando login tradicional.",
+      details: { httpCode: call.httpCode, error: call.error, endpoint: path },
+      userId,
+    });
   }
 
   // 3. Login tradicional.
@@ -185,6 +186,7 @@ export async function getFidelizeAccessTarget(userId: string): Promise<FidelizeA
       message: "Abrimos a tela de login da Fidelize — o acesso automático não está disponível agora.",
     };
   }
+
 
   return {
     success: false,
