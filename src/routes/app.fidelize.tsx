@@ -181,6 +181,46 @@ function FidelizePage() {
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Senha temporária</p>
+                <p className="break-all font-mono text-sm font-medium">
+                  {credentials?.temporaryPassword
+                    ? showPassword
+                      ? credentials.temporaryPassword
+                      : "•".repeat(Math.max(8, credentials.temporaryPassword.length))
+                    : "••••••••"}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  onClick={handleReveal}
+                  disabled={revealing || data.status !== "success"}
+                >
+                  {revealing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : showPassword ? (
+                    <EyeOff className="mr-2 h-4 w-4" />
+                  ) : (
+                    <Eye className="mr-2 h-4 w-4" />
+                  )}
+                  {showPassword ? "Ocultar" : "Mostrar senha"}
+                </Button>
+                {showPassword && credentials?.temporaryPassword && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copy(credentials.temporaryPassword!, "Senha")}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">URL de acesso</p>
                 <p className="break-all text-sm font-medium">{data.loginUrl ?? "Disponível no e-mail de acesso"}</p>
               </div>
@@ -198,10 +238,10 @@ function FidelizePage() {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Por segurança, a senha temporária só é enviada por e-mail. Use “Reenviar acesso” se não encontrar a
-              mensagem.
+              A mesma senha enviada por e-mail. Recomendamos trocá-la no primeiro acesso à Fidelize.
             </p>
           </div>
+
 
           {modules.length > 0 && (
             <div>
