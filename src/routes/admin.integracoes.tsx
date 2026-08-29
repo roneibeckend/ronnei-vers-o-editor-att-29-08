@@ -65,6 +65,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { OAuthProvidersPanel } from "@/components/admin/OAuthProvidersPanel";
 import { GoogleIntegrationPanel } from "@/components/admin/GoogleIntegrationPanel";
 import { CouponsPanel } from "@/components/admin/CouponsPanel";
+import { FidelizePanel } from "@/components/admin/FidelizePanel";
 import { invalidateIntegrationConfig } from "@/lib/integration-settings";
 
 export const Route = createFileRoute('/admin/integracoes')({
@@ -167,7 +168,7 @@ function IntegrationsPage() {
   const navigate = useNavigate();
   const { role, isLoading: isLoadingAuth } = useAuth();
   const queryClient = useQueryClient();
-  const [activeCategory, setActiveCategory] = useState<'ia' | 'payment' | 'email' | 'webhooks' | 'offers' | 'feature' | 'oauth' | 'google'>(() => {
+  const [activeCategory, setActiveCategory] = useState<'ia' | 'payment' | 'email' | 'webhooks' | 'offers' | 'feature' | 'oauth' | 'google' | 'fidelize'>(() => {
     if (typeof window === 'undefined') return 'ia';
     return new URLSearchParams(window.location.search).get('tab') === 'google' ? 'google' : 'ia';
   });
@@ -315,6 +316,7 @@ function IntegrationsPage() {
 
   const filtered = integrations?.filter(i => {
     if (activeCategory === 'email') return false; // email category is handled by panel
+    if (i.category === 'fidelize') return false; // possui aba dedicada
     return i.type === activeCategory;
   }) || [];
 
@@ -392,6 +394,13 @@ function IntegrationsPage() {
           >
             <CalendarDays className="h-3.5 w-3.5" /> Google
           </Button>
+          <Button
+            variant="ghost"
+            onClick={() => { setActiveCategory('fidelize'); setSelectedItem(null); }}
+            className={`flex shrink-0 items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition h-10 ${activeCategory === 'fidelize' ? 'bg-[#ff6a00] text-black hover:bg-[#ff6a00]' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+          >
+            <Activity className="h-3.5 w-3.5" /> Fidelize
+          </Button>
         </div>
 
         {/* Mobile category selector — tabs are hidden on small screens to avoid horizontal scroll */}
@@ -410,15 +419,17 @@ function IntegrationsPage() {
             <option value="feature">Recursos</option>
             <option value="oauth">Login Social</option>
             <option value="google">Google</option>
+            <option value="fidelize">Fidelize</option>
           </select>
         </div>
       </div>
 
       {activeCategory === 'oauth' && <OAuthProvidersPanel />}
       {activeCategory === 'google' && <GoogleIntegrationPanel />}
+      {activeCategory === 'fidelize' && <FidelizePanel />}
 
 
-      <div className={`grid gap-6 lg:gap-8 grid-cols-1 lg:grid-cols-12 ${activeCategory === 'oauth' || activeCategory === 'google' ? 'hidden' : ''}`}>
+      <div className={`grid gap-6 lg:gap-8 grid-cols-1 lg:grid-cols-12 ${activeCategory === 'oauth' || activeCategory === 'google' || activeCategory === 'fidelize' ? 'hidden' : ''}`}>
         {/* Sidebar List — no mobile, esconde quando um item está aberto */}
         <div className={`lg:col-span-4 space-y-4 ${activeCategory === 'email' ? 'hidden lg:block' : ''} ${selectedItem && (activeCategory === 'ia' || activeCategory === 'payment') ? 'hidden lg:block' : ''}`}>
 
