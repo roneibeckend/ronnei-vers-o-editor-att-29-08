@@ -240,6 +240,9 @@ export async function fidelizePing(config?: FidelizeConfig, testPath?: string) {
 
 /* ===================== Diagnóstico completo da integração ===================== */
 
+/** Telefone fictício usado apenas para sondar o endpoint de consulta de cliente. */
+const FIDELIZE_DIAGNOSTIC_PHONE = "00000000000";
+
 export type FidelizeCheckState = "ok" | "auth_error" | "unavailable" | "error";
 
 export type FidelizeCheck = {
@@ -261,12 +264,15 @@ export type FidelizeDiagnostics = {
   lastResponseAt: string | null;
 };
 
-function classify(httpCode: number, success: boolean): FidelizeCheckState {
+function classify(httpCode: number, success: boolean, strict = false): FidelizeCheckState {
   if (success) return "ok";
   if (httpCode === 401 || httpCode === 403) return "auth_error";
-  if (httpCode === 404 || httpCode === 0) return "unavailable";
-  // 400/405/422 indicam que o endpoint existe, mas rejeitou o payload de sondagem.
-  if (httpCode === 400 || httpCode === 405 || httpCode === 422) return "ok";
+  if (httpCode === 0) return "unavailable";
+  // 400/404/405/422 indicam que a API respondeu, mas rejeitou o payload/rota de sondagem.
+  // Isso é erro do teste, não indisponibilidade da integração (exceto no /health).
+  if (httpCode === 400 || httpCode === 404 || httpCode === 405 || httpCode === 422) {
+    return strict && httpCode === 404 ? "unavailable" : "ok";
+  }
   return "error";
 }
 
@@ -294,6 +300,7 @@ export async function runFidelizeDiagnostics(
     label: string,
     path: string,
     method: "GET" | "POST" = "GET",
+    strict = false,
   ) => {
     const result = await fidelizeRequest(path, {
       method,
@@ -303,7 +310,7 @@ export async function runFidelizeDiagnostics(
     });
     apiVersion = apiVersion || result.apiVersion || null;
     if (result.httpCode > 0) lastResponseAt = result.timestamp;
-    const state = classify(result.httpCode, result.success);
+    const state = classify(result.httpCode, result.success, strict);
     checks.push({
       key,
       label,
@@ -317,9 +324,13 @@ export async function runFidelizeDiagnostics(
   };
 
   const healthPath = testPath?.trim() || resolveFidelizePath(config.baseUrl, "/health");
-  await probe("health", "API online (/health)", healthPath);
+  await probe("health", "API online (/health)", healthPath, "GET", true);
   await probe("provision-account", "Provisionamento (/provision-account)", resolveFidelizePath(config.baseUrl, "/provision-account"), "POST");
-  await probe("customer", "Clientes (/customer)", resolveFidelizePath(config.baseUrl, "/customer"));
+  await probe(
+    "customer",
+    "Clientes (/customer-by-phone)",
+    resolveFidelizePath(config.baseUrl, `/customer-by-phone/${FIDELIZE_DIAGNOSTIC_PHONE}`),
+  );
 
   const authFailed = checks.some((c) => c.state === "auth_error");
   const anyOk = checks.some((c) => c.state === "ok");
