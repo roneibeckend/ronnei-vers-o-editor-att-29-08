@@ -630,17 +630,32 @@ export function VideoPlayer({
         className={cn('h-full w-full bg-black', fit === 'contain' ? 'object-contain' : 'object-cover')}
         playsInline
         webkit-playsinline="true"
-        preload={autoStart ? 'auto' : 'none'}
+        preload={started || autoStart ? 'auto' : 'none'}
         controls={started}
         controlsList="nodownload noplaybackrate"
 
-        onWaiting={() => setIsLoading(true)}
+        onWaiting={() => {
+          if (!started) return;
+          showSpinnerSoon();
+          scheduleRecovery();
+        }}
         onPlaying={() => {
+          clearTimers();
           setIsLoading(false);
           recoveryAttempts.current = 0;
         }}
-        onCanPlay={() => setIsLoading(false)}
+        onTimeUpdate={() => {
+          if (stallTimerRef.current || spinnerTimerRef.current) {
+            clearTimers();
+            setIsLoading(false);
+          }
+        }}
+        onCanPlay={() => {
+          clearTimers();
+          setIsLoading(false);
+        }}
         onEnded={() => {
+          clearTimers();
           setIsLoading(false);
           // O vídeo terminou: limpa o progresso salvo e avisa quem abriu o
           // player para fechar a tela automaticamente.
@@ -652,8 +667,9 @@ export function VideoPlayer({
           onEndedRef.current?.();
         }}
         onStalled={() => {
-          if (started) recover();
+          if (started) scheduleRecovery();
         }}
+
         onError={() => {
           setIsLoading(false);
           if (started) recover();
