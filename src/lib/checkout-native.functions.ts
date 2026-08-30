@@ -5,7 +5,11 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const productSchema = z.object({
   productId: z.string().min(1),
   productType: z.enum(["course", "ebook", "fidelize", "consultation"]),
-  /** Desconto percentual de order bump/upsell aplicado sobre o preço do catálogo. */
+  /**
+   * Ignorado no servidor: o desconto de order bump/upsell é sempre recalculado
+   * a partir de `offer_settings` (admin). Mantido apenas por compatibilidade
+   * com chamadas antigas — nunca influencia o preço cobrado.
+   */
   discountPercent: z.number().min(0).max(90).optional(),
 });
 
@@ -69,11 +73,35 @@ export const createNativeCheckout = createServerFn({ method: "POST" })
       title: string;
       value: number;
     }[];
-    for (const p of data.products) {
-      const item = await priceProduct(p.productId, p.productType);
-      const discount = p.discountPercent ? 1 - p.discountPercent / 100 : 1;
-      priced.push({ ...item, value: Math.round(item.value * discount * 100) / 100 });
+
+    // Desconto de order bump/upsell: SEMPRE derivado do admin (`offer_settings`),
+    // nunca do cliente. O produto principal jamais recebe desconto automático —
+    // só cupom, validado atomicamente no banco mais abaixo.
+    let bumpDiscount = 0;
+    if (data.products.length > 1) {
+      const { data: offerConfig } = await supabaseAdmin
+        .from("integrations")
+        .select("status, settings")
+        .eq("category", "offer_settings")
+        .maybeSingle();
+      if ((offerConfig as any)?.status) {
+        const settings = (offerConfig as any)?.settings;
+        const configured = Number(
+          settings && typeof settings === "object" ? (settings as any).discountPercentage : 0,
+        );
+        bumpDiscount = Number.isFinite(configured) ? Math.min(Math.max(configured, 0), 90) : 0;
+      }
     }
+
+    for (let i = 0; i < data.products.length; i++) {
+      const p = data.products[i]!;
+      const item = await priceProduct(p.productId, p.productType);
+      // Índice 0 = produto principal (sem desconto). Demais = itens adicionais.
+      const percent = i === 0 ? 0 : bumpDiscount;
+      const factor = percent > 0 ? 1 - percent / 100 : 1;
+      priced.push({ ...item, value: Math.round(item.value * factor * 100) / 100 });
+    }
+
 
     const main = priced[0]!;
     const recurring = data.recurring === true || priced.some((p) => p.productType === "fidelize");
