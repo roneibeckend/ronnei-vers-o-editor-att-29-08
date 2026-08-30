@@ -63,6 +63,7 @@ export function PostPurchaseOffer({
     ctaLabel: 'Adicionar Ofertas e Prosseguir',
     allowCoupon: true,
   });
+  const [extras, setExtras] = useState<ExtraOffer[]>([]);
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
   const { isEnrolledInCourse, isEnrolledInEbook } = useEnrollments();
 
