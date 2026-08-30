@@ -31,6 +31,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Calendar, Clock, Loader2, Video, FileText, History, ExternalLink, PlayCircle, CreditCard, Timer, ShieldCheck } from "lucide-react";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import ConsultationRecordingDialog from "@/components/platform/ConsultationRecordingDialog";
+import { acceptConsultationRecordingTerms } from "@/lib/consultation-recording-access.functions";
 
 export const Route = createFileRoute("/app/consultorias")({
   validateSearch: (search: Record<string, unknown>): { credito?: string } =>
