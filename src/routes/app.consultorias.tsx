@@ -31,6 +31,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Calendar, Clock, Loader2, Video, FileText, History, ExternalLink, PlayCircle, CreditCard, Timer, ShieldCheck } from "lucide-react";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import ConsultationRecordingDialog from "@/components/platform/ConsultationRecordingDialog";
+import { acceptConsultationRecordingTerms } from "@/lib/consultation-recording-access.functions";
 
 export const Route = createFileRoute("/app/consultorias")({
   validateSearch: (search: Record<string, unknown>): { credito?: string } =>
@@ -249,8 +251,10 @@ function ConsultationsPage() {
 function ConsultationCard({ consultation, onChanged }: { consultation: any; onChanged: () => void }) {
   const [editing, setEditing] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
+  const [recordingTermsOpen, setRecordingTermsOpen] = useState(false);
   const saveBriefing = useServerFn(submitConsultationBriefing);
   const cancel = useServerFn(cancelMyConsultation);
+  const acceptRecordingTerms = useServerFn(acceptConsultationRecordingTerms);
 
 
   const save = useMutation({
@@ -332,13 +336,31 @@ function ConsultationCard({ consultation, onChanged }: { consultation: any; onCh
           </Button>
         )}
         {consultation.recording_url && (
-          <Button asChild size="sm" variant="secondary">
-            <a href={consultation.recording_url} target="_blank" rel="noreferrer">
-              <PlayCircle className="mr-2 h-4 w-4" />
-              Ver gravação
-            </a>
+          <Button size="sm" variant="secondary" onClick={() => setRecordingTermsOpen(true)}>
+            <PlayCircle className="mr-2 h-4 w-4" />
+            Ver gravação
           </Button>
         )}
+        <ConsultationRecordingDialog
+          open={recordingTermsOpen}
+          onClose={() => setRecordingTermsOpen(false)}
+          consultationTitle={consultation.product_title}
+          owner={{ name: consultation.client_name, email: consultation.client_email }}
+          onConfirm={async () => {
+            const res: any = await acceptRecordingTerms({
+              data: {
+                consultationId: consultation.id,
+                accepted: true,
+                userAgent: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 400) : null,
+              },
+            });
+            if (!res?.allowed || !res?.recordingUrl) {
+              toast.error(res?.message ?? "Não foi possível liberar a gravação.");
+              throw new Error(res?.message ?? "recording_blocked");
+            }
+            window.open(res.recordingUrl, "_blank", "noopener");
+          }}
+        />
         {isUpcoming && (
           <Button asChild size="sm" variant="outline">
             <a href={consultationCalendarUrl(consultation)} target="_blank" rel="noreferrer">
