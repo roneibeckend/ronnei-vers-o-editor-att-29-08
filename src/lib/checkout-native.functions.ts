@@ -5,7 +5,11 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const productSchema = z.object({
   productId: z.string().min(1),
   productType: z.enum(["course", "ebook", "fidelize", "consultation"]),
-  /** Desconto percentual de order bump/upsell aplicado sobre o preço do catálogo. */
+  /**
+   * Ignorado no servidor: o desconto de order bump/upsell é sempre recalculado
+   * a partir de `offer_settings` (admin). Mantido apenas por compatibilidade
+   * com chamadas antigas — nunca influencia o preço cobrado.
+   */
   discountPercent: z.number().min(0).max(90).optional(),
 });
 
