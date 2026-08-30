@@ -15,6 +15,7 @@ import { useEnrollments } from "@/hooks/use-enrollments";
 import { CourseCardSkeleton } from "@/components/ui/skeleton";
 import { PostPurchaseOffer } from "@/components/platform/PostPurchaseOffer";
 import { usePostPurchaseOfferStore } from "@/hooks/use-post-purchase-offer";
+import { isOfferPopupEnabled } from "@/lib/offer-gate";
 import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
 import { FidelizeOffer } from "@/components/platform/FidelizeOffer";
 import { getMyFidelizeAccount } from "@/lib/fidelize-account.functions";
@@ -327,7 +328,7 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
       return;
     }
     
-    if (isOfferEnabled) {
+    if (await isOfferPopupEnabled()) {
       const data = await getIntegrationConfig('offer_settings');
       if (data?.settings && typeof data.settings === 'object') {
         const s = data.settings as any;

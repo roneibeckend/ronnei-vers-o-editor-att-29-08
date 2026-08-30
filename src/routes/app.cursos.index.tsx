@@ -17,6 +17,7 @@ import { useProgress } from "@/hooks/use-progress";
 import { CourseCardSkeleton, Skeleton } from "@/components/ui/skeleton";
 import { PostPurchaseOffer } from "@/components/platform/PostPurchaseOffer";
 import { usePostPurchaseOfferStore } from "@/hooks/use-post-purchase-offer";
+import { isOfferPopupEnabled } from "@/lib/offer-gate";
 import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
 import { VISIBLE_STATUSES, isComingSoon, COMING_SOON_NOTICE } from "@/lib/product-status";
 
@@ -113,13 +114,7 @@ function CoursesPage() {
       return;
     }
 
-    if (isOfferEnabled) {
-      // Sync toggle state just in case
-      const configData = await getIntegrationConfig('offer_settings');
-      if (configData && configData.status === false) {
-        await executeCheckout(item, type, []);
-        return;
-      }
+    if (await isOfferPopupEnabled()) {
 
       // Fast check: if no other products exist, skip modal
       const { data: otherCourses } = await supabase.from('courses')
