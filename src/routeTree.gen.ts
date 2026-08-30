@@ -34,6 +34,7 @@ import { Route as AppMinhasConsultoriasRouteImport } from './routes/app.minhas-c
 import { Route as AppMateriaisRouteImport } from './routes/app.materiais'
 import { Route as AppFinanceiroRouteImport } from './routes/app.financeiro'
 import { Route as AppFidelizeRouteImport } from './routes/app.fidelize'
+import { Route as AppFeedbackRouteImport } from './routes/app.feedback'
 import { Route as AppCursosRouteImport } from './routes/app.cursos'
 import { Route as AppConsultoriasRouteImport } from './routes/app.consultorias'
 import { Route as AppCertificadosRouteImport } from './routes/app.certificados'
@@ -63,6 +64,7 @@ import { Route as AdminAssinaturasRouteImport } from './routes/admin.assinaturas
 import { Route as AdminAoVivoRouteImport } from './routes/admin.ao-vivo'
 import { Route as AdminAlunosRouteImport } from './routes/admin.alunos'
 import { Route as AdminAfiliadosRouteImport } from './routes/admin.afiliados'
+import { Route as AdminAcompanhamentosRouteImport } from './routes/admin.acompanhamentos'
 import { Route as AppCursosIndexRouteImport } from './routes/app.cursos.index'
 import { Route as AppAfiliadosIndexRouteImport } from './routes/app.afiliados.index'
 import { Route as AppEbooksEbookIdRouteImport } from './routes/app.ebooks.$ebookId'
@@ -81,6 +83,7 @@ import { Route as ApiPublicDailyFinancialReportRouteImport } from './routes/api/
 import { Route as ApiPublicConsultoriaPresencaRouteImport } from './routes/api/public/consultoria-presenca'
 import { Route as ApiPublicConsultationRemindersRouteImport } from './routes/api/public/consultation-reminders'
 import { Route as ApiPublicConsultationRecordingsRouteImport } from './routes/api/public/consultation-recordings'
+import { Route as ApiPublicConsultationFollowupsRouteImport } from './routes/api/public/consultation-followups'
 import { Route as AdminRankingCampanhasRouteImport } from './routes/admin.ranking.campanhas'
 import { Route as AdminAlunosStudentIdRouteImport } from './routes/admin.alunos_.$studentId'
 import { Route as ApiPublicWebhooksFidelizeRouteImport } from './routes/api/public/webhooks/fidelize'
@@ -211,6 +214,11 @@ const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
 const AppFidelizeRoute = AppFidelizeRouteImport.update({
   id: '/fidelize',
   path: '/fidelize',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFeedbackRoute = AppFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCursosRoute = AppCursosRouteImport.update({
@@ -358,6 +366,11 @@ const AdminAfiliadosRoute = AdminAfiliadosRouteImport.update({
   path: '/afiliados',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAcompanhamentosRoute = AdminAcompanhamentosRouteImport.update({
+  id: '/acompanhamentos',
+  path: '/acompanhamentos',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AppCursosIndexRoute = AppCursosIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -453,6 +466,12 @@ const ApiPublicConsultationRecordingsRoute =
     path: '/api/public/consultation-recordings',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicConsultationFollowupsRoute =
+  ApiPublicConsultationFollowupsRouteImport.update({
+    id: '/api/public/consultation-followups',
+    path: '/api/public/consultation-followups',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AdminRankingCampanhasRoute = AdminRankingCampanhasRouteImport.update({
   id: '/campanhas',
   path: '/campanhas',
@@ -500,6 +519,7 @@ export interface FileRoutesByFullPath {
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/verificar-certificado': typeof VerificarCertificadoRoute
+  '/admin/acompanhamentos': typeof AdminAcompanhamentosRoute
   '/admin/afiliados': typeof AdminAfiliadosRoute
   '/admin/alunos': typeof AdminAlunosRoute
   '/admin/ao-vivo': typeof AdminAoVivoRoute
@@ -529,6 +549,7 @@ export interface FileRoutesByFullPath {
   '/app/certificados': typeof AppCertificadosRoute
   '/app/consultorias': typeof AppConsultoriasRoute
   '/app/cursos': typeof AppCursosRouteWithChildren
+  '/app/feedback': typeof AppFeedbackRoute
   '/app/fidelize': typeof AppFidelizeRoute
   '/app/financeiro': typeof AppFinanceiroRoute
   '/app/materiais': typeof AppMateriaisRoute
@@ -544,6 +565,7 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/admin/alunos/$studentId': typeof AdminAlunosStudentIdRoute
   '/admin/ranking/campanhas': typeof AdminRankingCampanhasRoute
+  '/api/public/consultation-followups': typeof ApiPublicConsultationFollowupsRoute
   '/api/public/consultation-recordings': typeof ApiPublicConsultationRecordingsRoute
   '/api/public/consultation-reminders': typeof ApiPublicConsultationRemindersRoute
   '/api/public/consultoria-presenca': typeof ApiPublicConsultoriaPresencaRoute
@@ -578,6 +600,7 @@ export interface FileRoutesByTo {
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/verificar-certificado': typeof VerificarCertificadoRoute
+  '/admin/acompanhamentos': typeof AdminAcompanhamentosRoute
   '/admin/afiliados': typeof AdminAfiliadosRoute
   '/admin/alunos': typeof AdminAlunosRoute
   '/admin/ao-vivo': typeof AdminAoVivoRoute
@@ -605,6 +628,7 @@ export interface FileRoutesByTo {
   '/app/ao-vivo': typeof AppAoVivoRoute
   '/app/certificados': typeof AppCertificadosRoute
   '/app/consultorias': typeof AppConsultoriasRoute
+  '/app/feedback': typeof AppFeedbackRoute
   '/app/fidelize': typeof AppFidelizeRoute
   '/app/financeiro': typeof AppFinanceiroRoute
   '/app/materiais': typeof AppMateriaisRoute
@@ -620,6 +644,7 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/admin/alunos/$studentId': typeof AdminAlunosStudentIdRoute
   '/admin/ranking/campanhas': typeof AdminRankingCampanhasRoute
+  '/api/public/consultation-followups': typeof ApiPublicConsultationFollowupsRoute
   '/api/public/consultation-recordings': typeof ApiPublicConsultationRecordingsRoute
   '/api/public/consultation-reminders': typeof ApiPublicConsultationRemindersRoute
   '/api/public/consultoria-presenca': typeof ApiPublicConsultoriaPresencaRoute
@@ -657,6 +682,7 @@ export interface FileRoutesById {
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/verificar-certificado': typeof VerificarCertificadoRoute
+  '/admin/acompanhamentos': typeof AdminAcompanhamentosRoute
   '/admin/afiliados': typeof AdminAfiliadosRoute
   '/admin/alunos': typeof AdminAlunosRoute
   '/admin/ao-vivo': typeof AdminAoVivoRoute
@@ -686,6 +712,7 @@ export interface FileRoutesById {
   '/app/certificados': typeof AppCertificadosRoute
   '/app/consultorias': typeof AppConsultoriasRoute
   '/app/cursos': typeof AppCursosRouteWithChildren
+  '/app/feedback': typeof AppFeedbackRoute
   '/app/fidelize': typeof AppFidelizeRoute
   '/app/financeiro': typeof AppFinanceiroRoute
   '/app/materiais': typeof AppMateriaisRoute
@@ -701,6 +728,7 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/admin/alunos_/$studentId': typeof AdminAlunosStudentIdRoute
   '/admin/ranking/campanhas': typeof AdminRankingCampanhasRoute
+  '/api/public/consultation-followups': typeof ApiPublicConsultationFollowupsRoute
   '/api/public/consultation-recordings': typeof ApiPublicConsultationRecordingsRoute
   '/api/public/consultation-reminders': typeof ApiPublicConsultationRemindersRoute
   '/api/public/consultoria-presenca': typeof ApiPublicConsultoriaPresencaRoute
@@ -739,6 +767,7 @@ export interface FileRouteTypes {
     | '/redefinir-senha'
     | '/termos-de-uso'
     | '/verificar-certificado'
+    | '/admin/acompanhamentos'
     | '/admin/afiliados'
     | '/admin/alunos'
     | '/admin/ao-vivo'
@@ -768,6 +797,7 @@ export interface FileRouteTypes {
     | '/app/certificados'
     | '/app/consultorias'
     | '/app/cursos'
+    | '/app/feedback'
     | '/app/fidelize'
     | '/app/financeiro'
     | '/app/materiais'
@@ -783,6 +813,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/admin/alunos/$studentId'
     | '/admin/ranking/campanhas'
+    | '/api/public/consultation-followups'
     | '/api/public/consultation-recordings'
     | '/api/public/consultation-reminders'
     | '/api/public/consultoria-presenca'
@@ -817,6 +848,7 @@ export interface FileRouteTypes {
     | '/redefinir-senha'
     | '/termos-de-uso'
     | '/verificar-certificado'
+    | '/admin/acompanhamentos'
     | '/admin/afiliados'
     | '/admin/alunos'
     | '/admin/ao-vivo'
@@ -844,6 +876,7 @@ export interface FileRouteTypes {
     | '/app/ao-vivo'
     | '/app/certificados'
     | '/app/consultorias'
+    | '/app/feedback'
     | '/app/fidelize'
     | '/app/financeiro'
     | '/app/materiais'
@@ -859,6 +892,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/admin/alunos/$studentId'
     | '/admin/ranking/campanhas'
+    | '/api/public/consultation-followups'
     | '/api/public/consultation-recordings'
     | '/api/public/consultation-reminders'
     | '/api/public/consultoria-presenca'
@@ -895,6 +929,7 @@ export interface FileRouteTypes {
     | '/redefinir-senha'
     | '/termos-de-uso'
     | '/verificar-certificado'
+    | '/admin/acompanhamentos'
     | '/admin/afiliados'
     | '/admin/alunos'
     | '/admin/ao-vivo'
@@ -924,6 +959,7 @@ export interface FileRouteTypes {
     | '/app/certificados'
     | '/app/consultorias'
     | '/app/cursos'
+    | '/app/feedback'
     | '/app/fidelize'
     | '/app/financeiro'
     | '/app/materiais'
@@ -939,6 +975,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/admin/alunos_/$studentId'
     | '/admin/ranking/campanhas'
+    | '/api/public/consultation-followups'
     | '/api/public/consultation-recordings'
     | '/api/public/consultation-reminders'
     | '/api/public/consultoria-presenca'
@@ -978,6 +1015,7 @@ export interface RootRouteChildren {
   VerificarCertificadoRoute: typeof VerificarCertificadoRoute
   ApiMaterialDownloadRoute: typeof ApiMaterialDownloadRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  ApiPublicConsultationFollowupsRoute: typeof ApiPublicConsultationFollowupsRoute
   ApiPublicConsultationRecordingsRoute: typeof ApiPublicConsultationRecordingsRoute
   ApiPublicConsultationRemindersRoute: typeof ApiPublicConsultationRemindersRoute
   ApiPublicConsultoriaPresencaRoute: typeof ApiPublicConsultoriaPresencaRoute
@@ -1167,6 +1205,13 @@ declare module '@tanstack/react-router' {
       path: '/fidelize'
       fullPath: '/app/fidelize'
       preLoaderRoute: typeof AppFidelizeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/feedback': {
+      id: '/app/feedback'
+      path: '/feedback'
+      fullPath: '/app/feedback'
+      preLoaderRoute: typeof AppFeedbackRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/cursos': {
@@ -1372,6 +1417,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAfiliadosRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/acompanhamentos': {
+      id: '/admin/acompanhamentos'
+      path: '/acompanhamentos'
+      fullPath: '/admin/acompanhamentos'
+      preLoaderRoute: typeof AdminAcompanhamentosRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/app/cursos/': {
       id: '/app/cursos/'
       path: '/'
@@ -1498,6 +1550,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicConsultationRecordingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/consultation-followups': {
+      id: '/api/public/consultation-followups'
+      path: '/api/public/consultation-followups'
+      fullPath: '/api/public/consultation-followups'
+      preLoaderRoute: typeof ApiPublicConsultationFollowupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/ranking/campanhas': {
       id: '/admin/ranking/campanhas'
       path: '/campanhas'
@@ -1556,6 +1615,7 @@ const AdminRankingRouteWithChildren = AdminRankingRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminAcompanhamentosRoute: typeof AdminAcompanhamentosRoute
   AdminAfiliadosRoute: typeof AdminAfiliadosRoute
   AdminAlunosRoute: typeof AdminAlunosRoute
   AdminAoVivoRoute: typeof AdminAoVivoRoute
@@ -1584,6 +1644,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAcompanhamentosRoute: AdminAcompanhamentosRoute,
   AdminAfiliadosRoute: AdminAfiliadosRoute,
   AdminAlunosRoute: AdminAlunosRoute,
   AdminAoVivoRoute: AdminAoVivoRoute,
@@ -1657,6 +1718,7 @@ interface AppRouteChildren {
   AppCertificadosRoute: typeof AppCertificadosRoute
   AppConsultoriasRoute: typeof AppConsultoriasRoute
   AppCursosRoute: typeof AppCursosRouteWithChildren
+  AppFeedbackRoute: typeof AppFeedbackRoute
   AppFidelizeRoute: typeof AppFidelizeRoute
   AppFinanceiroRoute: typeof AppFinanceiroRoute
   AppMateriaisRoute: typeof AppMateriaisRoute
@@ -1676,6 +1738,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCertificadosRoute: AppCertificadosRoute,
   AppConsultoriasRoute: AppConsultoriasRoute,
   AppCursosRoute: AppCursosRouteWithChildren,
+  AppFeedbackRoute: AppFeedbackRoute,
   AppFidelizeRoute: AppFidelizeRoute,
   AppFinanceiroRoute: AppFinanceiroRoute,
   AppMateriaisRoute: AppMateriaisRoute,
@@ -1718,6 +1781,7 @@ const rootRouteChildren: RootRouteChildren = {
   VerificarCertificadoRoute: VerificarCertificadoRoute,
   ApiMaterialDownloadRoute: ApiMaterialDownloadRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  ApiPublicConsultationFollowupsRoute: ApiPublicConsultationFollowupsRoute,
   ApiPublicConsultationRecordingsRoute: ApiPublicConsultationRecordingsRoute,
   ApiPublicConsultationRemindersRoute: ApiPublicConsultationRemindersRoute,
   ApiPublicConsultoriaPresencaRoute: ApiPublicConsultoriaPresencaRoute,

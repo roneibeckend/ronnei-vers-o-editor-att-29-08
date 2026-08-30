@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.create_consultation_followup() FROM PUBLIC, anon, authenticated;
