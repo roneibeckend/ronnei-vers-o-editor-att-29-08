@@ -113,13 +113,7 @@ function CoursesPage() {
       return;
     }
 
-    if (isOfferEnabled) {
-      // Sync toggle state just in case
-      const configData = await getIntegrationConfig('offer_settings');
-      if (configData && configData.status === false) {
-        await executeCheckout(item, type, []);
-        return;
-      }
+    if (await isOfferPopupEnabled()) {
 
       // Fast check: if no other products exist, skip modal
       const { data: otherCourses } = await supabase.from('courses')
