@@ -241,9 +241,14 @@ function LoginPage() {
       }
 
       // Proteção contra senhas vazadas em bases públicas de credenciais.
+      // Nunca deve bloquear o cadastro: em rede lenta seguimos após 6s.
       try {
         const { checkLeakedPassword } = await import("@/lib/leaked-password.functions");
-        const result = await checkLeakedPassword({ data: { password } });
+        const result = await withTimeout(
+          checkLeakedPassword({ data: { password } }),
+          6000,
+          "verificar a senha",
+        );
         if (result?.leaked) {
           toast.error("Senha comprometida", {
             description:
@@ -260,25 +265,26 @@ function LoginPage() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error, data } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { 
-              name,
-              phone: phone.replace(/\D/g, "") // Enviar apenas dígitos
+        const { error, data } = await withTimeout(
+          supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                name,
+                phone: phone.replace(/\D/g, ""), // Enviar apenas dígitos
+              },
             },
-          },
-        });
+          }),
+          20000,
+          "criar sua conta",
+        );
         if (error) throw error;
 
-        // Dispara e-mail de boas-vindas (não bloqueia o fluxo)
-        try {
-          const { sendWelcomeEmailPublic } = await import("@/lib/email-triggers.functions");
-          await sendWelcomeEmailPublic({ data: { email } });
-        } catch (emailErr) {
-          console.error("[Auth] Erro ao disparar e-mail de boas-vindas:", emailErr);
-        }
+        // Dispara e-mail de boas-vindas em segundo plano (nunca bloqueia o cadastro).
+        void import("@/lib/email-triggers.functions")
+          .then(({ sendWelcomeEmailPublic }) => sendWelcomeEmailPublic({ data: { email } }))
+          .catch((emailErr) => console.error("[Auth] Erro ao disparar e-mail de boas-vindas:", emailErr));
 
         let session = data.session;
 
@@ -286,12 +292,16 @@ function LoginPage() {
         // receber uma sessão imediatamente. Se ela ainda não tiver chegado,
         // fazemos uma tentativa de login sem iniciar qualquer fluxo de confirmação.
         if (!session) {
-          const { data: signInData, error: signInError } =
-            await supabase.auth.signInWithPassword({ email, password });
+          const { data: signInData, error: signInError } = await withTimeout(
+            supabase.auth.signInWithPassword({ email, password }),
+            20000,
+            "iniciar sua sessão",
+          );
 
           if (signInError) throw signInError;
           session = signInData.session;
         }
+
 
         if (!session) {
           throw new Error("Não foi possível iniciar sua sessão após o cadastro.");
