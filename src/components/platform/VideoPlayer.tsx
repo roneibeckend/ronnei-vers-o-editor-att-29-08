@@ -209,6 +209,52 @@ export function VideoPlayer({
     }
   }, []);
 
+  // `stalled`/`waiting` disparam com frequência em streaming por Range mesmo
+  // quando o buffer está saudável. Recarregar o vídeo nesses eventos é o que
+  // provocava a travada cíclica: só recuperamos se a reprodução realmente
+  // parar de avançar por vários segundos seguidos.
+  const stallTimerRef = useRef<number | null>(null);
+  const spinnerTimerRef = useRef<number | null>(null);
+
+  const clearTimers = useCallback(() => {
+    if (stallTimerRef.current) {
+      window.clearTimeout(stallTimerRef.current);
+      stallTimerRef.current = null;
+    }
+    if (spinnerTimerRef.current) {
+      window.clearTimeout(spinnerTimerRef.current);
+      spinnerTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleRecovery = useCallback(() => {
+    if (stallTimerRef.current) return;
+    const video = videoRef.current;
+    if (!video) return;
+    const mark = video.currentTime;
+    stallTimerRef.current = window.setTimeout(() => {
+      stallTimerRef.current = null;
+      const current = videoRef.current;
+      if (!current || current.paused || current.ended) return;
+      // Avançou (mesmo que pouco) ou já tem buffer: nada a fazer.
+      if (current.currentTime > mark + 0.25) return;
+      if (current.readyState >= 3) return;
+      recover();
+    }, STALL_RECOVERY_DELAY_MS);
+  }, [recover]);
+
+  const showSpinnerSoon = useCallback(() => {
+    if (spinnerTimerRef.current) return;
+    spinnerTimerRef.current = window.setTimeout(() => {
+      spinnerTimerRef.current = null;
+      const video = videoRef.current;
+      if (video && !video.paused && video.readyState < 3) setIsLoading(true);
+    }, SPINNER_DELAY_MS);
+  }, []);
+
+  useEffect(() => clearTimers, [clearTimers]);
+
+
   // Streams HLS (.m3u8 do Bunny Stream): Safari/iOS tocam nativamente, os demais
   // navegadores precisam do hls.js anexado ao <video>.
   const isHls = !isEmbed && /\.m3u8(\?|$)/i.test(playableSrc);
