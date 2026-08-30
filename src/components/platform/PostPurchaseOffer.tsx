@@ -42,6 +42,8 @@ interface PostPurchaseOfferProps {
   productType?: 'course' | 'ebook';
   /** Valor do produto principal (para calcular o desconto exibido). */
   amount?: number;
+  /** Origem do upsell (usado na telemetria: home, curso, ebook, landing...). */
+  surface?: string;
 }
 
 export function PostPurchaseOffer({
