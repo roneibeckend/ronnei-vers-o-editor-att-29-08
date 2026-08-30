@@ -61,6 +61,17 @@ function AffiliateLinksPage() {
       return data;
     }
   });
+  const listFidelize = useServerFn(listFidelizePlans);
+  const { data: fidelizePlans } = useQuery({
+    queryKey: ["affiliate-fidelize-plans"],
+    queryFn: async () => {
+      const plans = await listFidelize({} as any);
+      return (plans || []).filter((p: any) => p.active && p.affiliateEnabled);
+    },
+  });
+
+  const refCode = user?.id?.slice(0, 8) ?? "";
+
 
 
   const createLinkMutation = useMutation({
