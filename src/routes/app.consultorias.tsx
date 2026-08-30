@@ -339,6 +339,26 @@ function ConsultationCard({ consultation, onChanged }: { consultation: any; onCh
             Ver gravação
           </Button>
         )}
+        <ConsultationRecordingDialog
+          open={recordingTermsOpen}
+          onClose={() => setRecordingTermsOpen(false)}
+          consultationTitle={consultation.product_title}
+          owner={{ name: consultation.client_name, email: consultation.client_email }}
+          onConfirm={async () => {
+            const res: any = await acceptRecordingTerms({
+              data: {
+                consultationId: consultation.id,
+                accepted: true,
+                userAgent: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 400) : null,
+              },
+            });
+            if (!res?.allowed || !res?.recordingUrl) {
+              toast.error(res?.message ?? "Não foi possível liberar a gravação.");
+              throw new Error(res?.message ?? "recording_blocked");
+            }
+            window.open(res.recordingUrl, "_blank", "noopener");
+          }}
+        />
         {isUpcoming && (
           <Button asChild size="sm" variant="outline">
             <a href={consultationCalendarUrl(consultation)} target="_blank" rel="noreferrer">
