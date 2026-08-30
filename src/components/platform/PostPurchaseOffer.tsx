@@ -53,7 +53,8 @@ export function PostPurchaseOffer({
   onProceedWithoutOffers,
   originalProductId,
   productType,
-  amount
+  amount,
+  surface = 'plataforma'
 }: PostPurchaseOfferProps) {
   const [offers, setOffers] = useState<OfferItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
