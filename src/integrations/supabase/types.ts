@@ -4191,6 +4191,7 @@ export type Database = {
         Args: { p_content: string; p_ticket_id: string }
         Returns: undefined
       }
+      trigger_consultation_followups: { Args: never; Returns: undefined }
       trigger_consultation_recordings: { Args: never; Returns: undefined }
       trigger_consultation_reminders: { Args: never; Returns: undefined }
       trigger_daily_report: { Args: never; Returns: undefined }
