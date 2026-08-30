@@ -271,9 +271,12 @@ export function PostPurchaseOffer({
             <div className="flex h-40 items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-gold" />
             </div>
-          ) : offers.length === 0 ? (
-            <div className="text-center py-10">
-              <p className="text-muted-foreground">Nenhuma oferta complementar está disponível para esta compra.</p>
+          ) : offers.length === 0 && extras.length === 0 ? (
+            <div className="text-center py-10 space-y-2">
+              <p className="text-white font-bold">Você já tem tudo o que oferecemos hoje.</p>
+              <p className="text-muted-foreground text-sm">
+                Siga para o pagamento — novas ofertas aparecem aqui assim que forem lançadas.
+              </p>
             </div>
           ) : (
             <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar flex-1 min-h-0">
