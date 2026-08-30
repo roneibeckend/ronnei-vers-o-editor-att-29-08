@@ -160,6 +160,8 @@ export function PostPurchaseOffer({
 
       setOffers(selectedOffers);
       setSelectedIds(autoSelect ? selectedOffers.map(o => o.id) : []);
+
+      void fetchExtras();
     } catch (error) {
       console.error('Erro ao buscar ofertas:', error);
       toast.error('Erro ao carregar ofertas complementares.');
