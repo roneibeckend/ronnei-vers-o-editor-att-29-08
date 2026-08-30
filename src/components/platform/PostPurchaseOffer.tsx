@@ -20,6 +20,18 @@ interface OfferItem {
   cover_url?: string | null;
 }
 
+/** Produtos que não entram no carrinho (fluxo próprio), exibidos como oportunidades extras. */
+interface ExtraOffer {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  price: number | null;
+  cover_url?: string | null;
+  href: string;
+  badge: string;
+  cta: string;
+}
+
 interface PostPurchaseOfferProps {
   isOpen: boolean;
   onClose: () => void;
@@ -51,6 +63,7 @@ export function PostPurchaseOffer({
     ctaLabel: 'Adicionar Ofertas e Prosseguir',
     allowCoupon: true,
   });
+  const [extras, setExtras] = useState<ExtraOffer[]>([]);
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
   const { isEnrolledInCourse, isEnrolledInEbook } = useEnrollments();
 
@@ -147,6 +160,8 @@ export function PostPurchaseOffer({
 
       setOffers(selectedOffers);
       setSelectedIds(autoSelect ? selectedOffers.map(o => o.id) : []);
+
+      void fetchExtras();
     } catch (error) {
       console.error('Erro ao buscar ofertas:', error);
       toast.error('Erro ao carregar ofertas complementares.');
@@ -155,6 +170,60 @@ export function PostPurchaseOffer({
     }
   };
 
+  /**
+   * Oportunidades extras (planos Fidelize e consultorias). Não entram no
+   * carrinho porque possuem fluxo próprio (assinatura recorrente e agendamento),
+   * mas garantem que o cliente sempre veja opções de upsell.
+   */
+  const fetchExtras = async () => {
+    const list: ExtraOffer[] = [];
+
+    try {
+      const { listFidelizePlans } = await import('@/lib/fidelize-products.functions');
+      const plans = await listFidelizePlans();
+      for (const p of plans) {
+        if (!p.active || p.plan === originalProductId) continue;
+        list.push({
+          id: `fidelize:${p.plan}`,
+          title: p.label,
+          subtitle: p.tagline || p.description,
+          price: p.price,
+          cover_url: p.cover,
+          href: `/fidelize/${p.plan}`,
+          badge: 'Assinatura',
+          cta: p.ctaLabel || 'Assinar',
+        });
+      }
+    } catch (e) {
+      console.error('Erro ao carregar planos Fidelize para ofertas:', e);
+    }
+
+    try {
+      const { data } = await supabase
+        .from('consultation_products')
+        .select('id, title, subtitle, description, price, cover_url, duration_minutes, status, sort_order')
+        .eq('status', 'active')
+        .order('sort_order', { ascending: true });
+
+      for (const c of data || []) {
+        if (c.id === originalProductId) continue;
+        list.push({
+          id: `consultation:${c.id}`,
+          title: c.title,
+          subtitle: c.subtitle || (c.duration_minutes ? `Consultoria de ${c.duration_minutes} minutos` : c.description),
+          price: c.price,
+          cover_url: c.cover_url,
+          href: '/app/consultorias',
+          badge: 'Consultoria',
+          cta: 'Agendar',
+        });
+      }
+    } catch (e) {
+      console.error('Erro ao carregar consultorias para ofertas:', e);
+    }
+
+    setExtras(list);
+  };
 
   const toggleSelection = (id: string) => {
     setSelectedIds(prev => 
@@ -202,9 +271,12 @@ export function PostPurchaseOffer({
             <div className="flex h-40 items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-gold" />
             </div>
-          ) : offers.length === 0 ? (
-            <div className="text-center py-10">
-              <p className="text-muted-foreground">Nenhuma oferta complementar está disponível para esta compra.</p>
+          ) : offers.length === 0 && extras.length === 0 ? (
+            <div className="text-center py-10 space-y-2">
+              <p className="text-white font-bold">Você já tem tudo o que oferecemos hoje.</p>
+              <p className="text-muted-foreground text-sm">
+                Siga para o pagamento — novas ofertas aparecem aqui assim que forem lançadas.
+              </p>
             </div>
           ) : (
             <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar flex-1 min-h-0">
@@ -255,6 +327,48 @@ export function PostPurchaseOffer({
                   </div>
                 );
               })}
+
+              {extras.length > 0 && (
+                <div className="pt-2 space-y-3">
+                  <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    Outras oportunidades
+                  </p>
+                  {extras.map(extra => (
+                    <a
+                      key={extra.id}
+                      href={extra.href}
+                      className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl border border-white/5 bg-white/5 hover:border-white/20 transition-all"
+                    >
+                      <div className="h-14 w-20 sm:h-20 sm:w-32 rounded-lg overflow-hidden shrink-0 bg-black/60">
+                        <img
+                          src={optimizedImage(extra.cover_url) || IMG.hero}
+                          alt={extra.title}
+                          className="h-full w-full object-contain"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[9px] font-bold uppercase tracking-tighter text-gold bg-gold/10 px-1.5 py-0.5 rounded">
+                          {extra.badge}
+                        </span>
+                        <h4 className="font-bold text-sm sm:text-base leading-tight break-words text-white line-clamp-2 mt-1">
+                          {extra.title}
+                        </h4>
+                        {extra.subtitle && (
+                          <p className="text-[11px] sm:text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                            {extra.subtitle}
+                          </p>
+                        )}
+                        {!!extra.price && (
+                          <span className="text-xs sm:text-sm font-bold text-gold">
+                            R$ {extra.price.toFixed(2).replace('.', ',')}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] sm:text-xs font-bold text-gold shrink-0">{extra.cta}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
