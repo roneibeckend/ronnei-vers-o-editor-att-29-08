@@ -69,6 +69,10 @@ function prefersLightVariant() {
 
 const PROGRESS_SAVE_INTERVAL_MS = 5000;
 const MAX_RECOVERY_ATTEMPTS = 3;
+/** Só recarrega o vídeo se ele ficar realmente parado por este tempo. */
+const STALL_RECOVERY_DELAY_MS = 12000;
+/** Evita o spinner piscando a cada micro-rebuffer. */
+const SPINNER_DELAY_MS = 900;
 
 export function VideoPlayer({
   src,
@@ -208,6 +212,52 @@ export function VideoPlayer({
       setIsLoading(false);
     }
   }, []);
+
+  // `stalled`/`waiting` disparam com frequência em streaming por Range mesmo
+  // quando o buffer está saudável. Recarregar o vídeo nesses eventos é o que
+  // provocava a travada cíclica: só recuperamos se a reprodução realmente
+  // parar de avançar por vários segundos seguidos.
+  const stallTimerRef = useRef<number | null>(null);
+  const spinnerTimerRef = useRef<number | null>(null);
+
+  const clearTimers = useCallback(() => {
+    if (stallTimerRef.current) {
+      window.clearTimeout(stallTimerRef.current);
+      stallTimerRef.current = null;
+    }
+    if (spinnerTimerRef.current) {
+      window.clearTimeout(spinnerTimerRef.current);
+      spinnerTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleRecovery = useCallback(() => {
+    if (stallTimerRef.current) return;
+    const video = videoRef.current;
+    if (!video) return;
+    const mark = video.currentTime;
+    stallTimerRef.current = window.setTimeout(() => {
+      stallTimerRef.current = null;
+      const current = videoRef.current;
+      if (!current || current.paused || current.ended) return;
+      // Avançou (mesmo que pouco) ou já tem buffer: nada a fazer.
+      if (current.currentTime > mark + 0.25) return;
+      if (current.readyState >= 3) return;
+      recover();
+    }, STALL_RECOVERY_DELAY_MS);
+  }, [recover]);
+
+  const showSpinnerSoon = useCallback(() => {
+    if (spinnerTimerRef.current) return;
+    spinnerTimerRef.current = window.setTimeout(() => {
+      spinnerTimerRef.current = null;
+      const video = videoRef.current;
+      if (video && !video.paused && video.readyState < 3) setIsLoading(true);
+    }, SPINNER_DELAY_MS);
+  }, []);
+
+  useEffect(() => clearTimers, [clearTimers]);
+
 
   // Streams HLS (.m3u8 do Bunny Stream): Safari/iOS tocam nativamente, os demais
   // navegadores precisam do hls.js anexado ao <video>.
@@ -580,17 +630,32 @@ export function VideoPlayer({
         className={cn('h-full w-full bg-black', fit === 'contain' ? 'object-contain' : 'object-cover')}
         playsInline
         webkit-playsinline="true"
-        preload={autoStart ? 'auto' : 'none'}
+        preload={started || autoStart ? 'auto' : 'none'}
         controls={started}
         controlsList="nodownload noplaybackrate"
 
-        onWaiting={() => setIsLoading(true)}
+        onWaiting={() => {
+          if (!started) return;
+          showSpinnerSoon();
+          scheduleRecovery();
+        }}
         onPlaying={() => {
+          clearTimers();
           setIsLoading(false);
           recoveryAttempts.current = 0;
         }}
-        onCanPlay={() => setIsLoading(false)}
+        onTimeUpdate={() => {
+          if (stallTimerRef.current || spinnerTimerRef.current) {
+            clearTimers();
+            setIsLoading(false);
+          }
+        }}
+        onCanPlay={() => {
+          clearTimers();
+          setIsLoading(false);
+        }}
         onEnded={() => {
+          clearTimers();
           setIsLoading(false);
           // O vídeo terminou: limpa o progresso salvo e avisa quem abriu o
           // player para fechar a tela automaticamente.
@@ -602,8 +667,9 @@ export function VideoPlayer({
           onEndedRef.current?.();
         }}
         onStalled={() => {
-          if (started) recover();
+          if (started) scheduleRecovery();
         }}
+
         onError={() => {
           setIsLoading(false);
           if (started) recover();
