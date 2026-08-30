@@ -96,6 +96,9 @@ function CheckoutBody({ product, onClose }: { product: CheckoutProduct; onClose:
     setCharge(null);
   }, [method]);
 
+  // Créditos de consultoria liberados nesta compra (agendamento pós-pagamento).
+  const [consultationCredit, setConsultationCredit] = React.useState<any>(null);
+
   // Polling do status a cada 5s enquanto houver cobrança pendente.
   React.useEffect(() => {
     if (!charge?.paymentId || confirmed) return;
@@ -111,7 +114,10 @@ function CheckoutBody({ product, onClose }: { product: CheckoutProduct; onClose:
             ],
           },
         });
-        if (active && res?.confirmed) setConfirmed(true);
+        if (active && res?.confirmed) {
+          if (res?.consultationCredits?.length) setConsultationCredit(res.consultationCredits[0]);
+          setConfirmed(true);
+        }
       } catch {
         /* silencioso */
       }
@@ -137,18 +143,26 @@ function CheckoutBody({ product, onClose }: { product: CheckoutProduct; onClose:
     product.onSuccess?.();
     const timer = window.setTimeout(() => {
       onClose();
+      // Consultoria comprada: o cliente vai escolher o horário usando o crédito.
+      if (consultationCredit?.id) {
+        navigate({ to: "/app/consultorias", search: { credito: consultationCredit.id } as never });
+        return;
+      }
       navigate({
         to:
           product.productType === "fidelize"
             ? "/app/fidelize"
-            : product.productType === "course"
-              ? `/app/cursos/${product.productId}`
-              : `/app/ebooks/${product.productId}`,
+            : product.productType === "consultation"
+              ? "/app/consultorias"
+              : product.productType === "course"
+                ? `/app/cursos/${product.productId}`
+                : `/app/ebooks/${product.productId}`,
       });
     }, 2500);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [confirmed]);
+
 
   const handleSubmit = async () => {
     if (!form.name.trim() || !form.email.trim()) {
@@ -198,6 +212,7 @@ function CheckoutBody({ product, onClose }: { product: CheckoutProduct; onClose:
         },
       });
       setCharge(result);
+      if (result?.consultationCredits?.length) setConsultationCredit(result.consultationCredits[0]);
       if (result?.confirmed) setConfirmed(true);
     } catch (error: any) {
       toast.error(error?.message || "Não foi possível iniciar o pagamento.");
@@ -268,7 +283,11 @@ function CheckoutBody({ product, onClose }: { product: CheckoutProduct; onClose:
           <div className="flex h-full min-h-[320px] flex-col items-center justify-center text-center">
             <CheckCircle2 className="h-16 w-16 text-green-500" />
             <h2 className="mt-4 text-2xl font-black">Pagamento aprovado</h2>
-            <p className="mt-2 text-muted-foreground">Liberando acesso...</p>
+            <p className="mt-2 text-muted-foreground">
+              {consultationCredit?.id
+                ? "Consultoria liberada! Vamos escolher o seu horário..."
+                : "Liberando acesso..."}
+            </p>
             <Loader2 className="mt-4 h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : (

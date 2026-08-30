@@ -58,6 +58,8 @@ export const reserveConsultation = createServerFn({ method: "POST" })
         startIsos: z.array(z.string().min(10)).min(1).max(8).optional(),
         briefingData: briefingSchema.optional(),
         phone: z.string().trim().max(30).optional(),
+        /** Crédito de consultoria já pago no checkout (dispensa novo pagamento). */
+        creditId: z.string().uuid().optional().nullable(),
       })
       .refine((v) => v.startIso || v.startIsos?.length, { message: "Selecione os horários." })
       .parse(data),
@@ -88,6 +90,27 @@ export const reserveConsultation = createServerFn({ method: "POST" })
 
     if (!product) throw new Error("Consultoria não encontrada.");
     if (product.status !== "active") throw new Error("Esta consultoria ainda não está disponível para agendamento.");
+
+    // Crédito já pago no checkout: valida antes de reservar para não gerar cobrança nova.
+    let credit: { id: string; amount: number; payment_id: string | null } | null = null;
+    if (data.creditId) {
+      const { data: creditRow } = await supabaseAdmin
+        .from("consultation_credits")
+        .select("id, amount, payment_id, status, product_id, user_id")
+        .eq("id", data.creditId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (!creditRow) throw new Error("Crédito de consultoria não encontrado.");
+      if ((creditRow as any).status !== "available") throw new Error("Este crédito de consultoria já foi utilizado.");
+      if ((creditRow as any).product_id !== product.id) {
+        throw new Error("Este crédito é de outra consultoria.");
+      }
+      credit = {
+        id: (creditRow as any).id,
+        amount: Number((creditRow as any).amount ?? 0),
+        payment_id: (creditRow as any).payment_id ?? null,
+      };
+    }
 
     const briefing = data.briefingData ? formatBriefingText(data.briefingData) : "";
     if (product.briefing_required && !data.briefingData) {
@@ -208,6 +231,69 @@ export const reserveConsultation = createServerFn({ method: "POST" })
       },
     });
 
+    // Consultoria já paga no checkout: consome o crédito e confirma na hora.
+    if (credit) {
+      const { data: consumed, error: consumeError } = await supabaseAdmin
+        .from("consultation_credits")
+        .update({
+          status: "used",
+          used_at: new Date().toISOString(),
+          consultation_id: created.id,
+          booking_group: bookingGroup,
+        } as never)
+        .eq("id", credit.id)
+        .eq("user_id", context.userId)
+        .eq("status", "available")
+        .select("id")
+        .maybeSingle();
+
+      if (consumeError || !consumed) {
+        await supabaseAdmin
+          .from("consultations")
+          .update({ status: "cancelled", cancel_reason: "Crédito indisponível", hold_expires_at: null } as never)
+          .eq("booking_group", bookingGroup);
+        throw new Error("Este crédito de consultoria já foi utilizado.");
+      }
+
+      const { confirmConsultationPayment } = await import("@/lib/consultations.server");
+      const confirmation = await confirmConsultationPayment({
+        consultationId: created.id,
+        paymentId: credit.payment_id || `credit:${credit.id}`,
+        amount: credit.amount || Number(product.price ?? 0),
+        userId: context.userId,
+      });
+
+      await auditConsultation({
+        consultationId: created.id,
+        actorId: context.userId,
+        actorRole: "student",
+        action: "payment_confirmed",
+        status: confirmation?.ok ? "ok" : "warn",
+        details: { creditId: credit.id, paymentId: credit.payment_id, bookingGroup },
+      });
+
+      return {
+        id: created.id,
+        status: "scheduled" as const,
+        holdExpiresAt: null,
+        paymentUrl: null,
+        paymentLinkId: null,
+        usedCreditId: credit.id,
+        amount: credit.amount || Number(product.price ?? 0),
+        scheduledAt: created.scheduled_at,
+        durationMinutes: meetingMinutes,
+        sessions: rows.map((r, i) => ({
+          id: r.id,
+          scheduledAt: r.scheduled_at,
+          endsAt: r.ends_at,
+          index: i + 1,
+          durationMinutes: meetingMinutes,
+        })),
+        sessionsTotal: totalSessions,
+        productTitle: product.title,
+      };
+    }
+
 
     // Checkout no Asaas vinculado à reserva
     let paymentUrl: string | null = null;
@@ -283,6 +369,7 @@ export const reserveConsultation = createServerFn({ method: "POST" })
       holdExpiresAt,
       paymentUrl,
       paymentLinkId,
+      usedCreditId: null as string | null,
       amount: Number(product.price),
       scheduledAt: created.scheduled_at,
       durationMinutes: meetingMinutes,

@@ -729,6 +729,59 @@ export type Database = {
         }
         Relationships: []
       }
+      consultation_credits: {
+        Row: {
+          amount: number
+          booking_group: string | null
+          consultation_id: string | null
+          created_at: string
+          id: string
+          payment_id: string | null
+          product_id: string
+          product_title: string
+          status: string
+          updated_at: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          booking_group?: string | null
+          consultation_id?: string | null
+          created_at?: string
+          id?: string
+          payment_id?: string | null
+          product_id: string
+          product_title: string
+          status?: string
+          updated_at?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          booking_group?: string | null
+          consultation_id?: string | null
+          created_at?: string
+          id?: string
+          payment_id?: string | null
+          product_id?: string
+          product_title?: string
+          status?: string
+          updated_at?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultation_credits_consultation_id_fkey"
+            columns: ["consultation_id"]
+            isOneToOne: false
+            referencedRelation: "consultations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consultation_products: {
         Row: {
           affiliate_enabled: boolean

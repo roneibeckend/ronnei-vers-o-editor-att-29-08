@@ -17,7 +17,7 @@ interface OfferItem {
   title: string;
   description: string | null;
   price: number | null;
-  type: 'course' | 'ebook';
+  type: 'course' | 'ebook' | 'consultation';
   cover_url?: string | null;
 }
 
@@ -176,8 +176,12 @@ export function PostPurchaseOffer({
 
       const selectedOffers = ranked.slice(0, maxItems);
 
-      setOffers(selectedOffers);
-      setSelectedIds(autoSelect ? selectedOffers.map(o => o.id) : []);
+      // Consultorias entram no MESMO carrinho: o cliente paga aqui e agenda depois.
+      const consultationOffers = await fetchConsultationOffers();
+      const allOffers = [...selectedOffers, ...consultationOffers];
+
+      setOffers(allOffers);
+      setSelectedIds(autoSelect ? allOffers.map(o => o.id) : []);
 
       const extrasCount = await fetchExtras();
 
@@ -185,13 +189,15 @@ export function PostPurchaseOffer({
         courses: coursesRes.data?.length ?? 0,
         ebooks: ebooksRes.data?.length ?? 0,
         eligible: allPossibleOffers.length,
-        shown: selectedOffers.length,
+        shown: allOffers.length,
+        consultorias: consultationOffers.length,
         extras: extrasCount,
         rejectedNoPrice,
         rejectedOwned,
       };
 
-      if (selectedOffers.length === 0 && extrasCount === 0) {
+
+      if (allOffers.length === 0 && extrasCount === 0) {
         trackUpsell('fetch_empty', {
           surface,
           durationMs: Date.now() - startedAt,
@@ -221,14 +227,53 @@ export function PostPurchaseOffer({
   };
 
   /**
-   * Oportunidades extras (planos Fidelize e consultorias). Não entram no
-   * carrinho porque possuem fluxo próprio (assinatura recorrente e agendamento),
-   * mas garantem que o cliente sempre veja opções de upsell.
+   * Consultorias vendidas no MESMO checkout. Preço, descrição e imagem vêm
+   * sempre do admin (consultation_products), sem cache. Depois do pagamento o
+   * cliente recebe um crédito e escolhe o horário.
+   */
+  const fetchConsultationOffers = async (): Promise<OfferItem[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('consultation_products')
+        .select('id, title, subtitle, description, price, cover_url, duration_minutes, status, sort_order, updated_at')
+        .eq('status', 'active')
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+
+      return (data || [])
+        .filter((c: any) => c.id !== originalProductId && Number(c.price) > 0)
+        .map((c: any) => {
+          const durationLabel = c.duration_minutes
+            ? c.duration_minutes >= 60
+              ? `${(c.duration_minutes / 60).toFixed(c.duration_minutes % 60 === 0 ? 0 : 1).replace('.', ',')}h de mentoria`
+              : `${c.duration_minutes} min de mentoria`
+            : null;
+          return {
+            id: c.id,
+            title: c.title,
+            description: c.subtitle || c.description || durationLabel,
+            price: Number(c.price),
+            type: 'consultation' as const,
+            cover_url: c.cover_url,
+          };
+        });
+    } catch (e) {
+      trackUpsell('extras_error', {
+        surface,
+        reason: `consultorias: ${e instanceof Error ? e.message : String(e)}`,
+      });
+      return [];
+    }
+  };
+
+  /**
+   * Oportunidades extras (planos Fidelize). Não entram no carrinho porque têm
+   * fluxo próprio de assinatura, mas garantem opções de upsell sempre visíveis.
    */
   const fetchExtras = async (): Promise<number> => {
     const list: ExtraOffer[] = [];
     let fidelizeCount = 0;
-    let consultationCount = 0;
 
     try {
       const { listFidelizePlans } = await import('@/lib/fidelize-products.functions');
@@ -254,50 +299,14 @@ export function PostPurchaseOffer({
       });
     }
 
-    try {
-      // Sempre lido direto do admin (consultation_products), sem cache, para que
-      // preço, descrição e imagem — inclusive do "Pack 3 Horas" — nunca fiquem desatualizados.
-      const { data, error } = await supabase
-        .from('consultation_products')
-        .select('id, title, subtitle, description, price, cover_url, duration_minutes, status, sort_order, updated_at')
-        .eq('status', 'active')
-        .order('sort_order', { ascending: true });
-
-      if (error) throw error;
-
-      for (const c of data || []) {
-        if (c.id === originalProductId) continue;
-        const durationLabel = c.duration_minutes
-          ? c.duration_minutes >= 60
-            ? `${(c.duration_minutes / 60).toFixed(c.duration_minutes % 60 === 0 ? 0 : 1).replace('.', ',')}h de mentoria`
-            : `${c.duration_minutes} min de mentoria`
-          : null;
-        list.push({
-          id: `consultation:${c.id}`,
-          title: c.title,
-          subtitle: c.subtitle || c.description || durationLabel,
-          price: c.price,
-          cover_url: c.cover_url,
-          href: '/app/consultorias',
-          badge: 'Consultoria',
-          cta: 'Agendar',
-        });
-        consultationCount++;
-      }
-    } catch (e) {
-      trackUpsell('extras_error', {
-        surface,
-        reason: `consultorias: ${e instanceof Error ? e.message : String(e)}`,
-      });
-    }
-
     setExtras(list);
     trackUpsell('extras_loaded', {
       surface,
-      details: { fidelize: fidelizeCount, consultorias: consultationCount, total: list.length },
+      details: { fidelize: fidelizeCount, total: list.length },
     });
     return list.length;
   };
+
 
   const toggleSelection = (id: string) => {
     setSelectedIds(prev => 
@@ -395,7 +404,7 @@ export function PostPurchaseOffer({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[9px] font-bold uppercase tracking-tighter text-gold bg-gold/10 px-1.5 py-0.5 rounded">
-                          {offer.type === 'course' ? 'Curso' : 'E-book'}
+                          {offer.type === 'course' ? 'Curso' : offer.type === 'consultation' ? 'Consultoria' : 'E-book'}
                         </span>
                       </div>
                       <h4 className="font-bold text-sm sm:text-base leading-tight break-words text-white line-clamp-2">
