@@ -95,7 +95,8 @@ export function PostPurchaseOffer({
       setIsLoading(true);
       
       // Fetch dynamic settings
-      const config = await getIntegrationConfig('offer_settings');
+      // Lido no servidor: a tabela de integrações é restrita a administradores.
+      const config = await getOfferSettings();
       const s = (config?.settings && typeof config.settings === 'object'
         ? (config.settings as Record<string, any>)
         : {}) as Record<string, any>;
