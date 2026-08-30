@@ -9,6 +9,7 @@ import { IMG } from '@/lib/platform-data';
 import { optimizedImage } from '@/lib/image-url';
 import { CouponInput, type AppliedCoupon } from '@/components/platform/CouponInput';
 import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
+import { trackUpsell } from "@/lib/upsell-telemetry";
 
 
 interface OfferItem {
@@ -306,7 +307,24 @@ export function PostPurchaseOffer({
 
   const handleAddAndProceed = () => {
     const selectedItems = offers.filter(o => selectedIds.includes(o.id));
+    trackUpsell('proceed_with_offers', {
+      surface,
+      details: {
+        count: selectedItems.length,
+        ids: selectedItems.map(o => o.id),
+        total: selectedItems.reduce((sum, o) => sum + (o.price || 0), 0),
+      },
+    });
     onProceedWithOffers(selectedItems);
+  };
+
+  const handleProceedWithout = () => {
+    trackUpsell('proceed_without_offers', {
+      surface,
+      reason: offers.length === 0 ? 'nenhuma oferta exibida' : 'cliente recusou as ofertas',
+      details: { offersShown: offers.length, extrasShown: extras.length },
+    });
+    onProceedWithoutOffers();
   };
 
   if (!isOpen) return null;
