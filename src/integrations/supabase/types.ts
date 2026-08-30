@@ -782,6 +782,83 @@ export type Database = {
           },
         ]
       }
+      consultation_followups: {
+        Row: {
+          attended: boolean | null
+          cancel_reason: string | null
+          completed_at: string | null
+          consultation_id: string
+          created_at: string
+          duration_minutes: number
+          ends_at: string | null
+          feedback_notes: string | null
+          followup_date: string
+          google_event_id: string | null
+          id: string
+          meet_link: string | null
+          meeting_date: string | null
+          method_implemented: boolean | null
+          notified_at: string | null
+          reminder_1h_sent_at: string | null
+          reminder_24h_sent_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attended?: boolean | null
+          cancel_reason?: string | null
+          completed_at?: string | null
+          consultation_id: string
+          created_at?: string
+          duration_minutes?: number
+          ends_at?: string | null
+          feedback_notes?: string | null
+          followup_date: string
+          google_event_id?: string | null
+          id?: string
+          meet_link?: string | null
+          meeting_date?: string | null
+          method_implemented?: boolean | null
+          notified_at?: string | null
+          reminder_1h_sent_at?: string | null
+          reminder_24h_sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attended?: boolean | null
+          cancel_reason?: string | null
+          completed_at?: string | null
+          consultation_id?: string
+          created_at?: string
+          duration_minutes?: number
+          ends_at?: string | null
+          feedback_notes?: string | null
+          followup_date?: string
+          google_event_id?: string | null
+          id?: string
+          meet_link?: string | null
+          meeting_date?: string | null
+          method_implemented?: boolean | null
+          notified_at?: string | null
+          reminder_1h_sent_at?: string | null
+          reminder_24h_sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultation_followups_consultation_id_fkey"
+            columns: ["consultation_id"]
+            isOneToOne: false
+            referencedRelation: "consultations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consultation_products: {
         Row: {
           affiliate_enabled: boolean
