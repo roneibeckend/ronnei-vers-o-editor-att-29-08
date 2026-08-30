@@ -13,6 +13,8 @@ import {
   Globe
 } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { listFidelizePlans } from "@/lib/fidelize-products.functions";
 
 export const Route = createFileRoute("/app/afiliados/links")({
   head: () => ({
@@ -61,6 +63,17 @@ function AffiliateLinksPage() {
       return data;
     }
   });
+  const listFidelize = useServerFn(listFidelizePlans);
+  const { data: fidelizePlans } = useQuery({
+    queryKey: ["affiliate-fidelize-plans"],
+    queryFn: async () => {
+      const plans = await listFidelize({} as any);
+      return (plans || []).filter((p: any) => p.active && p.affiliateEnabled);
+    },
+  });
+
+  const refCode = user?.id?.slice(0, 8) ?? "";
+
 
 
   const createLinkMutation = useMutation({
@@ -136,6 +149,37 @@ function AffiliateLinksPage() {
           </button>
         </div>
       </div>
+
+      {fidelizePlans && fidelizePlans.length > 0 && (
+        <section className="glass p-4 sm:p-6 rounded-2xl border border-white/5 bg-white/[0.02] min-w-0">
+          <h3 className="font-bold mb-4 flex items-center gap-2 text-sm sm:text-base">
+            <Globe className="w-4 h-4 text-fire shrink-0" /> Planos Fidelize liberados para afiliados
+          </h3>
+          <div className="space-y-3">
+            {fidelizePlans.map((plan) => {
+              const url = `${origin}/fidelize/${plan.plan}?ref=${refCode}`;
+              return (
+                <div key={plan.plan} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 min-w-0">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium break-words">{plan.label}</div>
+                    <div className="text-xs text-white/40 truncate">{url}</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(url);
+                      toast.success("Link do plano copiado!");
+                    }}
+                    className="shrink-0 w-11 h-11 rounded-lg bg-fire/10 text-fire hover:bg-fire/20 transition flex items-center justify-center"
+                    aria-label={`Copiar link de ${plan.label}`}
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2 min-w-0">
         <section className="glass p-4 sm:p-6 rounded-2xl border border-white/5 bg-white/[0.02] min-w-0">

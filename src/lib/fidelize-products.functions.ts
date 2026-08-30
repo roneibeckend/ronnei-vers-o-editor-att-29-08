@@ -46,6 +46,7 @@ export const saveFidelizePlans = createServerFn({ method: "POST" })
               modules: z.array(z.string().trim().max(120)).max(20).optional(),
               highlight: z.boolean().optional(),
               sortOrder: z.number().int().min(0).max(99).optional(),
+              affiliateEnabled: z.boolean().optional(),
               reset: z.boolean().optional(),
             }),
           )
