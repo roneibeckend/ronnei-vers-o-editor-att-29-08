@@ -119,15 +119,14 @@ function CoursePage() {
       toast.info(COMING_SOON_NOTICE);
       return;
     }
-    if (isOfferEnabled) {
+    if (await isOfferPopupEnabled()) {
       // Check for available offers before showing modal
       const { data: otherCourses } = await supabase.from('courses').select('id').eq('status', 'active').eq('is_locked', false).neq('id', course.id).limit(1);
       const { data: otherEbooks } = await supabase.from('ebooks').select('id').eq('status', 'active').eq('is_locked', false).limit(1);
       
       const hasOffers = (otherCourses && otherCourses.length > 0) || (otherEbooks && otherEbooks.length > 0);
 
-      const data = await getIntegrationConfig('offer_settings');
-      if ((data && data.status === false) || !hasOffers) {
+      if (!hasOffers) {
         await executeCheckout([]);
         return;
       }
