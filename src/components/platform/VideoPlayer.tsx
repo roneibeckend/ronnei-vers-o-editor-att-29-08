@@ -69,6 +69,10 @@ function prefersLightVariant() {
 
 const PROGRESS_SAVE_INTERVAL_MS = 5000;
 const MAX_RECOVERY_ATTEMPTS = 3;
+/** Só recarrega o vídeo se ele ficar realmente parado por este tempo. */
+const STALL_RECOVERY_DELAY_MS = 12000;
+/** Evita o spinner piscando a cada micro-rebuffer. */
+const SPINNER_DELAY_MS = 900;
 
 export function VideoPlayer({
   src,
