@@ -327,6 +327,48 @@ export function PostPurchaseOffer({
                   </div>
                 );
               })}
+
+              {extras.length > 0 && (
+                <div className="pt-2 space-y-3">
+                  <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    Outras oportunidades
+                  </p>
+                  {extras.map(extra => (
+                    <a
+                      key={extra.id}
+                      href={extra.href}
+                      className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl border border-white/5 bg-white/5 hover:border-white/20 transition-all"
+                    >
+                      <div className="h-14 w-20 sm:h-20 sm:w-32 rounded-lg overflow-hidden shrink-0 bg-black/60">
+                        <img
+                          src={optimizedImage(extra.cover_url) || IMG.hero}
+                          alt={extra.title}
+                          className="h-full w-full object-contain"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[9px] font-bold uppercase tracking-tighter text-gold bg-gold/10 px-1.5 py-0.5 rounded">
+                          {extra.badge}
+                        </span>
+                        <h4 className="font-bold text-sm sm:text-base leading-tight break-words text-white line-clamp-2 mt-1">
+                          {extra.title}
+                        </h4>
+                        {extra.subtitle && (
+                          <p className="text-[11px] sm:text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                            {extra.subtitle}
+                          </p>
+                        )}
+                        {!!extra.price && (
+                          <span className="text-xs sm:text-sm font-bold text-gold">
+                            R$ {extra.price.toFixed(2).replace('.', ',')}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] sm:text-xs font-bold text-gold shrink-0">{extra.cta}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
