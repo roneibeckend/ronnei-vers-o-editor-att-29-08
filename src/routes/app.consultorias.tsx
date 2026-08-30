@@ -332,11 +332,9 @@ function ConsultationCard({ consultation, onChanged }: { consultation: any; onCh
           </Button>
         )}
         {consultation.recording_url && (
-          <Button asChild size="sm" variant="secondary">
-            <a href={consultation.recording_url} target="_blank" rel="noreferrer">
-              <PlayCircle className="mr-2 h-4 w-4" />
-              Ver gravação
-            </a>
+          <Button size="sm" variant="secondary" onClick={() => setRecordingTermsOpen(true)}>
+            <PlayCircle className="mr-2 h-4 w-4" />
+            Ver gravação
           </Button>
         )}
         {isUpcoming && (
