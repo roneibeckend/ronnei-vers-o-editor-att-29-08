@@ -236,6 +236,10 @@ function Dashboard() {
     }))
     .filter((item: any) => !item.isEnrolled);
 
+  const courseEbookItems = visibleItems.filter((item: any) => item.type === 'course' || item.type === 'ebook');
+  const consultationItems = visibleItems.filter((item: any) => item.type === 'consultation');
+
+
 
   return (
     <div className="space-y-8">
