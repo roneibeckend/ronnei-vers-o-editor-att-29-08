@@ -64,6 +64,7 @@ import { Route as AdminAssinaturasRouteImport } from './routes/admin.assinaturas
 import { Route as AdminAoVivoRouteImport } from './routes/admin.ao-vivo'
 import { Route as AdminAlunosRouteImport } from './routes/admin.alunos'
 import { Route as AdminAfiliadosRouteImport } from './routes/admin.afiliados'
+import { Route as AdminAcompanhamentosRouteImport } from './routes/admin.acompanhamentos'
 import { Route as AppCursosIndexRouteImport } from './routes/app.cursos.index'
 import { Route as AppAfiliadosIndexRouteImport } from './routes/app.afiliados.index'
 import { Route as AppEbooksEbookIdRouteImport } from './routes/app.ebooks.$ebookId'
@@ -365,6 +366,11 @@ const AdminAfiliadosRoute = AdminAfiliadosRouteImport.update({
   path: '/afiliados',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAcompanhamentosRoute = AdminAcompanhamentosRouteImport.update({
+  id: '/acompanhamentos',
+  path: '/acompanhamentos',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AppCursosIndexRoute = AppCursosIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -513,6 +519,7 @@ export interface FileRoutesByFullPath {
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/verificar-certificado': typeof VerificarCertificadoRoute
+  '/admin/acompanhamentos': typeof AdminAcompanhamentosRoute
   '/admin/afiliados': typeof AdminAfiliadosRoute
   '/admin/alunos': typeof AdminAlunosRoute
   '/admin/ao-vivo': typeof AdminAoVivoRoute
@@ -593,6 +600,7 @@ export interface FileRoutesByTo {
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/verificar-certificado': typeof VerificarCertificadoRoute
+  '/admin/acompanhamentos': typeof AdminAcompanhamentosRoute
   '/admin/afiliados': typeof AdminAfiliadosRoute
   '/admin/alunos': typeof AdminAlunosRoute
   '/admin/ao-vivo': typeof AdminAoVivoRoute
@@ -674,6 +682,7 @@ export interface FileRoutesById {
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/verificar-certificado': typeof VerificarCertificadoRoute
+  '/admin/acompanhamentos': typeof AdminAcompanhamentosRoute
   '/admin/afiliados': typeof AdminAfiliadosRoute
   '/admin/alunos': typeof AdminAlunosRoute
   '/admin/ao-vivo': typeof AdminAoVivoRoute
@@ -758,6 +767,7 @@ export interface FileRouteTypes {
     | '/redefinir-senha'
     | '/termos-de-uso'
     | '/verificar-certificado'
+    | '/admin/acompanhamentos'
     | '/admin/afiliados'
     | '/admin/alunos'
     | '/admin/ao-vivo'
@@ -838,6 +848,7 @@ export interface FileRouteTypes {
     | '/redefinir-senha'
     | '/termos-de-uso'
     | '/verificar-certificado'
+    | '/admin/acompanhamentos'
     | '/admin/afiliados'
     | '/admin/alunos'
     | '/admin/ao-vivo'
@@ -918,6 +929,7 @@ export interface FileRouteTypes {
     | '/redefinir-senha'
     | '/termos-de-uso'
     | '/verificar-certificado'
+    | '/admin/acompanhamentos'
     | '/admin/afiliados'
     | '/admin/alunos'
     | '/admin/ao-vivo'
@@ -1405,6 +1417,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAfiliadosRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/acompanhamentos': {
+      id: '/admin/acompanhamentos'
+      path: '/acompanhamentos'
+      fullPath: '/admin/acompanhamentos'
+      preLoaderRoute: typeof AdminAcompanhamentosRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/app/cursos/': {
       id: '/app/cursos/'
       path: '/'
@@ -1596,6 +1615,7 @@ const AdminRankingRouteWithChildren = AdminRankingRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminAcompanhamentosRoute: typeof AdminAcompanhamentosRoute
   AdminAfiliadosRoute: typeof AdminAfiliadosRoute
   AdminAlunosRoute: typeof AdminAlunosRoute
   AdminAoVivoRoute: typeof AdminAoVivoRoute
@@ -1624,6 +1644,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAcompanhamentosRoute: AdminAcompanhamentosRoute,
   AdminAfiliadosRoute: AdminAfiliadosRoute,
   AdminAlunosRoute: AdminAlunosRoute,
   AdminAoVivoRoute: AdminAoVivoRoute,
