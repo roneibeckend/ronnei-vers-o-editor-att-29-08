@@ -114,7 +114,7 @@ function CoursesPage() {
       return;
     }
 
-    if (await isOfferPopupEnabled()) {
+    if (await isOfferPopupEnabled('cursos-lista')) {
 
       // Fast check: if no other products exist, skip modal
       const { data: otherCourses } = await supabase.from('courses')
@@ -268,6 +268,7 @@ function CoursesPage() {
   return (
     <div className="pb-10">
       <PostPurchaseOffer
+          surface="cursos-lista"
         isOpen={!!offerContext}
         onClose={() => setOfferContext(null)}
         onProceedWithOffers={(selected) => offerContext && executeCheckout(offerContext.item, offerContext.type, selected)}

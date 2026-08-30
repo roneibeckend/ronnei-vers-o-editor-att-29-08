@@ -9,6 +9,7 @@ import { IMG } from '@/lib/platform-data';
 import { optimizedImage } from '@/lib/image-url';
 import { CouponInput, type AppliedCoupon } from '@/components/platform/CouponInput';
 import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
+import { trackUpsell } from "@/lib/upsell-telemetry";
 
 
 interface OfferItem {
@@ -42,6 +43,8 @@ interface PostPurchaseOfferProps {
   productType?: 'course' | 'ebook';
   /** Valor do produto principal (para calcular o desconto exibido). */
   amount?: number;
+  /** Origem do upsell (usado na telemetria: home, curso, ebook, landing...). */
+  surface?: string;
 }
 
 export function PostPurchaseOffer({
@@ -51,7 +54,8 @@ export function PostPurchaseOffer({
   onProceedWithoutOffers,
   originalProductId,
   productType,
-  amount
+  amount,
+  surface = 'plataforma'
 }: PostPurchaseOfferProps) {
   const [offers, setOffers] = useState<OfferItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -79,11 +83,14 @@ export function PostPurchaseOffer({
 
   useEffect(() => {
     if (isOpen) {
+      trackUpsell('modal_open', { surface, details: { originalProductId, productType, amount } });
       fetchOffers();
     }
   }, [isOpen, originalProductId]);
 
   const fetchOffers = async () => {
+    const startedAt = Date.now();
+    trackUpsell('fetch_start', { surface, details: { originalProductId } });
     try {
       setIsLoading(true);
       
@@ -108,9 +115,19 @@ export function PostPurchaseOffer({
         allowCoupon: s.allowCoupon !== false,
       });
 
+      trackUpsell('fetch_settings', {
+        surface,
+        details: { offerType, maxItems, trigger, minOrderAmount, autoSelect, discount: s.discountPercentage ?? 15 },
+      });
+
       // Gatilho: só exibe quando o pedido atinge o valor mínimo configurado.
       if (trigger === 'min_amount' && (amount || 0) < minOrderAmount) {
         setOffers([]);
+        trackUpsell('fetch_blocked_min_amount', {
+          surface,
+          reason: `pedido R$ ${(amount || 0).toFixed(2)} abaixo do mínimo R$ ${minOrderAmount.toFixed(2)}`,
+        });
+        await fetchExtras();
         return;
       }
 
@@ -130,20 +147,21 @@ export function PostPurchaseOffer({
       if (coursesRes.error) throw coursesRes.error;
       if (ebooksRes.error) throw ebooksRes.error;
 
+      let rejectedNoPrice = 0;
+      let rejectedOwned = 0;
+
       // Filter and validate availability
       const allPossibleOffers: OfferItem[] = [
         ...(coursesRes.data || []).map(c => ({ ...c, type: 'course' as const })),
         ...(ebooksRes.data || []).map(e => ({ ...e, type: 'ebook' as const })),
       ].filter(item => {
         // 1. Ensure product has a valid price
-        if (!item.price || item.price <= 0) return false;
+        if (!item.price || item.price <= 0) { rejectedNoPrice++; return false; }
 
         // 2. Filter out items the user already owns
-        if (item.type === 'course') {
-          return !isEnrolledInCourse(item.id);
-        } else {
-          return !isEnrolledInEbook(item.id);
-        }
+        const owned = item.type === 'course' ? isEnrolledInCourse(item.id) : isEnrolledInEbook(item.id);
+        if (owned) rejectedOwned++;
+        return !owned;
       });
 
       // Ordenação conforme o tipo de oferta configurado
@@ -161,9 +179,41 @@ export function PostPurchaseOffer({
       setOffers(selectedOffers);
       setSelectedIds(autoSelect ? selectedOffers.map(o => o.id) : []);
 
-      void fetchExtras();
+      const extrasCount = await fetchExtras();
+
+      const metrics = {
+        courses: coursesRes.data?.length ?? 0,
+        ebooks: ebooksRes.data?.length ?? 0,
+        eligible: allPossibleOffers.length,
+        shown: selectedOffers.length,
+        extras: extrasCount,
+        rejectedNoPrice,
+        rejectedOwned,
+      };
+
+      if (selectedOffers.length === 0 && extrasCount === 0) {
+        trackUpsell('fetch_empty', {
+          surface,
+          durationMs: Date.now() - startedAt,
+          reason:
+            (coursesRes.data?.length ?? 0) + (ebooksRes.data?.length ?? 0) === 0
+              ? 'nenhum curso/e-book ativo e desbloqueado no catálogo'
+              : rejectedOwned > 0 && rejectedNoPrice === 0
+                ? 'cliente já possui todos os produtos disponíveis'
+                : rejectedNoPrice > 0
+                  ? 'produtos disponíveis estão sem preço configurado'
+                  : 'nenhuma oferta elegível após os filtros',
+          details: metrics,
+        });
+      } else {
+        trackUpsell('fetch_success', { surface, durationMs: Date.now() - startedAt, details: metrics });
+      }
     } catch (error) {
-      console.error('Erro ao buscar ofertas:', error);
+      trackUpsell('fetch_error', {
+        surface,
+        durationMs: Date.now() - startedAt,
+        reason: error instanceof Error ? error.message : String(error),
+      });
       toast.error('Erro ao carregar ofertas complementares.');
     } finally {
       setIsLoading(false);
@@ -175,8 +225,10 @@ export function PostPurchaseOffer({
    * carrinho porque possuem fluxo próprio (assinatura recorrente e agendamento),
    * mas garantem que o cliente sempre veja opções de upsell.
    */
-  const fetchExtras = async () => {
+  const fetchExtras = async (): Promise<number> => {
     const list: ExtraOffer[] = [];
+    let fidelizeCount = 0;
+    let consultationCount = 0;
 
     try {
       const { listFidelizePlans } = await import('@/lib/fidelize-products.functions');
@@ -193,36 +245,58 @@ export function PostPurchaseOffer({
           badge: 'Assinatura',
           cta: p.ctaLabel || 'Assinar',
         });
+        fidelizeCount++;
       }
     } catch (e) {
-      console.error('Erro ao carregar planos Fidelize para ofertas:', e);
+      trackUpsell('extras_error', {
+        surface,
+        reason: `planos Fidelize: ${e instanceof Error ? e.message : String(e)}`,
+      });
     }
 
     try {
-      const { data } = await supabase
+      // Sempre lido direto do admin (consultation_products), sem cache, para que
+      // preço, descrição e imagem — inclusive do "Pack 3 Horas" — nunca fiquem desatualizados.
+      const { data, error } = await supabase
         .from('consultation_products')
-        .select('id, title, subtitle, description, price, cover_url, duration_minutes, status, sort_order')
+        .select('id, title, subtitle, description, price, cover_url, duration_minutes, status, sort_order, updated_at')
         .eq('status', 'active')
         .order('sort_order', { ascending: true });
 
+      if (error) throw error;
+
       for (const c of data || []) {
         if (c.id === originalProductId) continue;
+        const durationLabel = c.duration_minutes
+          ? c.duration_minutes >= 60
+            ? `${(c.duration_minutes / 60).toFixed(c.duration_minutes % 60 === 0 ? 0 : 1).replace('.', ',')}h de mentoria`
+            : `${c.duration_minutes} min de mentoria`
+          : null;
         list.push({
           id: `consultation:${c.id}`,
           title: c.title,
-          subtitle: c.subtitle || (c.duration_minutes ? `Consultoria de ${c.duration_minutes} minutos` : c.description),
+          subtitle: c.subtitle || c.description || durationLabel,
           price: c.price,
           cover_url: c.cover_url,
           href: '/app/consultorias',
           badge: 'Consultoria',
           cta: 'Agendar',
         });
+        consultationCount++;
       }
     } catch (e) {
-      console.error('Erro ao carregar consultorias para ofertas:', e);
+      trackUpsell('extras_error', {
+        surface,
+        reason: `consultorias: ${e instanceof Error ? e.message : String(e)}`,
+      });
     }
 
     setExtras(list);
+    trackUpsell('extras_loaded', {
+      surface,
+      details: { fidelize: fidelizeCount, consultorias: consultationCount, total: list.length },
+    });
+    return list.length;
   };
 
   const toggleSelection = (id: string) => {
@@ -233,7 +307,24 @@ export function PostPurchaseOffer({
 
   const handleAddAndProceed = () => {
     const selectedItems = offers.filter(o => selectedIds.includes(o.id));
+    trackUpsell('proceed_with_offers', {
+      surface,
+      details: {
+        count: selectedItems.length,
+        ids: selectedItems.map(o => o.id),
+        total: selectedItems.reduce((sum, o) => sum + (o.price || 0), 0),
+      },
+    });
     onProceedWithOffers(selectedItems);
+  };
+
+  const handleProceedWithout = () => {
+    trackUpsell('proceed_without_offers', {
+      surface,
+      reason: offers.length === 0 ? 'nenhuma oferta exibida' : 'cliente recusou as ofertas',
+      details: { offersShown: offers.length, extrasShown: extras.length },
+    });
+    onProceedWithoutOffers();
   };
 
   if (!isOpen) return null;
@@ -389,7 +480,7 @@ export function PostPurchaseOffer({
           <div className="mt-6 sm:mt-8 flex flex-col sm:grid sm:grid-cols-2 gap-3 shrink-0">
             <Button 
               variant="outline" 
-              onClick={onProceedWithoutOffers}
+              onClick={handleProceedWithout}
               className="w-full rounded-xl border-white/10 hover:bg-white/5 h-12 order-2 sm:order-1 text-sm sm:text-base whitespace-normal text-center py-2"
             >
               Prosseguir sem Ofertas
