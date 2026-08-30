@@ -120,7 +120,7 @@ function CoursePage() {
       toast.info(COMING_SOON_NOTICE);
       return;
     }
-    if (await isOfferPopupEnabled()) {
+    if (await isOfferPopupEnabled('curso-detalhe')) {
       // Check for available offers before showing modal
       const { data: otherCourses } = await supabase.from('courses').select('id').eq('status', 'active').eq('is_locked', false).neq('id', course.id).limit(1);
       const { data: otherEbooks } = await supabase.from('ebooks').select('id').eq('status', 'active').eq('is_locked', false).limit(1);
@@ -298,6 +298,7 @@ function CoursePage() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <PostPurchaseOffer
+          surface="curso-detalhe"
           isOpen={showOffer}
           onClose={() => setShowOffer(false)}
           onProceedWithOffers={(selected) => executeCheckout(selected)}

@@ -436,7 +436,7 @@ function EbookReaderPage() {
       toast.info(COMING_SOON_NOTICE);
       return;
     }
-    if (await isOfferPopupEnabled()) {
+    if (await isOfferPopupEnabled('ebook-detalhe')) {
       // Check for available offers before showing modal
       const { data: otherCourses } = await supabase.from('courses').select('id').eq('status', 'active').eq('is_locked', false).limit(1);
       const { data: otherEbooks } = await supabase.from('ebooks').select('id').eq('status', 'active').eq('is_locked', false).neq('id', ebook.id).limit(1);
@@ -612,6 +612,7 @@ function EbookReaderPage() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <PostPurchaseOffer
+          surface="ebook-detalhe"
           isOpen={showOffer}
           onClose={() => setShowOffer(false)}
           onProceedWithOffers={(selected) => executeCheckout(selected)}

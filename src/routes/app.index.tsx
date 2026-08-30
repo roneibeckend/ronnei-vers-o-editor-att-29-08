@@ -202,7 +202,7 @@ function Dashboard() {
           newUrl.searchParams.delete('type');
           window.history.replaceState({}, '', newUrl.pathname + newUrl.search);
 
-          if (await isOfferPopupEnabled()) {
+          if (await isOfferPopupEnabled('home')) {
             const config = await getIntegrationConfig('offer_settings');
             const settings = config?.settings as Record<string, unknown> | null;
             const configuredDiscount = Number(settings?.discountPercentage);
@@ -245,6 +245,7 @@ function Dashboard() {
     <div className="space-y-8">
       {offerItem && (
         <PostPurchaseOffer
+          surface="home"
           isOpen={showOffer}
           onClose={() => {
             setShowOffer(false);
@@ -366,7 +367,7 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
       return;
     }
     
-    if (await isOfferPopupEnabled()) {
+    if (await isOfferPopupEnabled('home')) {
       const data = await getIntegrationConfig('offer_settings');
       if (data?.settings && typeof data.settings === 'object') {
         const s = data.settings as any;
@@ -441,6 +442,7 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
     <>
       {!isConsultation && (
         <PostPurchaseOffer
+          surface="home"
           isOpen={showOffer}
           onClose={() => setShowOffer(false)}
           onProceedWithOffers={(selected) => executeCheckout(selected)}
