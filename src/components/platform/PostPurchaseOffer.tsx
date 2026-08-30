@@ -114,9 +114,19 @@ export function PostPurchaseOffer({
         allowCoupon: s.allowCoupon !== false,
       });
 
+      trackUpsell('fetch_settings', {
+        surface,
+        details: { offerType, maxItems, trigger, minOrderAmount, autoSelect, discount: s.discountPercentage ?? 15 },
+      });
+
       // Gatilho: só exibe quando o pedido atinge o valor mínimo configurado.
       if (trigger === 'min_amount' && (amount || 0) < minOrderAmount) {
         setOffers([]);
+        trackUpsell('fetch_blocked_min_amount', {
+          surface,
+          reason: `pedido R$ ${(amount || 0).toFixed(2)} abaixo do mínimo R$ ${minOrderAmount.toFixed(2)}`,
+        });
+        await fetchExtras();
         return;
       }
 
@@ -136,20 +146,21 @@ export function PostPurchaseOffer({
       if (coursesRes.error) throw coursesRes.error;
       if (ebooksRes.error) throw ebooksRes.error;
 
+      let rejectedNoPrice = 0;
+      let rejectedOwned = 0;
+
       // Filter and validate availability
       const allPossibleOffers: OfferItem[] = [
         ...(coursesRes.data || []).map(c => ({ ...c, type: 'course' as const })),
         ...(ebooksRes.data || []).map(e => ({ ...e, type: 'ebook' as const })),
       ].filter(item => {
         // 1. Ensure product has a valid price
-        if (!item.price || item.price <= 0) return false;
+        if (!item.price || item.price <= 0) { rejectedNoPrice++; return false; }
 
         // 2. Filter out items the user already owns
-        if (item.type === 'course') {
-          return !isEnrolledInCourse(item.id);
-        } else {
-          return !isEnrolledInEbook(item.id);
-        }
+        const owned = item.type === 'course' ? isEnrolledInCourse(item.id) : isEnrolledInEbook(item.id);
+        if (owned) rejectedOwned++;
+        return !owned;
       });
 
       // Ordenação conforme o tipo de oferta configurado
@@ -167,9 +178,41 @@ export function PostPurchaseOffer({
       setOffers(selectedOffers);
       setSelectedIds(autoSelect ? selectedOffers.map(o => o.id) : []);
 
-      void fetchExtras();
+      const extrasCount = await fetchExtras();
+
+      const metrics = {
+        courses: coursesRes.data?.length ?? 0,
+        ebooks: ebooksRes.data?.length ?? 0,
+        eligible: allPossibleOffers.length,
+        shown: selectedOffers.length,
+        extras: extrasCount,
+        rejectedNoPrice,
+        rejectedOwned,
+      };
+
+      if (selectedOffers.length === 0 && extrasCount === 0) {
+        trackUpsell('fetch_empty', {
+          surface,
+          durationMs: Date.now() - startedAt,
+          reason:
+            (coursesRes.data?.length ?? 0) + (ebooksRes.data?.length ?? 0) === 0
+              ? 'nenhum curso/e-book ativo e desbloqueado no catálogo'
+              : rejectedOwned > 0 && rejectedNoPrice === 0
+                ? 'cliente já possui todos os produtos disponíveis'
+                : rejectedNoPrice > 0
+                  ? 'produtos disponíveis estão sem preço configurado'
+                  : 'nenhuma oferta elegível após os filtros',
+          details: metrics,
+        });
+      } else {
+        trackUpsell('fetch_success', { surface, durationMs: Date.now() - startedAt, details: metrics });
+      }
     } catch (error) {
-      console.error('Erro ao buscar ofertas:', error);
+      trackUpsell('fetch_error', {
+        surface,
+        durationMs: Date.now() - startedAt,
+        reason: error instanceof Error ? error.message : String(error),
+      });
       toast.error('Erro ao carregar ofertas complementares.');
     } finally {
       setIsLoading(false);
