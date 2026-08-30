@@ -281,10 +281,9 @@ function Dashboard() {
         </section>
       )}
 
-      <section id="novidades">
-
+      <section id="cursos-ebooks">
         <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:justify-between">
-          <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight break-words min-w-0">Novidades para você</h2>
+          <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight break-words min-w-0">Cursos e E-books</h2>
           <Link to="/app/cursos" className="shrink-0 text-sm font-medium text-gold hover:underline">Ver todos</Link>
         </div>
 
@@ -294,7 +293,7 @@ function Dashboard() {
               <CourseCardSkeleton key={i} />
             ))}
           </div>
-        ) : visibleItems.length === 0 ? (
+        ) : courseEbookItems.length === 0 ? (
           <div className="glass rounded-2xl p-6 text-center">
             <p className="text-sm text-muted-foreground">
               Você já tem acesso a todo o conteúdo disponível. Novos lançamentos aparecem aqui.
@@ -305,7 +304,7 @@ function Dashboard() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 sm:gap-6">
-            {visibleItems.map((item: any) => (
+            {courseEbookItems.map((item: any) => (
               <CourseShowcaseCard
                 key={`${item.type}-${item.id}`}
                 item={item}
@@ -316,7 +315,27 @@ function Dashboard() {
         )}
       </section>
 
+      {consultationItems.length > 0 && (
+        <section id="mentorias">
+          <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:justify-between">
+            <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight break-words min-w-0">Mentorias</h2>
+            <Link to="/app/consultorias" className="shrink-0 text-sm font-medium text-gold hover:underline">Ver todas</Link>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 sm:gap-6">
+            {consultationItems.map((item: any) => (
+              <CourseShowcaseCard
+                key={`${item.type}-${item.id}`}
+                item={item}
+                isEnrolled={item.isEnrolled}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
       <FidelizeHomeSection />
+
 
 
 
