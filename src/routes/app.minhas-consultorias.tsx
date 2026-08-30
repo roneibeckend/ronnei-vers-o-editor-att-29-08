@@ -22,6 +22,9 @@ import {
   ListChecks,
 } from "lucide-react";
 import type { ConsultationBriefing } from "@/lib/consultation-briefing";
+import ConsultationRecordingDialog from "@/components/platform/ConsultationRecordingDialog";
+import { acceptConsultationRecordingTerms } from "@/lib/consultation-recording-access.functions";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/minhas-consultorias")({
   head: () => ({
