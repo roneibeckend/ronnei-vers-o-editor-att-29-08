@@ -34,6 +34,7 @@ import { Route as AppMinhasConsultoriasRouteImport } from './routes/app.minhas-c
 import { Route as AppMateriaisRouteImport } from './routes/app.materiais'
 import { Route as AppFinanceiroRouteImport } from './routes/app.financeiro'
 import { Route as AppFidelizeRouteImport } from './routes/app.fidelize'
+import { Route as AppFeedbackRouteImport } from './routes/app.feedback'
 import { Route as AppCursosRouteImport } from './routes/app.cursos'
 import { Route as AppConsultoriasRouteImport } from './routes/app.consultorias'
 import { Route as AppCertificadosRouteImport } from './routes/app.certificados'
@@ -212,6 +213,11 @@ const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
 const AppFidelizeRoute = AppFidelizeRouteImport.update({
   id: '/fidelize',
   path: '/fidelize',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFeedbackRoute = AppFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCursosRoute = AppCursosRouteImport.update({
@@ -536,6 +542,7 @@ export interface FileRoutesByFullPath {
   '/app/certificados': typeof AppCertificadosRoute
   '/app/consultorias': typeof AppConsultoriasRoute
   '/app/cursos': typeof AppCursosRouteWithChildren
+  '/app/feedback': typeof AppFeedbackRoute
   '/app/fidelize': typeof AppFidelizeRoute
   '/app/financeiro': typeof AppFinanceiroRoute
   '/app/materiais': typeof AppMateriaisRoute
@@ -613,6 +620,7 @@ export interface FileRoutesByTo {
   '/app/ao-vivo': typeof AppAoVivoRoute
   '/app/certificados': typeof AppCertificadosRoute
   '/app/consultorias': typeof AppConsultoriasRoute
+  '/app/feedback': typeof AppFeedbackRoute
   '/app/fidelize': typeof AppFidelizeRoute
   '/app/financeiro': typeof AppFinanceiroRoute
   '/app/materiais': typeof AppMateriaisRoute
@@ -695,6 +703,7 @@ export interface FileRoutesById {
   '/app/certificados': typeof AppCertificadosRoute
   '/app/consultorias': typeof AppConsultoriasRoute
   '/app/cursos': typeof AppCursosRouteWithChildren
+  '/app/feedback': typeof AppFeedbackRoute
   '/app/fidelize': typeof AppFidelizeRoute
   '/app/financeiro': typeof AppFinanceiroRoute
   '/app/materiais': typeof AppMateriaisRoute
@@ -778,6 +787,7 @@ export interface FileRouteTypes {
     | '/app/certificados'
     | '/app/consultorias'
     | '/app/cursos'
+    | '/app/feedback'
     | '/app/fidelize'
     | '/app/financeiro'
     | '/app/materiais'
@@ -855,6 +865,7 @@ export interface FileRouteTypes {
     | '/app/ao-vivo'
     | '/app/certificados'
     | '/app/consultorias'
+    | '/app/feedback'
     | '/app/fidelize'
     | '/app/financeiro'
     | '/app/materiais'
@@ -936,6 +947,7 @@ export interface FileRouteTypes {
     | '/app/certificados'
     | '/app/consultorias'
     | '/app/cursos'
+    | '/app/feedback'
     | '/app/fidelize'
     | '/app/financeiro'
     | '/app/materiais'
@@ -1181,6 +1193,13 @@ declare module '@tanstack/react-router' {
       path: '/fidelize'
       fullPath: '/app/fidelize'
       preLoaderRoute: typeof AppFidelizeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/feedback': {
+      id: '/app/feedback'
+      path: '/feedback'
+      fullPath: '/app/feedback'
+      preLoaderRoute: typeof AppFeedbackRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/cursos': {
@@ -1678,6 +1697,7 @@ interface AppRouteChildren {
   AppCertificadosRoute: typeof AppCertificadosRoute
   AppConsultoriasRoute: typeof AppConsultoriasRoute
   AppCursosRoute: typeof AppCursosRouteWithChildren
+  AppFeedbackRoute: typeof AppFeedbackRoute
   AppFidelizeRoute: typeof AppFidelizeRoute
   AppFinanceiroRoute: typeof AppFinanceiroRoute
   AppMateriaisRoute: typeof AppMateriaisRoute
@@ -1697,6 +1717,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCertificadosRoute: AppCertificadosRoute,
   AppConsultoriasRoute: AppConsultoriasRoute,
   AppCursosRoute: AppCursosRouteWithChildren,
+  AppFeedbackRoute: AppFeedbackRoute,
   AppFidelizeRoute: AppFidelizeRoute,
   AppFinanceiroRoute: AppFinanceiroRoute,
   AppMateriaisRoute: AppMateriaisRoute,
