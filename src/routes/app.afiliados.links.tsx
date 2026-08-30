@@ -13,6 +13,8 @@ import {
   Globe
 } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { listFidelizePlans } from "@/lib/fidelize-products.functions";
 
 export const Route = createFileRoute("/app/afiliados/links")({
   head: () => ({
