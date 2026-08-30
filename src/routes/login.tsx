@@ -319,7 +319,11 @@ function LoginPage() {
         goTo(redirectTo || "/inicio", true);
 
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await withTimeout(
+          supabase.auth.signInWithPassword({ email, password }),
+          20000,
+          "entrar na sua conta",
+        );
         if (error) throw error;
         gtmLogin("email");
         toast.success("Bem-vindo de volta!");
