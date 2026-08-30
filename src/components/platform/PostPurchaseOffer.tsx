@@ -82,6 +82,7 @@ export function PostPurchaseOffer({
 
   useEffect(() => {
     if (isOpen) {
+      trackUpsell('modal_open', { surface, details: { originalProductId, productType, amount } });
       fetchOffers();
     }
   }, [isOpen, originalProductId]);
