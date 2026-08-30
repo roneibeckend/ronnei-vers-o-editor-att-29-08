@@ -33,6 +33,26 @@ export const Route = createFileRoute("/login")({
 
 type Mode = "login" | "signup";
 
+/** Evita que uma chamada de rede pendurada trave o botão em "Aguarde…" para sempre. */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`Tempo esgotado ao ${label}. Verifique sua conexão e tente novamente.`)),
+      ms,
+    );
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 // Provedores desativados até que as credenciais sejam configuradas.
 const ENABLE_EMAIL_LOGIN = true;
 const ENABLE_GOOGLE_LOGIN = true;
