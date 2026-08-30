@@ -70,15 +70,6 @@ export function PostPurchaseOffer({
     }
   }, [isOpen, originalProductId]);
 
-  useEffect(() => {
-    if (isOpen && !isLoading && offers.length === 0) {
-      const timer = setTimeout(() => {
-        onProceedWithoutOffers();
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, isLoading, offers.length, onProceedWithoutOffers]);
-
   const fetchOffers = async () => {
     try {
       setIsLoading(true);
@@ -179,11 +170,11 @@ export function PostPurchaseOffer({
   if (!isOpen) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onProceedWithoutOffers()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl glass border-white/10 p-0 overflow-hidden sm:rounded-3xl w-[92vw] sm:w-full fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-h-[90vh] flex flex-col outline-none z-[9999]">
         <div className="relative p-4 sm:p-8 flex flex-col h-full overflow-hidden">
           <button 
-            onClick={onProceedWithoutOffers}
+            onClick={onClose}
             className="absolute right-4 top-4 text-white/40 hover:text-white transition-colors z-10"
           >
             <X className="h-6 w-6" />
@@ -213,11 +204,7 @@ export function PostPurchaseOffer({
             </div>
           ) : offers.length === 0 ? (
             <div className="text-center py-10">
-              <p className="text-muted-foreground mb-4">Otimizando sua experiência de compra...</p>
-              <div className="flex justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-gold" />
-              </div>
-              {/* Auto-proceed logic added in useEffect */}
+              <p className="text-muted-foreground">Nenhuma oferta complementar está disponível para esta compra.</p>
             </div>
           ) : (
             <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar flex-1 min-h-0">

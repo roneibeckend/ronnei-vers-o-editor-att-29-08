@@ -6,7 +6,7 @@ import { useServerFn } from "@tanstack/react-start";
 
 import { getAffiliateRef } from "@/hooks/use-affiliate-tracking";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { IMG } from "@/lib/platform-data";
 import { optimizedImage } from "@/lib/image-url";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -42,6 +42,7 @@ function Dashboard() {
   const getPending = useServerFn(getPendingCheckout);
   const completeCheckout = useServerFn(completePendingCheckout);
   const { openCheckout } = useCheckout();
+  const handledBuyRef = useRef<string | null>(null);
 
   const executeCheckout = async (targetItem: any, additionalItems: any[]) => {
     try {
@@ -165,7 +166,10 @@ function Dashboard() {
       const buyId = urlParams.get('buy');
       const buyType = urlParams.get('type') as 'course' | 'ebook' | null;
 
-      if (buyId && buyType && !isLoadingEnrollments) {
+      const buyKey = buyId && buyType ? `${buyType}:${buyId}` : null;
+
+      if (buyId && buyType && buyKey && handledBuyRef.current !== buyKey && !isLoadingEnrollments) {
+        handledBuyRef.current = buyKey;
         const alreadyEnrolled = buyType === 'course' ? isEnrolledInCourse(buyId) : isEnrolledInEbook(buyId);
         
         if (alreadyEnrolled) {
@@ -198,8 +202,19 @@ function Dashboard() {
           newUrl.searchParams.delete('type');
           window.history.replaceState({}, '', newUrl.pathname + newUrl.search);
 
-          // Inicia checkout
-          executeCheckout(targetItem, []);
+          if (await isOfferPopupEnabled()) {
+            const config = await getIntegrationConfig('offer_settings');
+            const settings = config?.settings as Record<string, unknown> | null;
+            const configuredDiscount = Number(settings?.discountPercentage);
+            if (Number.isFinite(configuredDiscount) && configuredDiscount > 0) {
+              setDiscountPercentage(configuredDiscount);
+            }
+            setOfferItem(targetItem);
+            setShowOffer(true);
+            return;
+          }
+
+          await executeCheckout(targetItem, []);
         }
       }
     };
