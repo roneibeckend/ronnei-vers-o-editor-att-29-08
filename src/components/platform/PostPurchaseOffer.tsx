@@ -170,6 +170,60 @@ export function PostPurchaseOffer({
     }
   };
 
+  /**
+   * Oportunidades extras (planos Fidelize e consultorias). Não entram no
+   * carrinho porque possuem fluxo próprio (assinatura recorrente e agendamento),
+   * mas garantem que o cliente sempre veja opções de upsell.
+   */
+  const fetchExtras = async () => {
+    const list: ExtraOffer[] = [];
+
+    try {
+      const { listFidelizePlans } = await import('@/lib/fidelize-products.functions');
+      const plans = await listFidelizePlans();
+      for (const p of plans) {
+        if (!p.active || p.plan === originalProductId) continue;
+        list.push({
+          id: `fidelize:${p.plan}`,
+          title: p.label,
+          subtitle: p.tagline || p.description,
+          price: p.price,
+          cover_url: p.cover,
+          href: `/fidelize/${p.plan}`,
+          badge: 'Assinatura',
+          cta: p.ctaLabel || 'Assinar',
+        });
+      }
+    } catch (e) {
+      console.error('Erro ao carregar planos Fidelize para ofertas:', e);
+    }
+
+    try {
+      const { data } = await supabase
+        .from('consultation_products')
+        .select('id, title, subtitle, description, price, cover_url, duration_minutes, status, sort_order')
+        .eq('status', 'active')
+        .order('sort_order', { ascending: true });
+
+      for (const c of data || []) {
+        if (c.id === originalProductId) continue;
+        list.push({
+          id: `consultation:${c.id}`,
+          title: c.title,
+          subtitle: c.subtitle || (c.duration_minutes ? `Consultoria de ${c.duration_minutes} minutos` : c.description),
+          price: c.price,
+          cover_url: c.cover_url,
+          href: '/app/consultorias',
+          badge: 'Consultoria',
+          cta: 'Agendar',
+        });
+      }
+    } catch (e) {
+      console.error('Erro ao carregar consultorias para ofertas:', e);
+    }
+
+    setExtras(list);
+  };
 
   const toggleSelection = (id: string) => {
     setSelectedIds(prev => 
