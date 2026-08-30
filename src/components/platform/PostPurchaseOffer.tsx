@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { IMG } from '@/lib/platform-data';
 import { optimizedImage } from '@/lib/image-url';
 import { CouponInput, type AppliedCoupon } from '@/components/platform/CouponInput';
-import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
+import { getOfferSettings } from "@/lib/offer-settings.functions";
 import { trackUpsell } from "@/lib/upsell-telemetry";
 
 
