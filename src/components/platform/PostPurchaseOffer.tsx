@@ -224,8 +224,10 @@ export function PostPurchaseOffer({
    * carrinho porque possuem fluxo próprio (assinatura recorrente e agendamento),
    * mas garantem que o cliente sempre veja opções de upsell.
    */
-  const fetchExtras = async () => {
+  const fetchExtras = async (): Promise<number> => {
     const list: ExtraOffer[] = [];
+    let fidelizeCount = 0;
+    let consultationCount = 0;
 
     try {
       const { listFidelizePlans } = await import('@/lib/fidelize-products.functions');
@@ -242,36 +244,58 @@ export function PostPurchaseOffer({
           badge: 'Assinatura',
           cta: p.ctaLabel || 'Assinar',
         });
+        fidelizeCount++;
       }
     } catch (e) {
-      console.error('Erro ao carregar planos Fidelize para ofertas:', e);
+      trackUpsell('extras_error', {
+        surface,
+        reason: `planos Fidelize: ${e instanceof Error ? e.message : String(e)}`,
+      });
     }
 
     try {
-      const { data } = await supabase
+      // Sempre lido direto do admin (consultation_products), sem cache, para que
+      // preço, descrição e imagem — inclusive do "Pack 3 Horas" — nunca fiquem desatualizados.
+      const { data, error } = await supabase
         .from('consultation_products')
-        .select('id, title, subtitle, description, price, cover_url, duration_minutes, status, sort_order')
+        .select('id, title, subtitle, description, price, cover_url, duration_minutes, status, sort_order, updated_at')
         .eq('status', 'active')
         .order('sort_order', { ascending: true });
 
+      if (error) throw error;
+
       for (const c of data || []) {
         if (c.id === originalProductId) continue;
+        const durationLabel = c.duration_minutes
+          ? c.duration_minutes >= 60
+            ? `${(c.duration_minutes / 60).toFixed(c.duration_minutes % 60 === 0 ? 0 : 1).replace('.', ',')}h de mentoria`
+            : `${c.duration_minutes} min de mentoria`
+          : null;
         list.push({
           id: `consultation:${c.id}`,
           title: c.title,
-          subtitle: c.subtitle || (c.duration_minutes ? `Consultoria de ${c.duration_minutes} minutos` : c.description),
+          subtitle: c.subtitle || c.description || durationLabel,
           price: c.price,
           cover_url: c.cover_url,
           href: '/app/consultorias',
           badge: 'Consultoria',
           cta: 'Agendar',
         });
+        consultationCount++;
       }
     } catch (e) {
-      console.error('Erro ao carregar consultorias para ofertas:', e);
+      trackUpsell('extras_error', {
+        surface,
+        reason: `consultorias: ${e instanceof Error ? e.message : String(e)}`,
+      });
     }
 
     setExtras(list);
+    trackUpsell('extras_loaded', {
+      surface,
+      details: { fidelize: fidelizeCount, consultorias: consultationCount, total: list.length },
+    });
+    return list.length;
   };
 
   const toggleSelection = (id: string) => {
