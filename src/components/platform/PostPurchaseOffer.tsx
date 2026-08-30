@@ -88,6 +88,8 @@ export function PostPurchaseOffer({
   }, [isOpen, originalProductId]);
 
   const fetchOffers = async () => {
+    const startedAt = Date.now();
+    trackUpsell('fetch_start', { surface, details: { originalProductId } });
     try {
       setIsLoading(true);
       
