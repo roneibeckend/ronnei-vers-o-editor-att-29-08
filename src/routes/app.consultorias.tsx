@@ -249,8 +249,10 @@ function ConsultationsPage() {
 function ConsultationCard({ consultation, onChanged }: { consultation: any; onChanged: () => void }) {
   const [editing, setEditing] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
+  const [recordingTermsOpen, setRecordingTermsOpen] = useState(false);
   const saveBriefing = useServerFn(submitConsultationBriefing);
   const cancel = useServerFn(cancelMyConsultation);
+  const acceptRecordingTerms = useServerFn(acceptConsultationRecordingTerms);
 
 
   const save = useMutation({
