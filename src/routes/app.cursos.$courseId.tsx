@@ -19,6 +19,7 @@ import { FeedbackSummary } from "@/components/platform/FeedbackSummary";
 import { FeedbackList } from "@/components/platform/FeedbackList";
 import { PostPurchaseOffer } from "@/components/platform/PostPurchaseOffer";
 import { usePostPurchaseOfferStore } from "@/hooks/use-post-purchase-offer";
+import { isOfferPopupEnabled } from "@/lib/offer-gate";
 import { getSignedVideoUrl } from "@/lib/video.functions";
 import { generateCertificate } from "@/lib/certificates-student.functions";
 import { motion, AnimatePresence } from "framer-motion";

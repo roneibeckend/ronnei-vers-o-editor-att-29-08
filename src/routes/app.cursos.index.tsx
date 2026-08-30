@@ -17,6 +17,7 @@ import { useProgress } from "@/hooks/use-progress";
 import { CourseCardSkeleton, Skeleton } from "@/components/ui/skeleton";
 import { PostPurchaseOffer } from "@/components/platform/PostPurchaseOffer";
 import { usePostPurchaseOfferStore } from "@/hooks/use-post-purchase-offer";
+import { isOfferPopupEnabled } from "@/lib/offer-gate";
 import { getIntegrationConfig, getIntegrationStatus, getIntegrationSettings } from "@/lib/integration-settings";
 import { VISIBLE_STATUSES, isComingSoon, COMING_SOON_NOTICE } from "@/lib/product-status";
 
