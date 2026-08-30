@@ -664,6 +664,7 @@ type PlanDraft = {
   modules: string;
   highlight: boolean;
   sortOrder: string;
+  affiliateEnabled: boolean;
 };
 
 /** Produtos Fidelize: personalização completa de cada plano. */
@@ -695,6 +696,7 @@ function FidelizePlansCard() {
               modules: (p.modules || []).join("\n"),
               highlight: p.highlight,
               sortOrder: String(p.sortOrder),
+              affiliateEnabled: p.affiliateEnabled,
             } as PlanDraft,
           ]),
         ),
@@ -719,6 +721,7 @@ function FidelizePlansCard() {
         .filter(Boolean),
       highlight: s?.highlight ?? false,
       sortOrder: Number(s?.sortOrder ?? 0) || 0,
+      affiliateEnabled: s?.affiliateEnabled ?? false,
     };
   };
 
@@ -888,6 +891,14 @@ function FidelizePlansCard() {
                   >
                     <Zap className="mr-1.5 h-3 w-3" />
                     {state.highlight ? "Em destaque" : "Sem destaque"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => set({ affiliateEnabled: !state.affiliateEnabled })}
+                    className={`h-8 border-white/10 text-[9px] uppercase tracking-widest ${state.affiliateEnabled ? "bg-emerald-500/15 text-emerald-400" : "bg-white/5 text-white/40"}`}
+                  >
+                    {state.affiliateEnabled ? "Afiliados ativos" : "Afiliados desativados"}
                   </Button>
                   <Button
                     type="button"

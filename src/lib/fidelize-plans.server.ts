@@ -19,6 +19,8 @@ export type FidelizePlanRecord = {
   ctaLabel: string;
   /** Ordem de exibição dos cards (menor primeiro). */
   sortOrder: number;
+  /** Habilita a divulgação do plano pelos afiliados. */
+  affiliateEnabled: boolean;
   /** true quando o preço/status foi personalizado pelo admin. */
   customized: boolean;
 };
@@ -34,6 +36,7 @@ export type FidelizePlanOverride = Partial<{
   highlight: boolean;
   ctaLabel: string;
   sortOrder: number;
+  affiliateEnabled: boolean;
 }>;
 
 type PlanOverride = FidelizePlanOverride;
@@ -70,6 +73,7 @@ export async function getFidelizePlanRecords(): Promise<FidelizePlanRecord[]> {
       highlight: typeof override.highlight === "boolean" ? override.highlight : Boolean(base.highlight),
       ctaLabel: override.ctaLabel?.trim() || "Assinar agora",
       sortOrder: Number.isFinite(Number(override.sortOrder)) ? Number(override.sortOrder) : index,
+      affiliateEnabled: override.affiliateEnabled === true,
       customized: Object.keys(override).length > 0,
     };
   }).sort((a, b) => a.sortOrder - b.sortOrder);
@@ -111,6 +115,7 @@ export async function saveFidelizePlanOverrides(
       modules: item.modules?.map((m) => m.trim()).filter(Boolean),
       highlight: item.highlight,
       sortOrder: item.sortOrder,
+      affiliateEnabled: item.affiliateEnabled,
     };
   }
   settings["plans"] = plans;
