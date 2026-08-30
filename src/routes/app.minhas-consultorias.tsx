@@ -164,16 +164,42 @@ function ConsultationCard({ row }: { row: any }) {
             />
           ) : null}
           <div className="flex flex-wrap gap-2">
-            <Button variant={showRecording ? "outline" : "default"} onClick={() => setShowRecording((v) => !v)}>
+            <Button
+              variant={showRecording ? "outline" : "default"}
+              onClick={() => (showRecording ? setShowRecording(false) : setTermsOpen(true))}
+            >
               <PlayCircle className="mr-2 h-4 w-4" />
               {showRecording ? "Fechar gravação" : "Assistir gravação"}
             </Button>
-            <Button asChild variant="outline">
-              <a href={row.recording_url} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-2 h-4 w-4" /> Abrir no Drive
-              </a>
-            </Button>
+            {showRecording ? (
+              <Button asChild variant="outline">
+                <a href={row.recording_url} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="mr-2 h-4 w-4" /> Abrir no Drive
+                </a>
+              </Button>
+            ) : null}
           </div>
+
+          <ConsultationRecordingDialog
+            open={termsOpen}
+            onClose={() => setTermsOpen(false)}
+            consultationTitle={row.product_title}
+            owner={{ name: row.client_name, email: row.client_email }}
+            onConfirm={async () => {
+              const res: any = await acceptTerms({
+                data: {
+                  consultationId: row.id,
+                  accepted: true,
+                  userAgent: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 400) : null,
+                },
+              });
+              if (!res?.allowed) {
+                toast.error(res?.message ?? "Não foi possível liberar a gravação.");
+                throw new Error(res?.message ?? "recording_blocked");
+              }
+              setShowRecording(true);
+            }}
+          />
         </div>
       ) : row.status === "completed" ? (
         <p className="text-sm text-muted-foreground">
