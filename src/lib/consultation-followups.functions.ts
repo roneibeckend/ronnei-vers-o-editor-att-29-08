@@ -127,8 +127,8 @@ export const listFollowupsAdmin = createServerFn({ method: "POST" })
         : Promise.resolve({ data: [] as any[] } as any),
     ]);
 
-    const profileById = new Map((profiles ?? []).map((p: any) => [p.id, p]));
-    const consultationById = new Map((consultations ?? []).map((c: any) => [c.id, c]));
+    const profileById = new Map<string, any>((profiles ?? []).map((p: any) => [p.id, p]));
+    const consultationById = new Map<string, any>((consultations ?? []).map((c: any) => [c.id, c]));
 
     const items = (rows ?? []).map((r: any) => ({
       id: r.id,
