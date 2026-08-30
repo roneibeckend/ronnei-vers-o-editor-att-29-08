@@ -20,6 +20,18 @@ interface OfferItem {
   cover_url?: string | null;
 }
 
+/** Produtos que não entram no carrinho (fluxo próprio), exibidos como oportunidades extras. */
+interface ExtraOffer {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  price: number | null;
+  cover_url?: string | null;
+  href: string;
+  badge: string;
+  cta: string;
+}
+
 interface PostPurchaseOfferProps {
   isOpen: boolean;
   onClose: () => void;
