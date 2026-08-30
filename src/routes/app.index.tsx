@@ -327,7 +327,7 @@ function CourseShowcaseCard({ item, isEnrolled }: { item: any; isEnrolled: boole
       return;
     }
     
-    if (isOfferEnabled) {
+    if (await isOfferPopupEnabled()) {
       const data = await getIntegrationConfig('offer_settings');
       if (data?.settings && typeof data.settings === 'object') {
         const s = data.settings as any;
