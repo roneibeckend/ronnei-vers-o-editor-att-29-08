@@ -30,8 +30,11 @@ import { consultationCalendarUrl } from "@/lib/google-calendar-link";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar, Clock, Loader2, Video, FileText, History, ExternalLink, PlayCircle, CreditCard, Timer, ShieldCheck } from "lucide-react";
 import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/app/consultorias")({
+  validateSearch: (search: Record<string, unknown>): { credito?: string } =>
+    typeof search.credito === "string" ? { credito: search.credito } : {},
   head: () => ({
     meta: [
       { title: "Consultorias com o Ronnei — Ronnei na Veia" },
@@ -77,6 +80,8 @@ const STATUS_LABEL: Record<string, string> = {
 function ConsultationsPage() {
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<any | null>(null);
+  const [activeCreditId, setActiveCreditId] = useState<string | null>(null);
+  const { credito } = Route.useSearch();
 
   const { data: products, isLoading } = useQuery({
     queryKey: ["consultation-products"],
@@ -88,12 +93,46 @@ function ConsultationsPage() {
     queryFn: () => listMyConsultations(),
   });
 
+  // Créditos de consultoria já pagos (compra pelo checkout/upsell) aguardando agendamento.
+  const { data: credits } = useQuery({
+    queryKey: ["consultation-credits"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("consultation_credits")
+        .select("id, product_id, product_title, amount, created_at")
+        .eq("status", "available")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["my-consultations"] });
     queryClient.invalidateQueries({ queryKey: ["consultation-slots"] });
+    queryClient.invalidateQueries({ queryKey: ["consultation-credits"] });
   };
 
+  const startWithCredit = (credit: any) => {
+    const product = (products ?? []).find((p: any) => p.id === credit.product_id);
+    if (!product) {
+      toast.error("Consultoria indisponível no momento. Fale com o suporte.");
+      return;
+    }
+    setActiveCreditId(credit.id);
+    setSelected(product);
+  };
+
+  // Chegando do checkout com ?credito=..., já abre o agendamento.
+  useEffect(() => {
+    if (!credito || !credits?.length || !products?.length || selected) return;
+    const credit = credits.find((c: any) => c.id === credito);
+    if (credit) startWithCredit(credit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [credito, credits, products]);
+
   if (isLoading) {
+
     return (
       <div className="flex h-[300px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -110,6 +149,30 @@ function ConsultationsPage() {
         title="Consultorias"
         subtitle="Uma conversa individual por videochamada com o Ronnei para destravar o seu negócio."
       />
+
+      {(credits ?? []).length > 0 && (
+        <section className="space-y-3">
+          {(credits ?? []).map((credit: any) => (
+            <Card
+              key={credit.id}
+              className="flex flex-col gap-3 border-primary/40 bg-primary/5 p-5 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="space-y-1">
+                <Badge className="w-fit">Consultoria paga</Badge>
+                <h3 className="font-display text-lg font-bold leading-tight">{credit.product_title}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Pagamento confirmado. Escolha o horário e preencha o briefing para confirmar sua agenda.
+                </p>
+              </div>
+              <Button onClick={() => startWithCredit(credit)}>
+                <Calendar className="mr-2 h-4 w-4" />
+                Escolher horário
+              </Button>
+            </Card>
+          ))}
+        </section>
+      )}
+
 
       {available.length === 0 && soon.length === 0 && (
         <Card className="p-6 text-sm text-muted-foreground">
@@ -170,7 +233,15 @@ function ConsultationsPage() {
         )}
       </section>
 
-      <BookingDialog product={selected} onClose={() => setSelected(null)} onBooked={refresh} />
+      <BookingDialog
+        product={selected}
+        creditId={activeCreditId}
+        onClose={() => {
+          setSelected(null);
+          setActiveCreditId(null);
+        }}
+        onBooked={refresh}
+      />
     </div>
   );
 }
@@ -580,10 +651,13 @@ function BookingDialog({
   product,
   onClose,
   onBooked,
+  creditId,
 }: {
   product: any | null;
   onClose: () => void;
   onBooked: () => void;
+  /** Crédito já pago (upsell): dispensa novo pagamento nesta reserva. */
+  creditId?: string | null;
 }) {
   const [picked, setPicked] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -647,8 +721,38 @@ function BookingDialog({
   // 6. Enviar para checkout — cria a reserva temporária e o link de pagamento.
   const submit = useMutation({
     mutationFn: () =>
-      reserve({ data: { productId: product.id, startIsos: picked, briefingData: briefing ?? undefined } }),
+      reserve({
+        data: {
+          productId: product.id,
+          startIsos: picked,
+          briefingData: briefing ?? undefined,
+          creditId: creditId ?? undefined,
+        },
+      }),
     onSuccess: (res: any) => {
+      // Consultoria já paga no checkout: confirma na hora, sem novo pagamento.
+      if (res?.status === "scheduled") {
+        gtmPurchase({
+          productId: product.id,
+          productType: "consultation",
+          productName: product.title,
+          value: Number(res?.amount ?? 0),
+          transactionId: String(res?.id ?? ""),
+        });
+        gtmConsultationScheduled({
+          consultationId: String(res?.id ?? ""),
+          productName: product.title,
+          scheduledAt: res?.scheduledAt,
+          sessions: res?.sessionsTotal ?? sessionsTotal,
+          transactionId: String(res?.id ?? ""),
+        });
+        toast.success("Consultoria confirmada! O link do Meet foi enviado por e-mail.");
+        onBooked();
+        reset();
+        onClose();
+        return;
+      }
+
       setReservation(res);
       onBooked();
       gtmBeginCheckout({

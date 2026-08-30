@@ -9,7 +9,7 @@ import {
 } from "./asaas.server";
 
 export type CheckoutMethod = "PIX" | "CREDIT_CARD" | "BOLETO";
-export type CheckoutProductType = "course" | "ebook" | "fidelize";
+export type CheckoutProductType = "course" | "ebook" | "fidelize" | "consultation";
 
 export interface PricedProduct {
   productId: string;
@@ -33,7 +33,22 @@ export async function priceProduct(
     return { productId, productType, title: plan.label, value: plan.price };
   }
 
+  if (productType === "consultation") {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await supabaseAdmin
+      .from("consultation_products")
+      .select("id, title, price, status")
+      .eq("id", productId)
+      .maybeSingle();
+    if (error || !row) throw new Error("Consultoria não encontrada.");
+    if ((row as any).status !== "active") throw new Error("Esta consultoria não está disponível para compra.");
+    const price = Number((row as any).price ?? 0);
+    if (!(price > 0)) throw new Error("Consultoria sem preço válido para checkout.");
+    return { productId, productType, title: (row as any).title, value: price };
+  }
+
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
   const table = productType === "course" ? "courses" : "ebooks";
   const { data: row, error } = await supabaseAdmin
     .from(table)

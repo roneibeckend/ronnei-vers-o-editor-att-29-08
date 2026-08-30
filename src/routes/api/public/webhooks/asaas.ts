@@ -120,6 +120,22 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
             }
           }
 
+          // Estorno/chargeback: invalida créditos de consultoria ainda não usados.
+          const creditVoidEvents = ['PAYMENT_REFUNDED', 'PAYMENT_REVERSED', 'PAYMENT_CHARGEBACK_REQUESTED', 'PAYMENT_DELETED'];
+          if (verifiedRequest && creditVoidEvents.includes(eventType) && paymentId) {
+            try {
+              const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+              await supabaseAdmin
+                .from('consultation_credits')
+                .update({ status: 'refunded' } as never)
+                .eq('payment_id', paymentId)
+                .eq('status', 'available');
+            } catch (creditError) {
+              console.error('[Webhook Asaas] Falha ao invalidar crédito de consultoria:', creditError);
+            }
+          }
+
+
           if (verifiedRequest && invoiceEvents[eventType]) {
 
             try {

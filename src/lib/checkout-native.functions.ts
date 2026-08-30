@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const productSchema = z.object({
   productId: z.string().min(1),
-  productType: z.enum(["course", "ebook", "fidelize"]),
+  productType: z.enum(["course", "ebook", "fidelize", "consultation"]),
   /** Desconto percentual de order bump/upsell aplicado sobre o preço do catálogo. */
   discountPercent: z.number().min(0).max(90).optional(),
 });
@@ -63,7 +63,12 @@ export const createNativeCheckout = createServerFn({ method: "POST" })
     const { priceProduct, createNativeCharge } = await import("./checkout-native.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const priced = [] as { productId: string; productType: "course" | "ebook" | "fidelize"; title: string; value: number }[];
+    const priced = [] as {
+      productId: string;
+      productType: "course" | "ebook" | "fidelize" | "consultation";
+      title: string;
+      value: number;
+    }[];
     for (const p of data.products) {
       const item = await priceProduct(p.productId, p.productType);
       const discount = p.discountPercent ? 1 - p.discountPercent / 100 : 1;
@@ -101,8 +106,19 @@ export const createNativeCheckout = createServerFn({ method: "POST" })
       if (priced.some((p) => p.productType === "fidelize")) {
         throw new Error("Planos Fidelize não podem ser liberados gratuitamente.");
       }
-      for (const p of priced) await fulfill(p.productType, p.productId, context, `free:${p.productId}`);
-      return { free: true, confirmed: true, coupon: couponCode, paymentId: null, value: 0 };
+      const freeCredits: ConsultationCredit[] = [];
+      for (const p of priced) {
+        const res = await fulfill(p.productType, p.productId, context, `free:${p.productId}`, p.value);
+        if (res.credit) freeCredits.push(res.credit);
+      }
+      return {
+        free: true,
+        confirmed: true,
+        coupon: couponCode,
+        paymentId: null,
+        value: 0,
+        consultationCredits: freeCredits,
+      };
     }
 
     if (data.method === "CREDIT_CARD" && !data.card) {
@@ -121,12 +137,17 @@ export const createNativeCheckout = createServerFn({ method: "POST" })
       card: data.card ?? null,
     });
 
+    const consultationCredits: ConsultationCredit[] = [];
     if (charge.confirmed) {
-      for (const p of priced) await fulfill(p.productType, p.productId, context, charge.paymentId);
+      for (const p of priced) {
+        const res = await fulfill(p.productType, p.productId, context, charge.paymentId, p.value);
+        if (res.credit) consultationCredits.push(res.credit);
+      }
     }
 
-    return { ...charge, free: false, coupon: couponCode, products: priced, recurring };
+    return { ...charge, free: false, coupon: couponCode, products: priced, recurring, consultationCredits };
   });
+
 
 /** Polling: consulta o status e libera o acesso assim que o pagamento é aprovado. */
 export const getNativeCheckoutStatus = createServerFn({ method: "POST" })
@@ -143,25 +164,88 @@ export const getNativeCheckoutStatus = createServerFn({ method: "POST" })
     const { fetchChargeStatus } = await import("./checkout-native.server");
     try {
       const status = await fetchChargeStatus(data.paymentId);
-      if (!status.confirmed) return { confirmed: false, status: status.status };
+      if (!status.confirmed) return { confirmed: false, status: status.status, consultationCredits: [] };
       let granted = true;
+      const consultationCredits: ConsultationCredit[] = [];
       for (const p of data.products) {
-        const ok = await fulfill(p.productType, p.productId, context, data.paymentId);
-        granted = granted && ok;
+        const res = await fulfill(p.productType, p.productId, context, data.paymentId);
+        if (res.credit) consultationCredits.push(res.credit);
+        granted = granted && res.ok;
       }
-      return { confirmed: true, status: status.status, granted };
+      return { confirmed: true, status: status.status, granted, consultationCredits };
     } catch (error: any) {
-      return { confirmed: false, status: "UNKNOWN", message: error?.message };
+      return { confirmed: false, status: "UNKNOWN", message: error?.message, consultationCredits: [] };
     }
   });
 
-/** Libera o produto comprado (curso, e-book ou provisionamento Fidelize). */
+export type ConsultationCredit = {
+  id: string;
+  productId: string;
+  productTitle: string;
+};
+
+/** Libera o produto comprado (curso, e-book, Fidelize ou crédito de consultoria). */
 async function fulfill(
-  productType: "course" | "ebook" | "fidelize",
+  productType: "course" | "ebook" | "fidelize" | "consultation",
   productId: string,
   context: any,
   paymentId: string,
-): Promise<boolean> {
+  amount?: number,
+): Promise<{ ok: boolean; credit?: ConsultationCredit }> {
+  if (productType === "consultation") {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Idempotente: o mesmo pagamento nunca gera dois créditos do mesmo produto.
+    const { data: existing } = await supabaseAdmin
+      .from("consultation_credits")
+      .select("id, product_id, product_title")
+      .eq("user_id", context.userId)
+      .eq("product_id", productId)
+      .eq("payment_id", paymentId)
+      .maybeSingle();
+
+    if (existing) {
+      return {
+        ok: true,
+        credit: {
+          id: (existing as any).id,
+          productId: (existing as any).product_id,
+          productTitle: (existing as any).product_title,
+        },
+      };
+    }
+
+    const { data: product } = await supabaseAdmin
+      .from("consultation_products")
+      .select("id, title, price")
+      .eq("id", productId)
+      .maybeSingle();
+    if (!product) return { ok: false };
+
+    const { data: created, error } = await supabaseAdmin
+      .from("consultation_credits")
+      .insert({
+        user_id: context.userId,
+        product_id: productId,
+        product_title: (product as any).title,
+        amount: amount ?? Number((product as any).price ?? 0),
+        payment_id: paymentId,
+        status: "available",
+      } as never)
+      .select("id, product_id, product_title")
+      .maybeSingle();
+
+    if (error || !created) return { ok: false };
+    return {
+      ok: true,
+      credit: {
+        id: (created as any).id,
+        productId: (created as any).product_id,
+        productTitle: (created as any).product_title,
+      },
+    };
+  }
+
   if (productType === "fidelize") {
     const { provisionFidelizeAccount } = await import("./fidelize-provisioning.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -171,7 +255,7 @@ async function fulfill(
       .eq("id", context.userId)
       .maybeSingle();
     const email = (profile as any)?.email || (context.claims as any)?.email;
-    if (!email) return false;
+    if (!email) return { ok: false };
     const result = await provisionFidelizeAccount({
       orderId: paymentId,
       userId: context.userId,
@@ -180,9 +264,11 @@ async function fulfill(
       email,
       phone: (profile as any)?.phone || null,
     });
-    return result.success;
+    return { ok: result.success };
   }
 
   const { grantAccess } = await import("./asaas.server");
-  return grantAccess(productType, productId, context.userId);
+  const ok = await grantAccess(productType, productId, context.userId);
+  return { ok };
 }
+

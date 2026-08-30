@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { gtmBeginCheckout } from '@/lib/gtm';
 
-export type CheckoutProductType = 'course' | 'ebook' | 'fidelize';
+export type CheckoutProductType = 'course' | 'ebook' | 'fidelize' | 'consultation';
 
 export interface CheckoutProduct {
   productId: string;
