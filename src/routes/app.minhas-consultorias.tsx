@@ -96,6 +96,8 @@ function MaterialsList({ materials }: { materials: Material[] }) {
 
 function ConsultationCard({ row }: { row: any }) {
   const [showRecording, setShowRecording] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const acceptTerms = useServerFn(acceptConsultationRecordingTerms);
   const status = STATUS[row.status] ?? { label: row.status, variant: "outline" as const };
   const materials: Material[] = Array.isArray(row.materials) ? row.materials : [];
   const isUpcoming = row.status === "scheduled" && +new Date(row.scheduled_at) > Date.now();
