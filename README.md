@@ -492,3 +492,13 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## LLM discovery
+
+A aplicação disponibiliza suporte a `llms.txt` em:
+
+- Produção: `https://ronneinaveia.com.br/llms.txt`
+- Fonte: `public/llms.txt`
+- Documentação técnica: `docs/llms.md`
+
+O endpoint é público, retorna `text/plain` e também é referenciado no sitemap.
