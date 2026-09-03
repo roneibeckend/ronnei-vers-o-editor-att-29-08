@@ -180,11 +180,17 @@ export async function sendWebPush(
     if (response.ok) return { ok: true };
 
     const text = await response.text().catch(() => "");
+    const staleVapid =
+      response.status === 400 && /VapidPkHashMismatch/i.test(text);
+
     return {
       ok: false,
       status: response.status,
       error: text || `HTTP ${response.status}`,
-      expired: response.status === 404 || response.status === 410,
+      expired:
+        response.status === 404 ||
+        response.status === 410 ||
+        staleVapid,
     };
   } catch (err: any) {
     return { ok: false, error: err?.message || "Falha desconhecida no envio do push" };

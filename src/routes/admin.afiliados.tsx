@@ -25,7 +25,13 @@ import {
 import { PageHeader } from "@/components/platform/Shell";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { saveAffiliateMaterial, deleteAffiliateMaterial, updateAffiliateStatus } from "@/lib/affiliates.functions";
+import {
+  deleteAffiliateMaterial,
+  getAffiliateSettings,
+  saveAffiliateMaterial,
+  saveAffiliateSettings,
+  updateAffiliateStatus,
+} from "@/lib/affiliates.functions";
 
 export const Route = createFileRoute("/admin/afiliados")({
   head: () => ({
@@ -46,6 +52,8 @@ function AdminAffiliatesPage() {
   const [search, setSearch] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [currentMaterial, setCurrentMaterial] = useState<any>(null);
+  const [directCommissionRate, setDirectCommissionRate] = useState("30");
+  const [secondLevelCommissionRate, setSecondLevelCommissionRate] = useState("5");
 
   useEffect(() => {
     if (!isLoadingAuth && role === "student") {
@@ -82,6 +90,43 @@ function AdminAffiliatesPage() {
       if (error) throw error;
       return data as any[];
     }
+  });
+
+  const { data: affiliateSettings } = useQuery({
+    queryKey: ["admin-affiliate-settings"],
+    queryFn: () => getAffiliateSettings(),
+  });
+
+  useEffect(() => {
+    if (!affiliateSettings) return;
+    setDirectCommissionRate(String(affiliateSettings.directCommissionRate));
+    setSecondLevelCommissionRate(
+      String(affiliateSettings.secondLevelCommissionRate),
+    );
+  }, [affiliateSettings]);
+
+  const saveSettingsMutation = useMutation({
+    mutationFn: () => {
+      const direct = Number(directCommissionRate);
+      const secondLevel = Number(secondLevelCommissionRate);
+      if (!Number.isFinite(direct) || !Number.isFinite(secondLevel)) {
+        throw new Error("Informe percentuais válidos.");
+      }
+      return saveAffiliateSettings({
+        data: {
+          directCommissionRate: direct,
+          secondLevelCommissionRate: secondLevel,
+        },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-affiliate-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-affiliates"] });
+      toast.success("Configurações salvas com sucesso!");
+    },
+    onError: (error: any) => {
+      toast.error("Erro ao salvar: " + error.message);
+    },
   });
 
   const updateStatusMutation = useMutation({
@@ -342,19 +387,44 @@ function AdminAffiliatesPage() {
                 <div className="space-y-2">
                    <label className="text-xs font-bold uppercase tracking-widest text-white/40">Comissão Padrão (Direta)</label>
                    <div className="flex items-center gap-4">
-                      <input type="number" defaultValue={30} className="w-24 bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white font-bold" />
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={directCommissionRate}
+                        onChange={(event) => setDirectCommissionRate(event.target.value)}
+                        disabled={saveSettingsMutation.isPending}
+                        className="w-24 bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white font-bold"
+                      />
                       <span className="text-sm text-white/40">% sobre o valor total da venda.</span>
                    </div>
                 </div>
                 <div className="space-y-2">
                    <label className="text-xs font-bold uppercase tracking-widest text-white/40">Comissão de 2º Nível (Padrinhos)</label>
                    <div className="flex items-center gap-4">
-                      <input type="number" defaultValue={5} className="w-24 bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white font-bold" />
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={secondLevelCommissionRate}
+                        onChange={(event) => setSecondLevelCommissionRate(event.target.value)}
+                        disabled={saveSettingsMutation.isPending}
+                        className="w-24 bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white font-bold"
+                      />
                       <span className="text-sm text-white/40">% sobre as vendas realizadas por indicados.</span>
                    </div>
                 </div>
                 <div className="pt-4 border-t border-white/5 flex items-center justify-between">
-                   <button className="btn-fire px-6 py-2 font-bold text-sm">Salvar Configurações</button>
+                   <button
+                     type="button"
+                     onClick={() => saveSettingsMutation.mutate()}
+                     disabled={saveSettingsMutation.isPending}
+                     className="btn-fire px-6 py-2 font-bold text-sm disabled:opacity-60"
+                   >
+                     {saveSettingsMutation.isPending ? "Salvando..." : "Salvar Configurações"}
+                   </button>
                    <Link 
                      to="/admin/financeiro" 
                      className="text-[10px] font-bold uppercase text-white/40 hover:text-white transition-colors"

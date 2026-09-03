@@ -1,10 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { triggerEmailEvent } from '@/lib/resend.server';
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   asaasHeaders,
   getAsaasConfig,
-  grantAccess,
   parseExternalReference,
   resolveUserFromPayment,
   fetchPaymentFromAsaas,
@@ -44,16 +42,34 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
             });
           }
 
-          // 1. Schema Validation
-          if (!body.id || !body.event || !body.payment?.id) {
-            console.error('[Webhook Asaas] Invalid schema: missing id, event or payment.id');
-            return new Response('Requisição inválida', { status: 400 });
+          // 1. Envelope Validation
+          //
+          // Nem todo evento legítimo do Asaas possui payment.id
+          // (ex.: eventos de assinatura). Validamos aqui apenas
+          // o envelope comum; payment.id passa a ser obrigatório
+          // somente para eventos que realmente processam pagamento.
+          if (!body || typeof body.event !== "string") {
+            console.error(
+              "[Webhook Asaas] Invalid envelope: missing event",
+            );
+
+            return new Response(
+              "Requisição inválida",
+              { status: 400 },
+            );
           }
 
+          eventId = body.id
+            ? String(body.id)
+            : null;
 
-          eventId = body.id as string;
-          const paymentId = body.payment.id as string;
-          const eventType = body.event as string;
+          const paymentId = body.payment?.id
+            ? String(body.payment.id)
+            : null;
+
+          const eventType = String(
+            body.event,
+          );
 
           // 2. Webhook Token Validation
           const { data: integration, error: intError } = await supabaseAdmin
@@ -136,17 +152,61 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
           }
 
 
-          if (verifiedRequest && invoiceEvents[eventType]) {
+          if (
+            verifiedRequest &&
+            invoiceEvents[eventType]
+          ) {
+            if (
+              !eventId ||
+              !paymentId ||
+              !body.payment
+            ) {
+              console.warn(
+                `[Webhook Asaas] ${eventType} sem dados suficientes para e-mail de fatura.`,
+              );
+
+              return new Response(
+                JSON.stringify({
+                  received: true,
+                  event: eventType,
+                  ignored: true,
+                }),
+                {
+                  status: 200,
+                  headers: {
+                    "Content-Type":
+                      "application/json",
+                  },
+                },
+              );
+            }
 
             try {
-              await sendInvoiceEmail(invoiceEvents[eventType]!, eventId as string, body.payment);
+              await sendInvoiceEmail(
+                invoiceEvents[eventType]!,
+                eventId,
+                body.payment,
+              );
             } catch (invoiceError) {
-              console.error('[Webhook Asaas] Falha no e-mail de fatura:', invoiceError);
+              console.error(
+                "[Webhook Asaas] Falha no e-mail de fatura:",
+                invoiceError,
+              );
             }
-            return new Response(JSON.stringify({ received: true, event: eventType }), {
-              status: 200,
-              headers: { 'Content-Type': 'application/json' },
-            });
+
+            return new Response(
+              JSON.stringify({
+                received: true,
+                event: eventType,
+              }),
+              {
+                status: 200,
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+              },
+            );
           }
 
           if (!confirmEvents.includes(eventType)) {
@@ -156,18 +216,168 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
              });
           }
 
-          // 4. Server-to-Server Confirmation (BEFORE Claim to avoid trash records)
-          console.log(`[Webhook Asaas] Verificando pagamento ${paymentId} via API...`);
-          const verifiedPayment = await fetchPaymentFromAsaas(paymentId);
+          /*
+           * Eventos de confirmação precisam obrigatoriamente
+           * de eventId + paymentId.
+           */
+          if (!eventId || !paymentId) {
+            console.error(
+              `[Webhook Asaas] Evento de confirmação ${eventType} sem id/payment.id`,
+            );
 
-          // 5. Validate Verified Payment Status
-          const validStatuses = ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'];
-          if (!validStatuses.includes(verifiedPayment.status)) {
-            console.warn(`[Webhook Asaas] Pagamento ${paymentId} com status inválido para liberação: ${verifiedPayment.status}`);
-            return new Response(JSON.stringify({ received: true, message: 'Payment not confirmed' }), {
-              status: 200,
-              headers: { 'Content-Type': 'application/json' },
-            });
+            return new Response(
+              "Evento de confirmação inválido",
+              { status: 400 },
+            );
+          }
+
+          /*
+           * 4. CLAIM PRIMEIRO.
+           *
+           * A partir daqui o evento já possui rastro durável
+           * antes de qualquer segunda leitura da API do Asaas.
+           */
+          const {
+            data: earlyClaim,
+            error: earlyClaimError,
+          } = await supabaseAdmin.rpc(
+            "acquire_asaas_webhook_claim",
+            {
+              p_event_id: eventId,
+              p_payment_id: paymentId,
+              p_event_type: eventType,
+              p_payload: body,
+            },
+          ) as {
+            data: any;
+            error: any;
+          };
+
+          if (
+            earlyClaimError ||
+            !earlyClaim ||
+            !earlyClaim[0]?.claim_token
+          ) {
+            const { data: currentEvent } =
+              await supabaseAdmin
+                .from("asaas_webhook_events")
+                .select("status")
+                .eq("event_id", eventId)
+                .maybeSingle();
+
+            if (
+              currentEvent?.status ===
+              "completed"
+            ) {
+              return new Response(
+                JSON.stringify({
+                  received: true,
+                  message:
+                    "Already processed",
+                }),
+                {
+                  status: 200,
+                  headers: {
+                    "Content-Type":
+                      "application/json",
+                  },
+                },
+              );
+            }
+
+            console.warn(
+              `[Webhook Asaas] Evento ${eventId} já está sendo processado ou não pôde ser adquirido.`,
+              earlyClaimError,
+            );
+
+            return new Response(
+              JSON.stringify({
+                received: true,
+                message: "Claim denied",
+              }),
+              {
+                status: 202,
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+              },
+            );
+          }
+
+          claimToken = earlyClaim[0].claim_token as string;
+
+          /*
+           * 5. Confirmação server-to-server.
+           * Agora uma inconsistência temporária não
+           * consegue mais apagar o evento.
+           */
+          console.log(
+            `[Webhook Asaas] Verificando pagamento ${paymentId} via API...`,
+          );
+
+          const verifiedPayment =
+            await fetchPaymentFromAsaas(
+              paymentId,
+            );
+
+          // 6. Validate Verified Payment Status
+          const validStatuses = [
+            "RECEIVED",
+            "CONFIRMED",
+            "RECEIVED_IN_CASH",
+          ];
+
+          if (
+            !validStatuses.includes(
+              verifiedPayment.status,
+            )
+          ) {
+            const message =
+              `Pagamento ainda não confirmado no Asaas: ${verifiedPayment.status}`;
+
+            console.warn(
+              `[Webhook Asaas] ${paymentId}: ${message}`,
+            );
+
+            /*
+             * Mantemos o evento como FAILED/reprocessável.
+             * O RPC consegue readquirir eventos que não
+             * terminaram como completed.
+             */
+            await supabaseAdmin
+              .from("asaas_webhook_events")
+              .update({
+                status: "failed",
+                processed_at:
+                  new Date().toISOString(),
+                last_error: message,
+              })
+              .eq("event_id", eventId)
+              .eq(
+                "claim_token",
+                claimToken as string,
+              )
+              .eq("status", "processing");
+
+            /*
+             * Não respondemos 200 para uma confirmação
+             * que ainda não conseguimos concluir.
+             */
+            return new Response(
+              JSON.stringify({
+                received: false,
+                retry: true,
+                message,
+              }),
+              {
+                status: 503,
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+              },
+            );
           }
 
           // 6. Match User and Product
@@ -190,37 +400,7 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
             return new Response('Usuário não encontrado', { status: 404 });
           }
 
-          // 7. Atomic Idempotency Claim (Postgres RPC)
-          const { data: claim, error: claimError } = await supabaseAdmin.rpc('acquire_asaas_webhook_claim', {
-            p_event_id: eventId as string,
-            p_payment_id: paymentId as string,
-            p_event_type: eventType as string,
-            p_payload: body
-          }) as { data: any, error: any };
-
-          if (claimError || !claim || !claim[0]?.claim_token) {
-            // Check if already completed by reading directly
-            const { data: check } = await supabaseAdmin
-                .from('asaas_webhook_events')
-                .select('status')
-                .eq('event_id', eventId)
-                .maybeSingle();
-
-            if (check?.status === 'completed') {
-                return new Response(JSON.stringify({ received: true, message: 'Already processed' }), {
-                    status: 200,
-                    headers: { 'Content-Type': 'application/json' },
-                });
-            }
-
-            console.warn(`[Webhook Asaas] Evento ${eventId} não pôde ser adquirido (concorrência ou erro):`, claimError);
-            return new Response(JSON.stringify({ received: true, message: 'Claim denied' }), {
-              status: 202, 
-              headers: { 'Content-Type': 'application/json' },
-            });
-          }
-
-          claimToken = claim[0].claim_token as string;
+          // Claim já adquirido antes da verificação do status.
 
           const amount = Number(verifiedPayment.value || 0);
           const netAmount = Number(verifiedPayment.netValue ?? (amount * 0.97 - 0.50));
@@ -462,198 +642,312 @@ export const Route = createFileRoute('/api/public/webhooks/asaas')({
             return Response.json({ received: true, processed: true, accessGranted: false });
           }
 
-          // 8. Grant Access
-          const granted = await grantAccess(productType, productId, userId);
-          if (!granted) {
-            throw new Error('Falha ao liberar acesso no banco de dados.');
-          }
+          /*
+           * 8. FINALIZAÇÃO CENTRAL — CURSO / E-BOOK
+           *
+           * O webhook deixa de possuir sua própria implementação de:
+           * - grantAccess;
+           * - Push de venda;
+           * - e-mail de acesso;
+           * - e-mail de pagamento.
+           *
+           * Webhook e polling passam a compartilhar o mesmo pipeline.
+           */
+          const {
+            getAuthoritativeCheckoutProducts,
+          } = await import(
+            "@/lib/checkout-payment-snapshot.server"
+          );
 
-          console.log(`[Webhook Asaas] Acesso liberado: ${productType}/${productId} -> ${userId}`);
+          const authoritativeProducts =
+            await getAuthoritativeCheckoutProducts(
+              paymentId,
+              userId,
+              parsed,
+            );
 
-          // Central de notificações: venda aprovada em tempo real
-          try {
-            const { notifyAdmin, formatMoney } = await import('@/lib/admin-notify.server');
-            const buyerName = verifiedPayment.customerEmail || 'Cliente';
-            await notifyAdmin({
-              type: 'sale',
-              severity: 'success',
-              title: `💰 Venda aprovada — ${formatMoney(Number(verifiedPayment.value || 0))}`,
-              body: `${(existingProduct as any)?.title || productId} · ${buyerName}`,
-              entityType: 'payment',
-              entityId: paymentId as string,
-              link: '/admin/financeiro',
-              dedupKey: `sale:${paymentId}`,
-              metadata: { productType, productId, userId, paymentId },
+          /*
+           * Esta branch do webhook é a branch padrão de
+           * curso/e-book. Produtos especializados continuam
+           * com seus fluxos próprios.
+           */
+          const standardProducts =
+            authoritativeProducts.filter(
+              (item) =>
+                item.productType === "course" ||
+                item.productType === "ebook",
+            );
+
+          /*
+           * Garantia adicional para cobranças antigas:
+           * o produto principal validado no banco nunca pode
+           * desaparecer da finalização.
+           */
+          if (
+            !standardProducts.some(
+              (item) =>
+                item.productType === productType &&
+                item.productId === productId,
+            )
+          ) {
+            standardProducts.unshift({
+              productType:
+                productType as "course" | "ebook",
+              productId,
+              title:
+                (existingProduct as any)?.title ||
+                undefined,
+              value: amount,
             });
-          } catch (notifyErr) {
-            console.warn('[Webhook Asaas] Falha ao publicar notificação de venda:', notifyErr);
           }
 
-          // 9. Process Secondary Effects
-          try {
-            const customerEmail = verifiedPayment.customerEmail;
-            if (customerEmail && userId) {
-              const { data: profile } = await supabaseAdmin.from('profiles').select('name').eq('id', userId).maybeSingle();
-              const userName = profile?.name || 'Cliente';
-              const templateName = productType === 'course' ? 'course_access' : 'ebook_access';
-              
-              const { data: product } = await supabaseAdmin
-                .from(productType === 'course' ? 'courses' : 'ebooks')
-                .select('title')
-                .eq('id', productId)
+          if (standardProducts.length === 0) {
+            throw new Error(
+              "Pagamento confirmado sem produto padrão recuperável.",
+            );
+          }
+
+          /*
+           * Se existir algum item especializado no mesmo pedido,
+           * não inventamos provisionamento aqui. O fluxo especializado
+           * continua responsável por ele, mas a venda padrão não fica
+           * sem acesso/notificação/e-mail.
+           */
+          const specializedProducts =
+            authoritativeProducts.filter(
+              (item) =>
+                item.productType !== "course" &&
+                item.productType !== "ebook",
+            );
+
+          if (specializedProducts.length > 0) {
+            console.warn(
+              `[Webhook Asaas] Pedido ${paymentId} contém ${specializedProducts.length} item(ns) especializado(s); mantendo fluxo especializado.`,
+            );
+          }
+
+          const {
+            finalizeStandardPaidSale,
+          } = await import(
+            "@/lib/sale-finalization.server"
+          );
+
+          const finalized =
+            await finalizeStandardPaidSale({
+              payment: verifiedPayment,
+              userId,
+              products: standardProducts,
+              source: "webhook",
+            });
+
+          if (!finalized.ok) {
+            throw new Error(
+              "Venda confirmada, porém o pipeline central não concluiu.",
+            );
+          }
+
+          console.log(
+            `[Webhook Asaas] Venda padrão finalizada: ${paymentId} -> ${userId}`,
+          );
+
+          /*
+           * 9. AFILIADO
+           *
+           * Comissão NÃO depende mais de customerEmail.
+           * O vínculo comercial nasce da referência da cobrança.
+           */
+          if (affiliateCode) {
+            try {
+              const brl = (value: number) =>
+                new Intl.NumberFormat("pt-BR", {
+                  style: "currency",
+                  currency: "BRL",
+                }).format(value || 0);
+
+              const { data: link } = await supabaseAdmin
+                .from("affiliate_links")
+                .select("affiliate_id")
+                .eq("code", affiliateCode)
                 .maybeSingle();
 
-              await triggerEmailEvent({
-                event: templateName,
-                to: customerEmail,
-                data: {
-                  name: userName,
-                  product_name: product?.title || (productType === 'course' ? 'Treinamento' : 'E-book'),
-                  access_link: 'https://lovable.app/app'
-                },
-                idempotencyKey: `access_${paymentId}`
-              });
+              const affiliateId = (link as any)?.affiliate_id || affiliateCode;
+              const { data: affiliate } = await supabaseAdmin
+                .from("affiliates")
+                .select("id, commission_rate, referrer_id, status")
+                .eq("id", affiliateId)
+                .eq("status", "active")
+                .maybeSingle();
 
-              // Confirmação do pagamento (resumo da transação)
-              const { triggerEmailOnce } = await import('@/lib/resend.server');
-              const brl = (value: number) =>
-                new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+              if (affiliate?.id) {
+                const { data: affProfile } = await supabaseAdmin
+                  .from("profiles")
+                  .select("name, email, email_notifications_opt_in")
+                  .eq("id", (affiliate as any).id)
+                  .maybeSingle();
 
-              await triggerEmailOnce({
-                event: 'payment_approved',
-                to: customerEmail,
-                data: {
-                  name: userName,
-                  product_name: product?.title || (productType === 'course' ? 'Treinamento' : 'E-book'),
-                  amount: brl(amount),
-                  method: verifiedPayment.billingType === 'PIX'
-                    ? 'PIX'
-                    : verifiedPayment.billingType === 'BOLETO'
-                      ? 'Boleto'
-                      : 'Cartão de crédito',
-                  date: new Date(verifiedPayment.confirmedDate || Date.now()).toLocaleDateString('pt-BR'),
-                  link: 'https://ronneinaveia.com.br/app/perfil',
-                },
-                idempotencyKey: `payment_approved_${paymentId}`,
-              });
+                const { data: affiliateSettings } = await (
+                  supabaseAdmin as any
+                )
+                  .from("affiliate_settings")
+                  .select("direct_commission_rate, second_level_commission_rate")
+                  .eq("id", "00000000-0000-0000-0000-000000000000")
+                  .maybeSingle();
 
-              // Comissão do afiliado responsável pela venda
-              if (affiliateCode) {
-                try {
-                  const { data: link } = await supabaseAdmin
-                    .from('affiliate_links')
-                    .select('affiliate_id')
-                    .eq('code', affiliateCode)
+                let rate = Number(
+                  affiliateSettings?.direct_commission_rate ??
+                    (affiliate as any).commission_rate ??
+                    30,
+                );
+                const secondLevelRate = Number(
+                  affiliateSettings?.second_level_commission_rate ?? 5,
+                );
+
+                if (productType === "course") {
+                  const { data: custom } = await supabaseAdmin
+                    .from("affiliate_custom_commissions")
+                    .select("commission_rate")
+                    .eq("affiliate_id", (affiliate as any).id)
+                    .filter("course_id", "eq", productId)
                     .maybeSingle();
+                  if (custom) rate = Number((custom as any).commission_rate);
+                }
 
-                  const affiliateId = (link as any)?.affiliate_id || affiliateCode;
+                const commission = amount * (rate / 100);
+                const saleMetadata = {
+                  payment_id: paymentId,
+                  product_type: productType,
+                  product_id: productId,
+                  product_name: (existingProduct as any)?.title || null,
+                  affiliate_code: affiliateCode,
+                  commission_rate: rate,
+                  commission_level: 1,
+                };
 
-                  const { data: affiliate } = await supabaseAdmin
-                    .from('affiliates')
-                    .select('id, commission_rate')
-                    .eq('id', affiliateId)
-                    .maybeSingle();
+                const { data: directCreated, error: directError } = await (
+                  supabaseAdmin as any
+                ).rpc("record_affiliate_commission", {
+                  p_affiliate_id: (affiliate as any).id,
+                  p_course_id: productType === "course" ? productId : null,
+                  p_amount: amount,
+                  p_commission: commission,
+                  p_metadata: saleMetadata,
+                });
 
-                  if (affiliate?.id) {
-                    const { data: affProfile } = await supabaseAdmin
-                      .from('profiles')
-                      .select('name, email, email_notifications_opt_in')
-                      .eq('id', (affiliate as any).id)
-                      .maybeSingle();
+                if (directError) {
+                  console.error(
+                    "[Webhook Asaas] Falha ao creditar comissão direta:",
+                    directError.message,
+                  );
+                } else if (directCreated) {
+                  try {
+                    const { notifyAdmin, formatMoney } = await import(
+                      "@/lib/admin-notify.server"
+                    );
+                    await notifyAdmin({
+                      type: "affiliate",
+                      severity: "info",
+                      title: `🤝 Comissão de afiliado — ${formatMoney(commission)}`,
+                      body:
+                        `${(affProfile as any)?.name || "Parceiro"} vendeu ` +
+                        `${(existingProduct as any)?.title || "produto"} ` +
+                        `(${formatMoney(amount)})`,
+                      entityType: "affiliate",
+                      entityId: String((affiliate as any).id),
+                      link: "/admin/afiliados",
+                      dedupKey: `affiliate-sale:${paymentId}`,
+                      metadata: {
+                        affiliateCode,
+                        commission,
+                        amount,
+                        paymentId,
+                      },
+                    });
+                  } catch (notifyErr) {
+                    console.warn(
+                      "[Webhook Asaas] Falha ao notificar comissão:",
+                      notifyErr,
+                    );
+                  }
 
-                    // Comissão personalizada por curso tem prioridade sobre a taxa global
-                    let rate = Number((affiliate as any).commission_rate ?? 30);
-                    if (productType === 'course') {
-                      const { data: custom } = await supabaseAdmin
-                        .from('affiliate_custom_commissions')
-                        .select('commission_rate')
-                        .eq('affiliate_id', (affiliate as any).id)
-                        .filter('course_id', 'eq', productId)
-                        .maybeSingle();
-                      if (custom) rate = Number((custom as any).commission_rate);
-                    }
-
-                    const commission = amount * (rate > 1 ? rate / 100 : rate);
-
-                    // Registra a venda e credita o saldo (idempotente por pagamento)
-                    const { data: existingSale } = await supabaseAdmin
-                      .from('affiliate_sales')
-                      .select('id')
-                      .filter('metadata->>payment_id', 'eq', paymentId)
-                      .maybeSingle();
-
-                    if (!existingSale) {
-                      const { error: saleError } = await supabaseAdmin
-                        .from('affiliate_sales')
-                        .insert({
-                          affiliate_id: (affiliate as any).id,
-                          course_id: productType === 'course' ? productId : null,
-                          amount,
-                          commission,
-                          status: 'pending',
-                          metadata: {
-                            payment_id: paymentId,
-                            product_type: productType,
-                            product_id: productId,
-                            product_name: product?.title || null,
-                            affiliate_code: affiliateCode,
-                            commission_rate: rate,
-                          },
-                        } as any);
-
-                      if (saleError) {
-                        console.error('[Webhook Asaas] Falha ao registrar venda de afiliado:', saleError.message);
-                      } else {
-                        const { error: creditError } = await supabaseAdmin.rpc('increment_affiliate_earnings', {
-                          aff_id: (affiliate as any).id,
-                          amount_to_add: commission,
-                        });
-                        if (creditError) {
-                          console.error('[Webhook Asaas] Falha ao creditar comissão:', creditError.message);
-                        }
-
-                        try {
-                          const { notifyAdmin, formatMoney } = await import('@/lib/admin-notify.server');
-                          await notifyAdmin({
-                            type: 'affiliate',
-                            severity: 'info',
-                            title: `🤝 Comissão de afiliado — ${formatMoney(commission)}`,
-                            body: `${(affProfile as any)?.name || 'Parceiro'} vendeu ${product?.title || 'produto'} (${formatMoney(amount)})`,
-                            entityType: 'affiliate',
-                            entityId: String((affiliate as any).id),
-                            link: '/admin/afiliados',
-                            dedupKey: `affiliate-sale:${paymentId}`,
-                            metadata: { affiliateCode, commission, amount, paymentId },
-                          });
-                        } catch (notifyErr) {
-                          console.warn('[Webhook Asaas] Falha ao notificar comissão:', notifyErr);
-                        }
-                      }
-                    }
-
-                    if (affProfile?.email && (affProfile as any).email_notifications_opt_in !== false) {
+                  if (
+                    affProfile?.email &&
+                    (affProfile as any).email_notifications_opt_in !== false
+                  ) {
+                    try {
+                      const { triggerEmailOnce } = await import(
+                        "@/lib/resend.server"
+                      );
                       await triggerEmailOnce({
-                        event: 'affiliate_commission',
+                        event: "affiliate_commission",
                         to: affProfile.email,
                         data: {
-                          name: (affProfile as any).name || 'Parceiro',
+                          name: (affProfile as any).name || "Parceiro",
                           commission: brl(commission),
                           amount: brl(amount),
-                          product_name: product?.title || 'Produto',
-                          date: new Date().toLocaleDateString('pt-BR'),
-                          link: 'https://ronneinaveia.com.br/app/afiliados',
+                          product_name:
+                            (existingProduct as any)?.title || "Produto",
+                          date: new Date().toLocaleDateString("pt-BR"),
+                          link: "https://ronneinaveia.com.br/app/afiliados",
                         },
                         idempotencyKey: `commission_${paymentId}`,
                       });
+                    } catch (commissionEmailError) {
+                      console.warn(
+                        "[Webhook Asaas] E-mail de comissão ficou pendente:",
+                        commissionEmailError,
+                      );
                     }
                   }
-                } catch (commissionError) {
-                  console.error('[Webhook Asaas] Falha no e-mail de comissão:', commissionError);
+                }
+
+                const referrerId = (affiliate as any).referrer_id as
+                  | string
+                  | null;
+                if (referrerId && secondLevelRate > 0) {
+                  const { data: referrer } = await supabaseAdmin
+                    .from("affiliates")
+                    .select("id")
+                    .eq("id", referrerId)
+                    .eq("status", "active")
+                    .maybeSingle();
+
+                  if (referrer?.id) {
+                    const secondLevelCommission =
+                      amount * (secondLevelRate / 100);
+                    const { data: sponsorCreated, error: sponsorError } = await (
+                      supabaseAdmin as any
+                    ).rpc("record_affiliate_commission", {
+                      p_affiliate_id: referrer.id,
+                      p_course_id: productType === "course" ? productId : null,
+                      p_amount: amount,
+                      p_commission: secondLevelCommission,
+                      p_metadata: {
+                        ...saleMetadata,
+                        referred_affiliate_id: (affiliate as any).id,
+                        commission_rate: secondLevelRate,
+                        commission_level: 2,
+                      },
+                    });
+
+                    if (sponsorError) {
+                      console.error(
+                        "[Webhook Asaas] Falha ao creditar comissão de 2º nível:",
+                        sponsorError.message,
+                      );
+                    } else if (sponsorCreated) {
+                      console.log(
+                        `[Webhook Asaas] Comissão de 2º nível registrada: ${paymentId} -> ${referrer.id}`,
+                      );
+                    }
+                  }
                 }
               }
+            } catch (commissionError) {
+              console.error(
+                "[Webhook Asaas] Falha no processamento da comissão:",
+                commissionError,
+              );
             }
-          } catch (secondaryError) {
-            console.error('[Webhook Asaas] Erro em efeitos secundários (matrícula OK):', secondaryError);
           }
 
           // 10. Update Gateway Fees in Financial Dashboard

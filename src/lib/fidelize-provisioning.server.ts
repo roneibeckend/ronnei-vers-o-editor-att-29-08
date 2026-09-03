@@ -31,6 +31,23 @@ export type ProvisionResult = {
   durationMs?: number;
 };
 
+function normalizeFidelizeLoginUrl(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+
+  try {
+    const url = new URL(value.trim());
+
+    if (url.hostname === "fidelizeapp.lovable.app") {
+      url.protocol = "https:";
+      url.host = "afidelize.app";
+    }
+
+    return url.toString();
+  } catch {
+    return value.trim();
+  }
+}
+
 function normalizeModules(response: any, plan: FidelizePlan): string[] {
   const raw = response?.modules;
   if (Array.isArray(raw) && raw.length) {
@@ -122,7 +139,7 @@ export async function provisionFidelizeAccount(input: ProvisionInput): Promise<P
   const update = {
     tenant_id: response?.tenant_id ?? null,
     fidelize_user_id: response?.user_id ?? null,
-    login_url: response?.login_url ?? null,
+    login_url: normalizeFidelizeLoginUrl(response?.login_url),
     slug: response?.slug ?? null,
     modules: modules as never,
     response_payload: (call.data ?? { raw: call.rawBody }) as never,
@@ -184,7 +201,7 @@ export async function provisionFidelizeAccount(input: ProvisionInput): Promise<P
         plan: fidelizePlanLabel(input.plan),
         login: response?.login || input.email,
         temporary_password: response?.temporary_password || "",
-        login_url: response?.login_url || "",
+        login_url: update.login_url || "",
         modules: modules.join(", "),
       },
       idempotencyKey: `fidelize_access_${input.orderId}`,
@@ -297,7 +314,10 @@ export async function resendFidelizeAccess(userId: string) {
     remoteOk = call.success || call.httpCode === 404 || call.httpCode === 405;
   }
 
-  const loginUrl = remote?.login_url || record["login_url"] || previous["login_url"] || "";
+  const loginUrl =
+    normalizeFidelizeLoginUrl(
+      remote?.login_url || record["login_url"] || previous["login_url"],
+    ) || "";
   const modules = Array.isArray(record["modules"]) ? (record["modules"] as string[]) : [];
 
   try {

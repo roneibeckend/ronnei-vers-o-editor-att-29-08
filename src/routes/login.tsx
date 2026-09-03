@@ -224,142 +224,226 @@ function LoginPage() {
     e.preventDefault();
     if (loading) return;
 
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      toast.error("Informe um e-mail válido.");
+      return;
+    }
+
     if (mode === "signup") {
       if (!name.trim()) {
         toast.error("O nome completo é obrigatório.");
         return;
       }
-      if (!phone.trim()) {
-        toast.error("O número de telefone é obrigatório.");
+
+      const phoneDigits = phone.replace(/\D/g, "");
+      if (phoneDigits.length < 10) {
+        toast.error("Informe um telefone válido.");
         return;
       }
-      
+
       const validation = validatePassword(password);
       if (!validation.isValid) {
         toast.error("Senha inválida", { description: validation.message });
         return;
       }
-
-      // Proteção contra senhas vazadas em bases públicas de credenciais.
-      // Nunca deve bloquear o cadastro: em rede lenta seguimos após 6s.
-      try {
-        const { checkLeakedPassword } = await import("@/lib/leaked-password.functions");
-        const result = await withTimeout(
-          checkLeakedPassword({ data: { password } }),
-          6000,
-          "verificar a senha",
-        );
-        if (result?.leaked) {
-          toast.error("Senha comprometida", {
-            description:
-              "Esta senha já apareceu em vazamentos de dados públicos. Escolha outra senha para proteger sua conta.",
-          });
-          return;
-        }
-      } catch (leakErr) {
-        console.error("[Auth] Falha ao verificar senha vazada:", leakErr);
-      }
     }
 
-
+    // Feedback visual começa ANTES de qualquer chamada de rede.
     setLoading(true);
+
     try {
       if (mode === "signup") {
-        const { error, data } = await withTimeout(
+        // A consulta externa de senha é somente proteção complementar.
+        // Nunca pode impedir o lançamento se o terceiro estiver lento/fora.
+        try {
+          const { checkLeakedPassword } =
+            await import("@/lib/leaked-password.functions");
+
+          const result = await withTimeout(
+            checkLeakedPassword({ data: { password } }),
+            800,
+            "verificar a senha",
+          );
+
+          if (result?.leaked) {
+            toast.error("Senha comprometida", {
+              description:
+                "Esta senha apareceu em vazamentos públicos. Escolha outra senha.",
+            });
+            return;
+          }
+        } catch (leakErr) {
+          console.warn("[Auth] Verificação externa de senha ignorada:", leakErr);
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectTo = urlParams.get("redirectTo");
+
+        const { authCallbackUrl } = await import("@/lib/auth-callback");
+
+        const { data, error } = await withTimeout(
           supabase.auth.signUp({
-            email,
+            email: normalizedEmail,
             password,
             options: {
+              emailRedirectTo: authCallbackUrl(redirectTo || "/inicio"),
               data: {
-                name,
-                phone: phone.replace(/\D/g, ""), // Enviar apenas dígitos
+                name: name.trim(),
+                phone: phone.replace(/\D/g, ""),
               },
             },
           }),
-          20000,
+          12000,
           "criar sua conta",
         );
+
         if (error) throw error;
 
-        // Dispara e-mail de boas-vindas em segundo plano (nunca bloqueia o cadastro).
+        if (!data.user) {
+          throw new Error("O servidor não retornou o usuário criado.");
+        }
+
+        // Supabase pode ocultar a existência de conta retornando usuário
+        // sem identities. Não tratamos isso como uma conta nova.
+        if (
+          Array.isArray((data.user as any).identities) &&
+          (data.user as any).identities.length === 0
+        ) {
+          toast.error("E-mail já cadastrado", {
+            description: "Use Entrar para acessar esta conta.",
+          });
+          setMode("login");
+          return;
+        }
+
+        // Boas-vindas jamais bloqueiam autenticação.
         void import("@/lib/email-triggers.functions")
-          .then(({ sendWelcomeEmailPublic }) => sendWelcomeEmailPublic({ data: { email } }))
-          .catch((emailErr) => console.error("[Auth] Erro ao disparar e-mail de boas-vindas:", emailErr));
+          .then(({ sendWelcomeEmailPublic }) =>
+            sendWelcomeEmailPublic({ data: { email: normalizedEmail } }),
+          )
+          .catch((emailErr) =>
+            console.warn("[Auth] Boas-vindas não enviada:", emailErr),
+          );
 
         let session = data.session;
 
-        // Com a confirmação de cadastro desativada no Supabase, o aluno deve
-        // receber uma sessão imediatamente. Se ela ainda não tiver chegado,
-        // fazemos uma tentativa de login sem iniciar qualquer fluxo de confirmação.
-        if (!session) {
+        // Só tenta login adicional se o próprio Supabase disser que o e-mail
+        // já está confirmado. Nunca converte "aguardando confirmação" em erro.
+        const confirmed =
+          Boolean((data.user as any).email_confirmed_at) ||
+          Boolean((data.user as any).confirmed_at);
+
+        if (!session && confirmed) {
           const { data: signInData, error: signInError } = await withTimeout(
-            supabase.auth.signInWithPassword({ email, password }),
-            20000,
+            supabase.auth.signInWithPassword({
+              email: normalizedEmail,
+              password,
+            }),
+            6000,
             "iniciar sua sessão",
           );
 
-          if (signInError) throw signInError;
-          session = signInData.session;
+          if (!signInError) {
+            session = signInData.session;
+          }
         }
 
-
         if (!session) {
-          throw new Error("Não foi possível iniciar sua sessão após o cadastro.");
+          // A CONTA FOI CRIADA.
+          // Não mostramos falso erro se o projeto exigir confirmação.
+          toast.success("Conta criada com sucesso!", {
+            description:
+              "Confira seu e-mail para confirmar a conta e depois entre normalmente.",
+            duration: 9000,
+          });
+
+          setMode("login");
+          setPassword("");
+          return;
         }
 
         gtmSignUp("email", session.user.id);
-        toast.success("Conta criada!", { description: "Você já pode acessar sua área de membros." });
 
-        // Remove qualquer dado em cache de um usuário anterior neste navegador
-        await queryClient.cancelQueries();
-        queryClient.clear();
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const redirectTo = urlParams.get('redirectTo');
-        goTo(redirectTo || "/inicio", true);
-
-      } else {
-        const { error } = await withTimeout(
-          supabase.auth.signInWithPassword({ email, password }),
-          20000,
-          "entrar na sua conta",
-        );
-        if (error) throw error;
-        gtmLogin("email");
-        toast.success("Bem-vindo de volta!");
-
-        await queryClient.cancelQueries();
-        queryClient.clear();
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const redirectTo = urlParams.get('redirectTo');
-        goTo(redirectTo || "/inicio");
-      }
-    } catch (err: any) {
-
-      const msg = err?.message ?? "Falha ao processar solicitação";
-      console.error("[Auth Error]", { mode, msg, err });
-      
-      if (/invalid login credentials/i.test(msg)) {
-        if (mode === "signup") {
-          toast.error("Erro ao criar conta", { description: "Por favor, verifique os dados informados ou tente outro e-mail." });
-        } else {
-          toast.error("E-mail ou senha incorretos");
-        }
-      } else if (/already registered/i.test(msg) || /user already/i.test(msg)) {
-        toast.error("E-mail já cadastrado", { description: "Faça login em vez de criar conta." });
-        setMode("login");
-      } else if (/password/i.test(msg)) {
-        toast.error("Problema com a senha", { 
-          description: msg.includes("weak") 
-            ? "Sua senha é muito fraca. Tente misturar letras e números." 
-            : "Senha inválida. Certifique-se de que ela atende aos requisitos."
+        toast.success("Conta criada!", {
+          description: "Entrando na sua área de membros.",
         });
-      } else if (/rate limit/i.test(msg) || /too many requests/i.test(msg)) {
-        toast.error("Muitas tentativas", { description: "Aguarde alguns instantes e tente novamente." });
+
+        // clear() é síncrono; não segura a navegação.
+        queryClient.clear();
+
+        goTo(redirectTo || "/inicio", true);
+        return;
+      }
+
+      // ======================================================
+      // LOGIN
+      // ======================================================
+
+      const { error } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email: normalizedEmail,
+          password,
+        }),
+        12000,
+        "entrar na sua conta",
+      );
+
+      if (error) throw error;
+
+      gtmLogin("email");
+      toast.success("Bem-vindo de volta!");
+
+      queryClient.clear();
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectTo = urlParams.get("redirectTo");
+
+      goTo(redirectTo || "/inicio");
+    } catch (err: any) {
+      const msg = err?.message ?? "Falha ao processar solicitação";
+
+      console.error("[Auth Error]", {
+        mode,
+        msg,
+        status: err?.status,
+        code: err?.code,
+      });
+
+      if (/email not confirmed/i.test(msg)) {
+        toast.info("Conta criada — confirme seu e-mail", {
+          description:
+            "Abra o e-mail de confirmação enviado para você e depois faça login.",
+          duration: 9000,
+        });
+        setMode("login");
+      } else if (
+        /already registered/i.test(msg) ||
+        /user already/i.test(msg)
+      ) {
+        toast.error("E-mail já cadastrado", {
+          description: "Faça login em vez de criar uma nova conta.",
+        });
+        setMode("login");
+      } else if (/invalid login credentials/i.test(msg)) {
+        toast.error(
+          mode === "signup"
+            ? "Não foi possível entrar após o cadastro"
+            : "E-mail ou senha incorretos",
+        );
+      } else if (
+        /rate limit/i.test(msg) ||
+        /too many requests/i.test(msg)
+      ) {
+        toast.error("Muitas tentativas", {
+          description: "Aguarde alguns instantes e tente novamente.",
+        });
       } else {
-        const contextMsg = mode === "signup" ? "Erro no cadastro" : "Erro no login";
-        toast.error(contextMsg, { description: msg });
+        toast.error(
+          mode === "signup" ? "Erro no cadastro" : "Erro no login",
+          { description: msg },
+        );
       }
     } finally {
       setLoading(false);

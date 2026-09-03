@@ -77,7 +77,7 @@ function AffiliateLayout() {
             <div className="flex gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
               <div className="bg-fire/20 p-2 rounded-lg h-fit"><TrendingUp className="w-5 h-5 text-fire" /></div>
               <div>
-                <h3 className="font-bold">Comissões de 30%</h3>
+                <h3 className="font-bold">Comissões por venda</h3>
                 <p className="text-xs text-muted-foreground">Ganhe uma fatia generosa de cada venda que você trouxer.</p>
               </div>
             </div>
@@ -92,25 +92,15 @@ function AffiliateLayout() {
 
           <button 
             onClick={async () => {
-              // Verificar se existe um padrinho pendente nos metadados do usuário
-              const { data: { user: currentUser } } = await supabase.auth.getUser();
-              if (!currentUser) {
-                toast.error("Usuário não autenticado");
-                return;
-              }
-
-              const pendingReferrerId = currentUser?.user_metadata?.pending_referrer_id;
-
-              const { error } = await supabase.from('affiliates').insert({
-                id: currentUser.id,
-                status: 'pending',
-                referrer_id: pendingReferrerId || null
-              });
-              if (error) {
-                toast.error("Erro ao solicitar cadastro: " + error.message);
-              } else {
+              try {
+                const { requestAffiliateRegistration } = await import(
+                  "@/lib/affiliates.functions"
+                );
+                await requestAffiliateRegistration({ data: {} });
                 toast.success("Solicitação enviada! Aguarde a aprovação administrativa.");
                 window.location.reload();
+              } catch (error: any) {
+                toast.error("Erro ao solicitar cadastro: " + error.message);
               }
             }}
             className="btn-fire w-full py-4 text-lg font-bold"

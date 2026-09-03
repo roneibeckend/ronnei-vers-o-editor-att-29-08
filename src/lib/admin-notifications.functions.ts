@@ -195,22 +195,94 @@ export const updateNotificationSettings = createServerFn({ method: "POST" })
   });
 
 export const sendTestNotification = createServerFn({ method: "POST" })
+  .validator((data: unknown) =>
+    z.object({
+      endpoint: z.string().url(),
+    }).parse(data),
+  )
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
-    const { notifyAdmin } = await import("@/lib/admin-notify.server");
+  .handler(async ({ data, context }) => {
+    const supabaseAdmin = await assertAdmin(context.userId);
+    const { sendWebPush } = await import("@/lib/web-push.server");
 
-    const result = await notifyAdmin({
-      type: "system",
-      severity: "info",
-      title: "🔔 Notificação de teste",
-      body: "Se você recebeu este alerta, a central de notificações está funcionando (painel + push).",
-      link: "/admin/notificacoes",
-      force: true,
-      metadata: { test: true, requested_by: context.userId },
-    });
+    const { data: subscription, error } = await supabaseAdmin
+      .from("admin_push_subscriptions")
+      .select("id, endpoint, p256dh, auth")
+      .eq("user_id", context.userId)
+      .eq("endpoint", data.endpoint)
+      .eq("active", true)
+      .maybeSingle();
 
-    return { ok: result.created, id: result.id };
+    if (error) throw new Error(error.message);
+
+    if (!subscription) {
+      return {
+        ok: false,
+        total: 1,
+        delivered: 0,
+        failed: 1,
+        message:
+          "Este aparelho não possui uma inscrição push ativa. Use Reparar push primeiro.",
+      };
+    }
+
+    // Tempo para o usuário colocar o PWA em background.
+    await new Promise((resolve) =>
+      setTimeout(resolve, 5000),
+    );
+
+    const result = await sendWebPush(
+      {
+        endpoint: (subscription as any).endpoint,
+        p256dh: (subscription as any).p256dh,
+        auth: (subscription as any).auth,
+      },
+      {
+        title: "🔔 Ronnei na Veia",
+        body:
+          "Push nativo funcionando neste iPhone.",
+        severity: "info",
+        type: "system",
+        link: "/admin/notificacoes",
+        tag: `rnv-device-test-${Date.now()}`,
+      },
+    );
+
+    await supabaseAdmin
+      .from("notification_logs")
+      .insert({
+        notification_id: null,
+        user_id: context.userId,
+        delivery_method: "push",
+        delivered: result.ok,
+        delivered_at:
+          result.ok
+            ? new Date().toISOString()
+            : null,
+        error:
+          result.ok
+            ? null
+            : result.error.slice(0, 400),
+      })
+      .then(undefined, () => undefined);
+
+    if (!result.ok && result.expired) {
+      await supabaseAdmin
+        .from("admin_push_subscriptions")
+        .update({ active: false })
+        .eq("id", (subscription as any).id)
+        .then(undefined, () => undefined);
+    }
+
+    return {
+      ok: result.ok,
+      total: 1,
+      delivered: result.ok ? 1 : 0,
+      failed: result.ok ? 0 : 1,
+      message: result.ok
+        ? "O serviço de push aceitou a mensagem para ESTE aparelho."
+        : result.error,
+    };
   });
 
 /** Resumo operacional das últimas 24 horas para o dashboard. */

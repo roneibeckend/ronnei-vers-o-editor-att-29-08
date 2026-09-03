@@ -22,6 +22,7 @@ export const getOpsRecoveryOverview = createServerFn({ method: "GET" })
       supabaseAdmin
         .from("payment_reconciliations")
         .select("*")
+        .eq("status", "pending")
         .order("created_at", { ascending: false })
         .limit(100),
       supabaseAdmin

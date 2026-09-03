@@ -757,6 +757,7 @@ function ProductDialog({
                   <SelectItem value="30">30 minutos</SelectItem>
                   <SelectItem value="60">1 hora</SelectItem>
                   <SelectItem value="120">2 horas</SelectItem>
+                  <SelectItem value="180">3 horas</SelectItem>
                 </SelectContent>
               </Select>
             </div>

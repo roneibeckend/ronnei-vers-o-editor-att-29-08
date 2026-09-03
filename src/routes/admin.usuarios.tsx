@@ -144,16 +144,33 @@ function AdminUsuariosPage() {
 
       // 2. Atualizar Role
       if (editingUser.role === 'student') {
-          // Se for estudante, remover entrada da user_roles se existir
-          await supabase
+          // Aluno não possui role administrativa.
+          const { error: roleDeleteError } = await supabase
             .from('user_roles')
             .delete()
             .eq('user_id', editingUser.id);
+
+          if (roleDeleteError) throw roleDeleteError;
       } else {
+          // A constraint real é UNIQUE(user_id, role).
+          // Primeiro garante a nova role e só depois remove roles antigas,
+          // evitando deixar o usuário sem acesso caso o insert falhe.
           const { error: roleError } = await supabase
             .from('user_roles')
-            .upsert({ user_id: editingUser.id, role: editingUser.role }, { onConflict: 'user_id' });
+            .upsert(
+              { user_id: editingUser.id, role: editingUser.role },
+              { onConflict: 'user_id,role' }
+            );
+
           if (roleError) throw roleError;
+
+          const { error: oldRolesError } = await supabase
+            .from('user_roles')
+            .delete()
+            .eq('user_id', editingUser.id)
+            .neq('role', editingUser.role);
+
+          if (oldRolesError) throw oldRolesError;
       }
 
       // 3. Atualizar Permissões

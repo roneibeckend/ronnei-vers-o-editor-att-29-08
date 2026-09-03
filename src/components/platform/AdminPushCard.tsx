@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, Bell, Zap } from "lucide-react";
 import { toast } from "sonner";
-import { disablePush, enablePush, getPushStatus } from "@/lib/push-client";
+import {
+  disablePush,
+  enablePush,
+  getCurrentPushEndpoint,
+  getPushStatus,
+} from "@/lib/push-client";
 import { sendTestNotification } from "@/lib/admin-notifications.functions";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -33,11 +38,59 @@ export function AdminPushCard() {
 
   const handleTest = async () => {
     setBusy(true);
+
     try {
-      await sendTestNotification();
-      toast.success("Notificação de teste disparada.");
+      const endpoint =
+        await getCurrentPushEndpoint();
+
+      if (!endpoint) {
+        toast.error(
+          "Este não é o PWA instalado",
+          {
+            description:
+              "No iPhone, feche o Safari e abra Ronnei na Veia pelo ícone da Tela de Início. Depois use Reparar push.",
+            duration: 9000,
+          },
+        );
+        return;
+      }
+
+      toast.info(
+        "Teste deste iPhone em 5 segundos",
+        {
+          description:
+            "Agora saia do Ronnei ou bloqueie a tela. O banner deve aparecer como uma notificação normal do iOS.",
+          duration: 5000,
+        },
+      );
+
+      const result =
+        await sendTestNotification({
+          data: { endpoint },
+        });
+
+      if (!result.ok) {
+        toast.error(
+          "Push deste aparelho falhou",
+          {
+            description: result.message,
+          },
+        );
+        return;
+      }
+
+      toast.success(
+        "Push enviado para este aparelho",
+        {
+          description:
+            "1/1 endpoint deste dispositivo foi aceito pelo serviço de push.",
+        },
+      );
     } catch (err: any) {
-      toast.error(err?.message || "Falha no teste");
+      toast.error(
+        err?.message ||
+          "Falha no teste deste aparelho",
+      );
     } finally {
       setBusy(false);
     }
@@ -114,6 +167,16 @@ export function AdminPushCard() {
             className="rounded-xl border border-white/15 px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-white/70 disabled:opacity-50"
           >
             Desativar
+          </button>
+        )}
+        {active && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void handlePush(true)}
+            className="rounded-xl border border-emerald-500/40 px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-emerald-400 disabled:opacity-50"
+          >
+            Reparar push
           </button>
         )}
         <button

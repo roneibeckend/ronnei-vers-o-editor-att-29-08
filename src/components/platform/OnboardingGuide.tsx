@@ -64,17 +64,44 @@ export function OnboardingGuide() {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
 
+        // Checkout/cadastro tem prioridade absoluta sobre onboarding.
+        // Se o usuário chegou aqui para comprar, nenhuma tela educativa
+        // pode disputar foco, clique ou z-index com o checkout.
+        const params = new URLSearchParams(window.location.search);
+        const hasPurchaseIntent =
+          Boolean(params.get("buy")) ||
+          Boolean(params.get("type"));
+
+        if (hasPurchaseIntent) {
+          setIsOpen(false);
+          return;
+        }
+
         // First check local storage for speed
-        const hasSeenLocal = localStorage.getItem('onboarding_completed');
+        const hasSeenLocal =
+          localStorage.getItem('onboarding_completed');
+
         if (hasSeenLocal) return;
 
-        // Then check database for persistence
-        const { hasSeenOnboarding } = await getStatus();
+        // O servidor só libera o onboarding quando existe matrícula real.
+        const {
+          hasSeenOnboarding,
+          hasPurchasedAccess,
+        } = await getStatus();
+
+        if (!hasPurchasedAccess) {
+          setIsOpen(false);
+          return;
+        }
+
         if (!hasSeenOnboarding) {
           setIsOpen(true);
         } else {
           // Sync local storage if DB says we've seen it
-          localStorage.setItem('onboarding_completed', 'true');
+          localStorage.setItem(
+            'onboarding_completed',
+            'true',
+          );
         }
       } catch (error) {
         console.error("Erro ao verificar status de onboarding:", error);
@@ -104,9 +131,9 @@ export function OnboardingGuide() {
 
   const nextStep = () => {
     if (currentStep < STEPS.length - 1) {
-      setCurrentStep(currentStep + 1);
+      setCurrentStep((step) => step + 1);
     } else {
-      handleClose();
+      void handleClose();
     }
   };
 
@@ -152,7 +179,8 @@ export function OnboardingGuide() {
             ))}
           </div>
 
-          <button 
+          <button
+            type="button"
             onClick={handleClose}
             className="absolute top-4 right-4 p-2 text-white/40 hover:text-white transition-colors"
           >
@@ -173,7 +201,8 @@ export function OnboardingGuide() {
             </p>
 
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <button 
+              <button
+                type="button"
                 onClick={prevStep}
                 disabled={currentStep === 0}
                 className={`flex items-center gap-2 text-sm font-bold uppercase tracking-widest transition-colors ${
@@ -185,13 +214,15 @@ export function OnboardingGuide() {
               </button>
 
               <div className="ml-auto flex items-center gap-2">
-                <button 
+                <button
+                  type="button"
                   onClick={handleClose}
                   className="px-4 py-2 text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-colors"
                 >
                   Pular
                 </button>
-                <button 
+                <button
+                  type="button"
                   onClick={nextStep}
                   className="btn-fire flex items-center gap-2 px-6 py-2.5 text-xs font-bold uppercase tracking-widest"
                 >

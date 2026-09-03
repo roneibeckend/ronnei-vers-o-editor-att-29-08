@@ -57,7 +57,7 @@ const productSchema = z.object({
   subtitle: z.string().trim().max(200).nullable().optional(),
   description: z.string().trim().max(5000).nullable().optional(),
   cover_url: z.string().trim().max(500).nullable().optional(),
-  duration_minutes: z.union([z.literal(30), z.literal(60), z.literal(120)]),
+  duration_minutes: z.union([z.literal(30), z.literal(60), z.literal(120), z.literal(180)]),
   price: z.number().min(0).max(100000),
   status: z.enum(["draft", "coming_soon", "active"]),
   briefing_required: z.boolean(),

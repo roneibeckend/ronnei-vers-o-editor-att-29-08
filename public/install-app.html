@@ -329,6 +329,107 @@
           text + "\n";
       }
 
+      function showIOSInstallGuide() {
+        let overlay =
+          document.getElementById("rnv-ios-install-guide");
+
+        if (!overlay) {
+          overlay = document.createElement("div");
+          overlay.id = "rnv-ios-install-guide";
+
+          overlay.style.cssText =
+            "position:fixed;inset:0;z-index:99999;" +
+            "display:none;align-items:flex-end;" +
+            "background:rgba(0,0,0,.76);padding:18px;";
+
+          overlay.innerHTML = `
+            <div style="
+              width:100%;
+              max-width:460px;
+              margin:0 auto;
+              border:1px solid rgba(255,255,255,.14);
+              border-radius:24px;
+              padding:24px;
+              padding-bottom:calc(24px + env(safe-area-inset-bottom));
+              background:#15100e;
+              color:white;
+              box-shadow:0 -20px 60px rgba(0,0,0,.55);
+            ">
+              <div style="
+                font-size:21px;
+                font-weight:900;
+                margin-bottom:10px;
+              ">
+                Instalar no iPhone
+              </div>
+
+              <div style="
+                color:rgba(255,255,255,.70);
+                line-height:1.55;
+                font-size:15px;
+              ">
+                A Apple não permite que um site instale o aplicativo
+                automaticamente por um botão.
+              </div>
+
+              <div style="
+                margin-top:18px;
+                padding:18px;
+                border-radius:16px;
+                background:rgba(255,106,0,.10);
+                border:1px solid rgba(255,106,0,.30);
+                line-height:1.65;
+                font-size:16px;
+              ">
+                <b>1.</b> Toque no botão <b>Compartilhar</b> do Safari.<br>
+                <b>2.</b> Escolha <b>Adicionar à Tela de Início</b>.<br>
+                <b>3.</b> Toque em <b>Adicionar</b>.<br>
+                <b>4.</b> Feche o Safari.<br>
+                <b>5.</b> Abra <b>Ronnei na Veia</b> pelo novo ícone.
+              </div>
+
+              <div style="
+                margin-top:14px;
+                font-size:13px;
+                line-height:1.5;
+                color:#fdba74;
+              ">
+                O Push igual WhatsApp só será ativado depois que você
+                abrir o Ronnei pelo ícone da Tela de Início.
+              </div>
+
+              <button
+                id="rnv-close-ios-guide"
+                type="button"
+                style="
+                  width:100%;
+                  min-height:52px;
+                  margin-top:18px;
+                  border:0;
+                  border-radius:14px;
+                  background:#ff641f;
+                  color:white;
+                  font-weight:900;
+                  font-size:15px;
+                "
+              >
+                Entendi
+              </button>
+            </div>
+          `;
+
+          document.body.appendChild(overlay);
+
+          overlay
+            .querySelector("#rnv-close-ios-guide")
+            .addEventListener("click", function () {
+              overlay.style.display = "none";
+            });
+        }
+
+        overlay.style.display = "flex";
+      }
+
       function showManual() {
         manual.style.display = "block";
 
@@ -548,13 +649,16 @@
           "Aplicativo instalado";
       } else if (ios) {
         status.textContent =
-          "No iPhone/iPad a instalação deve ser feita pelo Safari.";
+          "No iPhone, toque abaixo para ver como adicionar o Ronnei à Tela de Início.";
 
         status.className =
           "status warn";
 
         installButton.disabled =
           false;
+
+        installButton.textContent =
+          "Instalar no iPhone";
 
         showManual();
       } else {
@@ -573,6 +677,7 @@
 
           if (ios) {
             showManual();
+            showIOSInstallGuide();
             return;
           }
 

@@ -16,7 +16,7 @@ export const GOOGLE_SCOPES = [
 
 export const GOOGLE_CALLBACK_PATH = "/api/public/google/oauth/callback";
 
-const GOOGLE_PROD_ORIGIN = "https://grillmaster-pro.lovable.app";
+const GOOGLE_PROD_ORIGIN = "https://ronneinaveia.com.br";
 
 const GOOGLE_PREVIEW_ORIGIN =
   "https://id-preview--d1f36df5-e296-476a-9ac5-df68d64a889f.lovable.app";

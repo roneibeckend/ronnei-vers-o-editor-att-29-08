@@ -8,10 +8,7 @@ Do not make any visual modifications. The phrases I write are commands to unders
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type JSX, Suspense, lazy, memo } from "react";
 import { toast } from "sonner";
-import { z } from "zod";
-import { useQuery } from "@tanstack/react-query";
 import { trackEvent, trackInitiateCheckout } from "@/lib/pixel";
-import { supabase } from "@/integrations/supabase/client";
 import { landingFaqs } from "@/lib/landing-faq";
 import { useInView } from "@/hooks/use-in-view";
 
@@ -69,7 +66,11 @@ import printWhats1 from "@/assets/opt/print-whats-1.webp";
 import printWhats2 from "@/assets/opt/print-whats-2.webp";
 import printWhats3 from "@/assets/opt/print-whats-3.webp";
 import printPix from "@/assets/opt/print-pix.webp";
-import { LessonPlayer } from "@/components/platform/LessonPlayer";
+const HeroLessonPlayer = lazy(() =>
+  import("@/components/platform/LessonPlayer").then((mod) => ({
+    default: mod.LessonPlayer,
+  })),
+);
 
 /** Vídeo da história na home: se houver ID do Bunny, usa o player do Bunny; senão mantém os MP4 locais. */
 const HERO_VIDEO_ID = (import.meta as any).env?.VITE_HERO_VIDEO_ID || '';
@@ -140,19 +141,18 @@ export const Route = createFileRoute("/")({
             "eBook com 7 Módulos e 27 Capítulos + 4 bônus exclusivos para montar, temperar, precificar e vender espetinhos com alto lucro.",
           image: [OG_IMAGE],
           brand: { "@type": "Brand", name: "Ronnei na Veia" },
-          author: { "@type": "Person", name: "Ronnei" },
           offers: {
-            "@type": "Oferta",
-            url: `${SITE_URL}/#oferta`,
+            "@type": "Offer",
             price: "47.90",
             priceCurrency: "BRL",
             availability: "https://schema.org/InStock",
+            url: `${SITE_URL}/#oferta`,
             itemCondition: "https://schema.org/NewCondition",
           },
           aggregateRating: {
             "@type": "AggregateRating",
-            ratingValue: "4.9",
-            reviewCount: "2000",
+            ratingValue: 4.9,
+            reviewCount: 2000,
           },
         }),
       },
@@ -412,17 +412,56 @@ function CheckoutButton({ className = "", label = "Quero garantir meu acesso" }:
 function Countdown({ hours = 72 }: { hours?: number }) {
   const [target, setTarget] = useState<number | null>(null);
   const [now, setNow] = useState<number>(() => Date.now());
+  const countdownRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     const key = `env_offer_deadline_${hours}h`;
     let t = Number(localStorage.getItem(key));
     const max = Date.now() + hours * 3_600_000;
+
     if (!t || Number.isNaN(t) || t < Date.now() || t > max) {
       t = Date.now() + hours * 3_600_000;
       localStorage.setItem(key, String(t));
     }
+
     setTarget(t);
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
+
+    let id: number | null = null;
+
+    const stop = () => {
+      if (id !== null) {
+        window.clearInterval(id);
+        id = null;
+      }
+    };
+
+    const start = () => {
+      setNow(Date.now());
+      if (id !== null) return;
+      id = window.setInterval(() => setNow(Date.now()), 1000);
+    };
+
+    const node = countdownRef.current;
+
+    if (!node || typeof IntersectionObserver === "undefined") {
+      start();
+      return stop;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) start();
+        else stop();
+      },
+      { rootMargin: "500px" },
+    );
+
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+      stop();
+    };
   }, [hours]);
   const diff = target ? Math.max(0, target - now) : hours * 3_600_000;
   const h = Math.floor(diff / 3_600_000);
@@ -434,7 +473,7 @@ function Countdown({ hours = 72 }: { hours?: number }) {
     { l: "seg", v: s },
   ];
   return (
-    <div className="flex items-center justify-center gap-1.5 sm:gap-2" role="timer" aria-label="Contagem regressiva da oferta">
+    <div ref={countdownRef} className="flex items-center justify-center gap-1.5 sm:gap-2" role="timer" aria-label="Contagem regressiva da oferta">
       {cells.map((c, i) => (
         <div key={c.l} className="flex items-center gap-1.5 sm:gap-2">
           <div className="flex min-w-[60px] flex-col items-center rounded-xl border border-white/10 bg-white/[0.04] px-2 py-1.5 backdrop-blur sm:min-w-[72px]">
@@ -470,6 +509,9 @@ function GuaranteeSeal({ className = "" }: { className?: string }) {
 function Nav() {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
+    // A landing mobile não executa React durante o scroll.
+    if (window.matchMedia("(max-width: 767px)").matches) return;
+
     let last = window.scrollY > 40;
     setScrolled(last);
 
@@ -669,16 +711,24 @@ function Hero() {
             <div className="glass gradient-border overflow-hidden rounded-2xl p-1 shadow-fire relative bg-black group/intro">
               <div className="relative aspect-[9/16] max-h-[85vh] w-full overflow-hidden rounded-xl bg-black shadow-2xl">
                 {HERO_VIDEO_ID ? (
-                  <LessonPlayer
-                    videoId="hero-historia"
-                    title="A história do Ronnei"
-                    provider="bunny"
-                    providerVideoId={HERO_VIDEO_ID}
-                    aspect={HERO_VIDEO_ASPECT}
-                    frameless
-                    autoplay
-                    onEnded={() => setVideoOpen(false)}
-                  />
+                  <Suspense
+                    fallback={
+                      <div className="flex h-full w-full items-center justify-center bg-black text-white">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      </div>
+                    }
+                  >
+                    <HeroLessonPlayer
+                      videoId="hero-historia"
+                      title="A história do Ronnei"
+                      provider="bunny"
+                      providerVideoId={HERO_VIDEO_ID}
+                      aspect={HERO_VIDEO_ASPECT}
+                      frameless
+                      autoplay
+                      onEnded={() => setVideoOpen(false)}
+                    />
+                  </Suspense>
                 ) : (
                   <video
                     autoPlay
@@ -777,8 +827,16 @@ function AuthorSolution() {
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
-    const t = setInterval(() => setIdx((i) => (i + 1) % slides.length), 3500);
-    return () => clearInterval(t);
+    // Safari/iPhone: não mantém slideshow abaixo da dobra repintando
+    // enquanto o visitante ainda está no início da landing.
+    if (window.matchMedia("(max-width: 767px)").matches) return;
+
+    const t = window.setInterval(
+      () => setIdx((i) => (i + 1) % slides.length),
+      3500,
+    );
+
+    return () => window.clearInterval(t);
   }, [slides.length]);
 
   return (
@@ -1282,76 +1340,68 @@ function Results() {
 
 
 function Testimonials() {
-  const { data: realFeedbacks } = useQuery({
-    queryKey: ["public-feedbacks"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("course_feedback")
-        .select("id, rating, comment, created_at")
-        .eq("status", "approved")
-        .order("created_at", { ascending: false })
-        .limit(6);
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const staticItems = [
+  // PERFORMANCE: depoimentos da landing não podem carregar Supabase/React Query
+  // no caminho crítico do primeiro paint/hidratação.
+  const displayItems = [
     {
       name: "Carlos M.",
       role: "Empreendedor iniciante",
       text: "Comecei com pouco e no primeiro mês já paguei o investimento do eBook várias vezes. A parte de precificação abriu meus olhos.",
       img: chefPortrait.url,
-      rating: 5
+      rating: 5,
     },
     {
       name: "Marina R.",
       role: "Renda extra",
       text: "Vendia espetinho aos sábados no chute. Hoje vendo todo dia, com tempero exclusivo e clientes fiéis.",
       img: author.url,
-      rating: 5
+      rating: 5,
     },
     {
       name: "João P.",
       role: "Trailer de espetinhos",
       text: "Reduzi desperdício, aumentei a margem e o movimento não para. O checklist de produção mudou minha rotina.",
       img: chefWorking.url,
-      rating: 5
+      rating: 5,
     },
   ];
-
-  const displayItems = realFeedbacks && realFeedbacks.length > 0 
-    ? realFeedbacks.map((f: any) => ({
-        name: "Aluno",
-        role: "Aluno do Curso",
-        text: f.comment || "",
-        img: author.url,
-        rating: f.rating
-      }))
-    : staticItems;
-
 
   return (
     <section className="relative py-14 sm:py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="flex flex-col items-center text-center">
-          {/* título oculto: Prova Social / O QUE OS ALUNOS ESTÃO FALANDO? */}
           <p className="mt-3 max-w-2xl text-xs uppercase tracking-widest text-muted-foreground">
             Feedbacks reais de quem concluiu nossos treinamentos e está colhendo resultados.
           </p>
         </div>
-        <div className="mt-14 grid gap-5 md:grid-cols-3">
-          {displayItems.map((t: any, i: number) => (
 
-            <div key={i} className="glass flex flex-col rounded-2xl p-6 hover:border-[color:var(--gold)]/40 transition-colors">
+        <div className="mt-14 grid gap-5 md:grid-cols-3">
+          {displayItems.map((t, i) => (
+            <div
+              key={i}
+              className="glass flex flex-col rounded-2xl p-6 hover:border-[color:var(--gold)]/40 transition-colors"
+            >
               <div className="flex gap-0.5 text-[color:var(--gold)]">
                 {Array.from({ length: 5 }).map((_, starIdx) => (
-                  <Star key={starIdx} className={`h-4 w-4 ${t.rating >= starIdx + 1 ? 'fill-current' : 'opacity-20'}`} />
+                  <Star
+                    key={starIdx}
+                    className={`h-4 w-4 ${
+                      t.rating >= starIdx + 1 ? "fill-current" : "opacity-20"
+                    }`}
+                  />
                 ))}
               </div>
+
               <p className="mt-4 text-muted-foreground italic">"{t.text}"</p>
+
               <div className="mt-6 flex items-center gap-3">
-                <img src={t.img} alt={t.name} className="h-11 w-11 rounded-full object-cover border border-white/10" loading="lazy" decoding="async" />
+                <img
+                  src={t.img}
+                  alt={t.name}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-11 w-11 rounded-full object-cover border border-white/10"
+                />
                 <div>
                   <div className="font-semibold">{t.name}</div>
                   <div className="text-xs text-muted-foreground">{t.role}</div>
@@ -1361,7 +1411,6 @@ function Testimonials() {
           ))}
         </div>
       </div>
-
     </section>
   );
 }
@@ -1890,7 +1939,7 @@ function LandingPage() {
   // ou liberação de conteúdo depende do scroll.
 
   return (
-    <div className="min-h-dvh pb-24 md:pb-0">
+    <div className="landing-public min-h-dvh pb-24 md:pb-0">
       <ScrollProgress />
       <Nav />
       <main>

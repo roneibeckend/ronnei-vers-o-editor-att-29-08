@@ -18,18 +18,59 @@ export type FidelizeAccessTarget = {
 
 const SAFETY_WINDOW_MS = 30_000;
 
+const FIDELIZE_PUBLIC_ORIGIN = "https://afidelize.app";
+
 /**
  * A API da Fidelize pode devolver a URL com o placeholder de configuração
  * (`PLACEHOLDER_VALUE_TO_BE_REPLACED/auth/autologin?...`) ou apenas o caminho.
  * Nesses casos reconstruímos o link usando o domínio da própria API.
  */
 function sanitizeUrl(value: unknown, origin: string | null): string | null {
-  if (typeof value !== "string" || !value.trim()) return null;
+  void origin;
+
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+
   const raw = value.trim();
-  if (/^https?:\/\//i.test(raw) && !/PLACEHOLDER/i.test(raw)) return raw;
-  const path = raw.replace(/^.*?(?=\/(?:auth|acesso|app|login)\b)/i, "");
-  if (!origin || !path.startsWith("/")) return null;
-  return `${origin}${path}`;
+  let path = "";
+
+  /*
+   * Links entregues ao navegador NUNCA podem confiar no host
+   * retornado pela API. Em produção o único destino permitido
+   * para login/autologin da Fidelize é afidelize.app.
+   *
+   * Isso corrige respostas antigas como:
+   * http://localhost:8080/auth/autologin?token=...
+   */
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const parsed = new URL(raw);
+      path =
+        parsed.pathname +
+        parsed.search +
+        parsed.hash;
+    } catch {
+      return null;
+    }
+  } else {
+    path = raw.replace(
+      /^.*?(?=\/(?:auth|acesso|app|login))/i,
+      "",
+    );
+  }
+
+  const pathname = path.split(/[?#]/, 1)[0] || "";
+
+  if (
+    !/^\/(?:auth|acesso|app|login)(?:\/|$)/i.test(
+      pathname,
+    )
+  ) {
+    return null;
+  }
+
+  return `${FIDELIZE_PUBLIC_ORIGIN}${path}`;
 }
 
 function pickUrl(

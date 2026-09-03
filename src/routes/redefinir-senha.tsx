@@ -104,18 +104,94 @@ function ResetPasswordPage() {
 
   useEffect(() => {
     let cancelled = false;
+
     (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (cancelled) return;
-      if (data.session) {
+      const search =
+        new URLSearchParams(window.location.search);
+
+      const hash =
+        new URLSearchParams(
+          window.location.hash.replace(/^#/, ""),
+        );
+
+      const authType =
+        search.get("type") ||
+        hash.get("type") ||
+        (window as any).__RNV_AUTH_RETURN_TYPE__ ||
+        "";
+
+      const hasAuthPayload =
+        search.has("code") ||
+        hash.has("access_token") ||
+        (
+          (search.has("token_hash") ||
+            search.has("token")) &&
+          search.has("type")
+        );
+
+      const recoveryReturn =
+        authType === "recovery" ||
+        (window as any).__RNV_RECOVERY_RETURN__ === true;
+
+      /*
+       * Se tokens/code ainda estiverem na URL, esta página é a
+       * proprietária do fluxo e conclui a sessão temporária aqui.
+       */
+      if (hasAuthPayload) {
+        const result =
+          await completeAuthFromUrl();
+
+        if (cancelled) return;
+
+        if (result.status === "error") {
+          setError(result.message);
+          return;
+        }
+
+        const { data } =
+          await supabase.auth.getSession();
+
+        if (cancelled) return;
+
+        if (!data.session) {
+          setError(
+            "O link foi validado, mas a sessão de recuperação não foi criada. Solicite um novo link.",
+          );
+          return;
+        }
+
+        (window as any).__RNV_RECOVERY_RETURN__ =
+          true;
+
         setReady(true);
         return;
       }
-      const result = await completeAuthFromUrl();
+
+      /*
+       * O supabase-js pode ter consumido o hash automaticamente
+       * antes deste useEffect. Nesse caso exigimos a marca criada
+       * no <head> + uma sessão existente.
+       *
+       * Uma sessão normal de login NÃO autoriza esta tela.
+       */
+      const { data } =
+        await supabase.auth.getSession();
+
       if (cancelled) return;
-      if (result.status === "error") setError(result.message);
-      else setReady(true);
+
+      if (
+        recoveryReturn &&
+        data.session
+      ) {
+        setReady(true);
+        return;
+      }
+
+      setError(
+        "Abra esta página pelo link de redefinição enviado ao seu e-mail. O link pode ter expirado ou já ter sido utilizado.",
+      );
     })();
+
     return () => {
       cancelled = true;
     };
@@ -151,11 +227,31 @@ function ResetPasswordPage() {
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) throw updateError;
 
-      // Mantém a sessão criada pelo link: o usuário já entra logado.
+      // O acesso à plataforma só acontece DEPOIS que updateUser
+      // confirmou a alteração da senha.
+      (window as any).__RNV_RECOVERY_RETURN__ =
+        false;
+
+      (window as any).__RNV_AUTH_RETURN__ =
+        false;
+
+      (window as any).__RNV_AUTH_RETURN_TYPE__ =
+        null;
+
       await queryClient.invalidateQueries();
 
-      toast.success("Senha atualizada!", { description: "Você já está conectado." });
-      navigate({ to: "/app", replace: true });
+      toast.success(
+        "Senha atualizada!",
+        {
+          description:
+            "Sua nova senha foi salva com sucesso.",
+        },
+      );
+
+      navigate({
+        to: "/app",
+        replace: true,
+      });
 
 
     } catch (err: any) {

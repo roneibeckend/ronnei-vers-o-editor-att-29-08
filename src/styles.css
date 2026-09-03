@@ -659,3 +659,113 @@ html[data-reveal-js] [data-reveal][data-visible="true"] {
     animation: none !important;
   }
 }
+
+
+/* RNV_LANDING_MOBILE_PAINT_FIX_20260831
+   Safari/iOS: a landing nunca pode depender de uma camada de composição
+   ou backdrop-filter para pintar seções abaixo da primeira dobra. */
+@media (max-width: 768px) {
+  .landing-public,
+  .landing-public main,
+  .landing-public main > section {
+    content-visibility: visible !important;
+    contain: none !important;
+    will-change: auto !important;
+  }
+
+  .landing-public .glass,
+  .landing-public .backdrop-blur-sm,
+  .landing-public .backdrop-blur,
+  .landing-public .backdrop-blur-md,
+  .landing-public .backdrop-blur-lg,
+  .landing-public .backdrop-blur-xl,
+  .landing-public .backdrop-blur-2xl,
+  .landing-public .backdrop-blur-3xl {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Evita que animações infinitas concorram com a pintura durante o scroll. */
+  .landing-public .animate-ping,
+  .landing-public .animate-pulse,
+  .landing-public .animate-marquee,
+  .landing-public .animate-float,
+  .landing-public .animate-flicker,
+  .landing-public .animate-pulse-glow,
+  .landing-public .animate-aurora,
+  .landing-public .animate-aurora-2,
+  .landing-public .ember,
+  .landing-public .animated-fire-text {
+    animation: none !important;
+  }
+
+  /* Reveal antigo ou residual jamais pode esconder conteúdo no mobile. */
+  .landing-public [data-reveal],
+  html[data-reveal-js] .landing-public [data-reveal],
+  html[data-reveal-js] .landing-public [data-reveal][data-visible="true"] {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    filter: none !important;
+    clip-path: none !important;
+    transition: none !important;
+    will-change: auto !important;
+  }
+}
+
+
+/* RNV_SAFARI_LANDING_FINAL_20260831
+   Caminho de pintura previsível para Safari/iPhone.
+   Não esconde, posterga ou virtualiza nenhuma seção. */
+@media (max-width: 767px) {
+  .landing-public {
+    overflow: visible !important;
+  }
+
+  .landing-public main {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    contain: none !important;
+    content-visibility: visible !important;
+  }
+
+  .landing-public main > section {
+    display: block !important;
+    position: relative !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    contain: none !important;
+    content-visibility: visible !important;
+    transform: none !important;
+    filter: none !important;
+    will-change: auto !important;
+  }
+
+  /* Blur/backdrop em dezenas de elementos gera layers extras no WebKit. */
+  .landing-public [class*="backdrop-blur"] {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Grandes filtros decorativos não participam do paint mobile. */
+  .landing-public .blur-3xl,
+  .landing-public [class*="blur-["] {
+    filter: none !important;
+  }
+
+  .landing-public [data-reveal] {
+    display: revert !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    clip-path: none !important;
+    transition: none !important;
+    will-change: auto !important;
+  }
+}

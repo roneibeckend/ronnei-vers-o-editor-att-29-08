@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "./use-auth";
@@ -176,37 +175,17 @@ export function useProgress() {
     ? Math.round((completedTrainings / trainings.length) * 100)
     : 0;
 
-  // E-mail de conclusão de treinamento (o servidor garante um único envio).
-  const completedKeys = trainings.filter((t) => t.done).map((t) => t.key).join("|");
-  useEffect(() => {
-    if (!user?.id || !completedKeys) return;
-    const storageKey = `completed-mail:${user.id}`;
-    let notified: string[] = [];
-    try {
-      notified = JSON.parse(localStorage.getItem(storageKey) || "[]");
-    } catch { notified = []; }
-
-    const pending = completedKeys.split("|").filter((key) => key && !notified.includes(key));
-    if (pending.length === 0) return;
-
-    (async () => {
-      try {
-        const { notifyContentCompleted } = await import("@/lib/email-triggers.functions");
-        for (const key of pending) {
-          const [type, id] = key.split(":");
-          if (!id) continue;
-          await notifyContentCompleted({
-            data: { content_id: id, content_type: type === "ebook" ? "ebook" : "course" },
-          });
-        }
-        localStorage.setItem(storageKey, JSON.stringify([...notified, ...pending]));
-      } catch (mailError) {
-        console.error("[Progresso] Falha ao notificar conclusão:", mailError);
-      }
-    })();
-  }, [user?.id, completedKeys]);
-
-
+  /*
+   * E-mail de conclusão NÃO é disparado ao reconstruir
+   * progresso histórico no carregamento da página.
+   *
+   * Isso evita que usuários migrados ou usuários entrando
+   * em um navegador novo recebam "Parabéns pela conclusão"
+   * por conteúdo concluído no passado.
+   *
+   * Um futuro gatilho de conclusão deverá nascer do evento
+   * explícito que efetivamente conclui o conteúdo.
+   */
 
   // Universo válido: apenas conteúdos que ainda existem (cursos/e-books ativos ou matriculados).
   // Registros antigos de conteúdo excluído não podem mais ser contados.

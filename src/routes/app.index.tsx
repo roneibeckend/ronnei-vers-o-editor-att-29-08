@@ -44,6 +44,35 @@ function Dashboard() {
   const { openCheckout } = useCheckout();
   const handledBuyRef = useRef<string | null>(null);
 
+  const clearPurchaseIntentAfterCheckoutStarted = (
+    targetItem: any,
+  ) => {
+    if (typeof window === "undefined") return;
+
+    const current = new URL(window.location.href);
+    const buyId = current.searchParams.get("buy");
+    const buyType = current.searchParams.get("type");
+
+    // Só remove a intenção que realmente acabou de ser processada.
+    if (
+      buyId !== String(targetItem.id) ||
+      buyType !== String(targetItem.type)
+    ) {
+      return;
+    }
+
+    current.searchParams.delete("buy");
+    current.searchParams.delete("type");
+
+    window.history.replaceState(
+      {},
+      "",
+      current.pathname +
+        current.search +
+        current.hash,
+    );
+  };
+
   const executeCheckout = async (targetItem: any, additionalItems: any[]) => {
     try {
       setIsProcessing(true);
@@ -87,6 +116,11 @@ function Dashboard() {
         extraItems: products.slice(1).map((p: any) => ({ productId: p.productId, productType: p.productType, discountPercent: discountPercentage })),
         couponCode: localStorage.getItem('pending_coupon_code') || null,
       });
+
+      // Só agora a intenção pode sair da URL:
+      // 1) savePendingCheckout já persistiu a compra;
+      // 2) openCheckout já foi chamado com sucesso.
+      clearPurchaseIntentAfterCheckoutStarted(targetItem);
     } catch (error: any) {
       console.error("Erro ao processar compra:", error);
       toast.error(error.message || "Erro ao gerar link de pagamento.");
@@ -118,7 +152,7 @@ function Dashboard() {
           .in("status", VISIBLE_STATUSES),
         supabase
           .from("consultation_products")
-          .select("id, title, subtitle, description, price, cover_url, created_at, status")
+          .select("id, title, subtitle, description, price, cover_url, created_at, status, sort_order")
           .in("status", ["active", "coming_soon"]),
       ]);
 
@@ -196,12 +230,8 @@ function Dashboard() {
         if (item) {
           const targetItem = { ...item, type: buyType };
           
-          // Limpa URL para evitar loops
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.delete('buy');
-          newUrl.searchParams.delete('type');
-          window.history.replaceState({}, '', newUrl.pathname + newUrl.search);
-
+          // A intenção de compra permanece na URL até que
+          // savePendingCheckout + openCheckout terminem com sucesso.
           if (await isOfferPopupEnabled('home')) {
             const config = await getIntegrationConfig('offer_settings');
             const settings = config?.settings as Record<string, unknown> | null;
@@ -237,7 +267,9 @@ function Dashboard() {
     .filter((item: any) => !item.isEnrolled);
 
   const courseEbookItems = visibleItems.filter((item: any) => item.type === 'course' || item.type === 'ebook');
-  const consultationItems = visibleItems.filter((item: any) => item.type === 'consultation');
+  const consultationItems = visibleItems
+    .filter((item: any) => item.type === 'consultation')
+    .sort((a: any, b: any) => Number(a.sort_order ?? 999) - Number(b.sort_order ?? 999));
 
 
 

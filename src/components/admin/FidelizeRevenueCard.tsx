@@ -19,7 +19,9 @@ export function FidelizeRevenueCard({ className = "" }: { className?: string }) 
   const { data, isLoading } = useQuery({
     queryKey: ["fidelize-revenue-snapshot"],
     queryFn: () => fetchSnapshot(),
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   if (isLoading) return <Skeleton className={`h-64 w-full rounded-xl bg-white/5 ${className}`} />;
@@ -32,8 +34,16 @@ export function FidelizeRevenueCard({ className = "" }: { className?: string }) 
           <CreditCard className="h-4 w-4 text-[#ff6a00]" />
           Fidelize · Assinaturas
         </h3>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">Recorrência</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">
+          Recorrência · {data.source === "asaas" ? "Asaas ao vivo" : "estado local"}
+        </span>
       </div>
+
+      {data.warning && (
+        <div className="mb-4 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+          {data.warning}
+        </div>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-lg bg-white/5 p-3">

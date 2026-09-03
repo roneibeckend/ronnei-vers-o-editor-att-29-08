@@ -1,6 +1,26 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const FIDELIZE_PUBLIC_ORIGIN = "https://afidelize.app";
+
+function normalizeFidelizePublicUrl(value: string | null | undefined): string | null {
+  if (!value || typeof value !== "string") return null;
+
+  try {
+    const url = new URL(value);
+
+    if (url.hostname === "fidelizeapp.lovable.app") {
+      const production = new URL(FIDELIZE_PUBLIC_ORIGIN);
+      url.protocol = production.protocol;
+      url.host = production.host;
+    }
+
+    return url.toString();
+  } catch {
+    return value;
+  }
+}
+
 /** Provisionamento mais recente da Fidelize do aluno logado. */
 export const getMyFidelizeAccount = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -24,7 +44,7 @@ export const getMyFidelizeAccount = createServerFn({ method: "GET" })
       id: row["id"] as string,
       plan: (row["plan"] as string) ?? null,
       tenantId: (row["tenant_id"] as string) ?? null,
-      loginUrl: (row["login_url"] as string) ?? null,
+      loginUrl: normalizeFidelizePublicUrl((row["login_url"] as string) ?? null),
       slug: (row["slug"] as string) ?? null,
       email: (request["email"] as string) ?? null,
       modules: Array.isArray(row["modules"]) ? (row["modules"] as string[]) : [],
@@ -134,9 +154,13 @@ function buildAutoLoginUrl(
 ): string | null {
   const direct =
     response["autologin_url"] || response["auto_login_url"] || response["sso_url"] || response["magic_link"];
-  if (typeof direct === "string" && direct.startsWith("http")) return direct;
+  if (typeof direct === "string" && direct.startsWith("http")) {
+    return normalizeFidelizePublicUrl(direct);
+  }
 
-  const base = (loginUrl as string) || (response["login_url"] as string) || null;
+  const base = normalizeFidelizePublicUrl(
+    (loginUrl as string) || (response["login_url"] as string) || null,
+  );
   if (!base || !base.startsWith("http")) return null;
 
   try {

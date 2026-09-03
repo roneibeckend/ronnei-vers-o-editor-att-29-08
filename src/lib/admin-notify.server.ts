@@ -178,12 +178,30 @@ export async function deliverPush(
       })
       .then(undefined, () => undefined);
 
-    if (!result.ok && result.expired) {
+    const vapidPkMismatch =
+      !result.ok &&
+      /VapidPkHashMismatch/i.test(
+        String(result.error || ""),
+      );
+
+    if (
+      !result.ok &&
+      (
+        result.expired ||
+        vapidPkMismatch
+      )
+    ) {
       await supabaseAdmin
         .from("admin_push_subscriptions")
         .update({ active: false })
         .eq("id", sub.id)
         .then(undefined, () => undefined);
+
+      if (vapidPkMismatch) {
+        console.warn(
+          `[Push] Subscription ${sub.id} desativada por VapidPkHashMismatch.`,
+        );
+      }
     }
   }
 }

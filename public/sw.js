@@ -1,4 +1,4 @@
-const RNV_SW_VERSION = "rnv-pwa-20260827-push";
+const RNV_SW_VERSION = "rnv-pwa-20260831-native-push-final";
 
 /* ============================================================
    Push Notifications (Central de Notificações Administrativas)
@@ -23,6 +23,7 @@ self.addEventListener("push", (event) => {
     tag: data.tag || data.notificationId || "rnv-admin",
     renotify: true,
     requireInteraction: severity === "critical",
+    silent: false,
     vibrate: severity === "critical" ? [200, 100, 200, 100, 200] : [120, 60, 120],
     data: {
       url: data.link || "/admin/notificacoes",

@@ -144,9 +144,8 @@ export function GoogleIntegrationPanel() {
   const callbackUrls = useMemo(() => {
     const path = "/api/public/google/oauth/callback";
     return [
-      `https://grillmaster-pro.lovable.app${path}`,
-      `https://id-preview--d1f36df5-e296-476a-9ac5-df68d64a889f.lovable.app${path}`,
       `https://ronneinaveia.com.br${path}`,
+      `https://id-preview--d1f36df5-e296-476a-9ac5-df68d64a889f.lovable.app${path}`,
     ];
   }, []);
 

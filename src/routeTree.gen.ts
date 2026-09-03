@@ -23,7 +23,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
-import { Route as FidelizePlanRouteImport } from './routes/fidelize.$plan'
+import { Route as FidelizePlanRouteImport } from './routes/fidelize_.$plan'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AppSuporteRouteImport } from './routes/app.suporte'
 import { Route as AppReceitasRouteImport } from './routes/app.receitas'
@@ -162,9 +162,9 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   getParentRoute: () => AdminRoute,
 } as any)
 const FidelizePlanRoute = FidelizePlanRouteImport.update({
-  id: '/$plan',
-  path: '/$plan',
-  getParentRoute: () => FidelizeRoute,
+  id: '/fidelize_/$plan',
+  path: '/fidelize/$plan',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
@@ -510,7 +510,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
-  '/fidelize': typeof FidelizeRouteWithChildren
+  '/fidelize': typeof FidelizeRoute
   '/google': typeof GoogleRoute
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
@@ -591,7 +591,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/fidelize': typeof FidelizeRouteWithChildren
+  '/fidelize': typeof FidelizeRoute
   '/google': typeof GoogleRoute
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
@@ -673,7 +673,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
-  '/fidelize': typeof FidelizeRouteWithChildren
+  '/fidelize': typeof FidelizeRoute
   '/google': typeof GoogleRoute
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
@@ -723,7 +723,7 @@ export interface FileRoutesById {
   '/app/receitas': typeof AppReceitasRoute
   '/app/suporte': typeof AppSuporteRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/fidelize/$plan': typeof FidelizePlanRoute
+  '/fidelize_/$plan': typeof FidelizePlanRoute
   '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/admin/alunos_/$studentId': typeof AdminAlunosStudentIdRoute
@@ -970,7 +970,7 @@ export interface FileRouteTypes {
     | '/app/receitas'
     | '/app/suporte'
     | '/auth/callback'
-    | '/fidelize/$plan'
+    | '/fidelize_/$plan'
     | '/admin/'
     | '/app/'
     | '/admin/alunos_/$studentId'
@@ -1004,7 +1004,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   AppRoute: typeof AppRouteWithChildren
-  FidelizeRoute: typeof FidelizeRouteWithChildren
+  FidelizeRoute: typeof FidelizeRoute
   GoogleRoute: typeof GoogleRoute
   InicioRoute: typeof InicioRoute
   LoginRoute: typeof LoginRoute
@@ -1015,6 +1015,7 @@ export interface RootRouteChildren {
   VerificarCertificadoRoute: typeof VerificarCertificadoRoute
   ApiMaterialDownloadRoute: typeof ApiMaterialDownloadRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  FidelizePlanRoute: typeof FidelizePlanRoute
   ApiPublicConsultationFollowupsRoute: typeof ApiPublicConsultationFollowupsRoute
   ApiPublicConsultationRecordingsRoute: typeof ApiPublicConsultationRecordingsRoute
   ApiPublicConsultationRemindersRoute: typeof ApiPublicConsultationRemindersRoute
@@ -1130,12 +1131,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/fidelize/$plan': {
-      id: '/fidelize/$plan'
-      path: '/$plan'
+    '/fidelize_/$plan': {
+      id: '/fidelize_/$plan'
+      path: '/fidelize/$plan'
       fullPath: '/fidelize/$plan'
       preLoaderRoute: typeof FidelizePlanRouteImport
-      parentRoute: typeof FidelizeRoute
+      parentRoute: typeof rootRouteImport
     }
     '/auth/callback': {
       id: '/auth/callback'
@@ -1754,23 +1755,11 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
-interface FidelizeRouteChildren {
-  FidelizePlanRoute: typeof FidelizePlanRoute
-}
-
-const FidelizeRouteChildren: FidelizeRouteChildren = {
-  FidelizePlanRoute: FidelizePlanRoute,
-}
-
-const FidelizeRouteWithChildren = FidelizeRoute._addFileChildren(
-  FidelizeRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   AppRoute: AppRouteWithChildren,
-  FidelizeRoute: FidelizeRouteWithChildren,
+  FidelizeRoute: FidelizeRoute,
   GoogleRoute: GoogleRoute,
   InicioRoute: InicioRoute,
   LoginRoute: LoginRoute,
@@ -1781,6 +1770,7 @@ const rootRouteChildren: RootRouteChildren = {
   VerificarCertificadoRoute: VerificarCertificadoRoute,
   ApiMaterialDownloadRoute: ApiMaterialDownloadRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  FidelizePlanRoute: FidelizePlanRoute,
   ApiPublicConsultationFollowupsRoute: ApiPublicConsultationFollowupsRoute,
   ApiPublicConsultationRecordingsRoute: ApiPublicConsultationRecordingsRoute,
   ApiPublicConsultationRemindersRoute: ApiPublicConsultationRemindersRoute,

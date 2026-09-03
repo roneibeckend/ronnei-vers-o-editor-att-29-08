@@ -4,12 +4,12 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { Toaster } from "sonner";
-import { CheckoutModal } from "@/components/checkout/CheckoutModal";
 import { PwaUpdateManager } from "../components/platform/PwaUpdateManager";
 
 import { useAffiliateTracking } from "../hooks/use-affiliate-tracking";
@@ -20,6 +20,12 @@ import { initPixel, trackEvent } from "../lib/pixel";
 import { gtmPageView, gtmSocialClick, gtmPwaInstalled } from "../lib/gtm";
 
 import { installClientLogger, logClient } from "../lib/client-logger";
+
+const LazyCheckoutModal = lazy(() =>
+  import("@/components/checkout/CheckoutModal").then((mod) => ({
+    default: mod.CheckoutModal,
+  })),
+);
 
 function NotFoundComponent() {
   return (
@@ -208,10 +214,49 @@ function RootShell({ children }: { children: ReactNode }) {
         <script
           data-rnv-gtm
           dangerouslySetInnerHTML={{
-            __html: `(function(w,d,s,l,i){if(w.__RNV_GTM_LOADED__)return;w.__RNV_GTM_LOADED__=true;w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+            __html: `(function(w,d,s,l,i){
+if(w.__RNV_GTM_BOOTSTRAPPED__)return;
+w.__RNV_GTM_BOOTSTRAPPED__=true;
+w[l]=w[l]||[];
+
+function loadGtm(){
+  if(w.__RNV_GTM_LOADED__)return;
+  w.__RNV_GTM_LOADED__=true;
+
+  w[l].push({
+    'gtm.start': new Date().getTime(),
+    event: 'gtm.js'
+  });
+
+  var f=d.getElementsByTagName(s)[0],
+      j=d.createElement(s),
+      dl=l!='dataLayer'?'&l='+l:'';
+
+  j.async=true;
+  j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+  f.parentNode.insertBefore(j,f);
+}
+
+if(location.pathname==='/'){
+  // LANDING / SAFARI:
+  // nunca inicia GTM no primeiro toque. O primeiro pointerdown normalmente
+  // é justamente o gesto usado para começar o scroll no iPhone.
+  function scheduleLandingGtm(){
+    if('requestIdleCallback' in w){
+      w.requestIdleCallback(loadGtm,{timeout:15000});
+    }else{
+      w.setTimeout(loadGtm,15000);
+    }
+  }
+
+  if(d.readyState==='complete'){
+    scheduleLandingGtm();
+  }else{
+    w.addEventListener('load',scheduleLandingGtm,{once:true});
+  }
+}else{
+  loadGtm();
+}
 })(window,document,'script','dataLayer','GTM-M376JTZP');`,
           }}
         />
@@ -226,9 +271,30 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                   var h = new URLSearchParams(location.hash.replace(/^#/, ""));
                   // Marcado ANTES do supabase-js consumir o hash da URL, para
                   // sabermos que esta carga de página é um retorno de login social.
-                  window.__RNV_AUTH_RETURN__ =
-                    s.has("code") || h.has("access_token") ||
+                  var authType =
+                    s.get("type") ||
+                    h.get("type") ||
+                    "";
+
+                  var hasAuthPayload =
+                    s.has("code") ||
+                    h.has("access_token") ||
                     ((s.has("token_hash") || s.has("token")) && s.has("type"));
+
+                  window.__RNV_AUTH_RETURN__ =
+                    hasAuthPayload;
+
+                  window.__RNV_AUTH_RETURN_TYPE__ =
+                    authType;
+
+                  // Esta marca sobrevive mesmo se o supabase-js consumir
+                  // access_token/code antes do React montar.
+                  window.__RNV_RECOVERY_RETURN__ =
+                    location.pathname.indexOf("/redefinir-senha") === 0 &&
+                    (
+                      authType === "recovery" ||
+                      hasAuthPayload
+                    );
                 } catch (e) {
                   window.__RNV_AUTH_RETURN__ = false;
                 }
@@ -372,6 +438,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe>`,
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+  const isPublicLanding = pathname === "/";
 
   useEffect(() => {
     // Rastreia mudanças de rota para a barra de progresso e trackings.
@@ -389,7 +459,30 @@ function RootComponent() {
       gtmPageView();
     });
 
-    initPixel();
+    const startPixel = () => initPixel();
+    let pixelTimer: number | null = null;
+
+    if (window.location.pathname === "/") {
+      // Não disputa o primeiro scroll/paint da landing no Safari.
+      const schedulePixel = () => {
+        if ("requestIdleCallback" in window) {
+          (window as any).requestIdleCallback(startPixel, { timeout: 12000 });
+        } else {
+          pixelTimer = window.setTimeout(startPixel, 12000);
+        }
+      };
+
+      if (document.readyState === "complete") {
+        schedulePixel();
+      } else {
+        window.addEventListener("load", schedulePixel, { once: true });
+      }
+    } else {
+      startPixel();
+    }
+
+    // gtmPageView apenas coloca o evento no dataLayer.
+    // O GTM processa a fila quando o script externo for carregado.
     gtmPageView();
     installClientLogger();
 
@@ -414,6 +507,11 @@ function RootComponent() {
     return () => {
       unsubBefore();
       unsubAfter();
+
+      if (pixelTimer !== null) {
+        window.clearTimeout(pixelTimer);
+      }
+
       document.removeEventListener("click", onClick, true);
       window.removeEventListener("appinstalled", onInstalled);
     };
@@ -425,7 +523,15 @@ function RootComponent() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const path = window.location.pathname;
-    if (path.startsWith("/auth/callback") || path.startsWith("/inicio")) return;
+    // /redefinir-senha possui fluxo Auth próprio.
+    // Uma sessão criada por recovery NÃO representa login concluído.
+    if (
+      path.startsWith("/auth/callback") ||
+      path.startsWith("/inicio") ||
+      path.startsWith("/redefinir-senha")
+    ) {
+      return;
+    }
 
     const search = new URLSearchParams(window.location.search);
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
@@ -469,7 +575,11 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
-      <CheckoutModal />
+      {!isPublicLanding && (
+        <Suspense fallback={null}>
+          <LazyCheckoutModal />
+        </Suspense>
+      )}
       
       <Toaster
         position="top-center"
@@ -481,7 +591,7 @@ function RootComponent() {
         mobileOffset="calc(env(safe-area-inset-top, 0px) + 16px)"
         toastOptions={{ closeButton: true }}
       />
-      <PwaUpdateManager />
+      {!isPublicLanding && <PwaUpdateManager />}
     </QueryClientProvider>
   );
 }

@@ -12,7 +12,7 @@ import { useCheckout } from "@/hooks/use-checkout";
 
 const SITE = "https://ronneinaveia.com.br";
 
-export const Route = createFileRoute("/fidelize/$plan")({
+export const Route = createFileRoute("/fidelize_/$plan")({
   head: ({ params }) => {
     const name = `Fidelize ${params.plan.charAt(0).toUpperCase()}${params.plan.slice(1)}`;
     return {
@@ -35,7 +35,7 @@ export const Route = createFileRoute("/fidelize/$plan")({
 });
 
 function FidelizePlanPage() {
-  const { plan } = useParams({ from: "/fidelize/$plan" });
+  const { plan } = useParams({ from: "/fidelize_/$plan" });
   const navigate = useNavigate();
   const fetchPlans = useServerFn(listFidelizePlans);
   const { openCheckout } = useCheckout();

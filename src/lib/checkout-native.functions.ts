@@ -153,6 +153,25 @@ export const createNativeCheckout = createServerFn({ method: "POST" })
       throw new Error("Dados do cartão são obrigatórios.");
     }
 
+    /*
+     * PASSO DURÁVEL PRÉ-COBRANÇA:
+     *
+     * Guardamos todos os itens antes de chamar o gateway.
+     * Se o banco falhar aqui, é seguro interromper porque
+     * nenhuma cobrança ainda foi criada.
+     */
+    const { rememberCheckoutIntent } = await import(
+      "./checkout-payment-snapshot.server"
+    );
+
+    await rememberCheckoutIntent({
+      userId: context.userId,
+      method: data.method,
+      totalValue,
+      products: priced,
+      couponCode,
+    });
+
     const charge = await createNativeCharge({
       product: priced[0]!,
       totalValue,
@@ -164,6 +183,99 @@ export const createNativeCheckout = createServerFn({ method: "POST" })
       payer: data.payer,
       card: data.card ?? null,
     });
+
+    /*
+     * A cobrança já existe no Asaas neste ponto.
+     * Antes de devolver PIX/cartão/boleto ao navegador, persistimos
+     * no servidor o paymentId + usuário + TODOS os produtos do pedido.
+     *
+     * O navegador não será mais a fonte de verdade para a liberação.
+     */
+    const { rememberCheckoutPayment } = await import(
+      "./checkout-payment-snapshot.server"
+    );
+
+    let checkoutSnapshotSaved = false;
+    let checkoutSnapshotError: unknown = null;
+
+    /*
+     * Pequenas falhas transitórias de banco não podem fazer perder
+     * o vínculo da cobrança. Tentamos 3 vezes antes de gerar alerta.
+     */
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await rememberCheckoutPayment({
+          paymentId: charge.paymentId,
+          userId: context.userId,
+          status: charge.status,
+          method: charge.method,
+          totalValue,
+          products: priced,
+          subscriptionId: charge.subscriptionId,
+          couponCode,
+        });
+
+        checkoutSnapshotSaved = true;
+        break;
+      } catch (error: any) {
+        checkoutSnapshotError = error;
+
+        console.error(
+          `[Checkout] Snapshot da cobrança falhou (${attempt}/3):`,
+          error?.message || error,
+        );
+
+        if (attempt < 3) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, attempt * 300),
+          );
+        }
+      }
+    }
+
+    /*
+     * A cobrança já foi criada no gateway; portanto NÃO lançamos um
+     * erro ao cliente aqui, pois isso poderia induzi-lo a tentar de
+     * novo e criar uma segunda cobrança.
+     *
+     * Em vez disso, geramos alerta operacional crítico. A referência
+     * externa do Asaas continua permitindo recuperação do produto
+     * principal, e a reconciliação será fortalecida nas próximas etapas.
+     */
+    if (!checkoutSnapshotSaved) {
+      console.error(
+        `[Checkout] CRITICAL: cobrança ${charge.paymentId} criada sem snapshot persistido.`,
+      );
+
+      try {
+        const { raiseOpsAlert } = await import(
+          "./ops-alerts.server"
+        );
+
+        await raiseOpsAlert({
+          type: "checkout_snapshot_failed",
+          dedupKey: `checkout_snapshot_failed:${charge.paymentId}`,
+          title: "Cobrança criada sem snapshot do pedido",
+          message:
+            "Uma cobrança foi criada no Asaas, mas o vínculo completo dos produtos não pôde ser persistido após 3 tentativas.",
+          details: {
+            paymentId: charge.paymentId,
+            userId: context.userId,
+            productCount: priced.length,
+            error: String(
+              (checkoutSnapshotError as any)?.message ||
+                checkoutSnapshotError ||
+                "erro desconhecido",
+            ).slice(0, 500),
+          },
+        });
+      } catch (alertError: any) {
+        console.error(
+          "[Checkout] Falha também ao registrar alerta do snapshot:",
+          alertError?.message || alertError,
+        );
+      }
+    }
 
     const consultationCredits: ConsultationCredit[] = [];
     if (charge.confirmed) {
@@ -177,34 +289,175 @@ export const createNativeCheckout = createServerFn({ method: "POST" })
   });
 
 
-/** Polling: consulta o status e libera o acesso assim que o pagamento é aprovado. */
+/** Polling seguro: o navegador informa o paymentId, mas nunca decide quais produtos serão liberados. */
 export const getNativeCheckoutStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data: unknown) =>
     z
       .object({
         paymentId: z.string().min(3),
-        products: z.array(productSchema).min(1).max(6),
+
+        /*
+         * Compatibilidade temporária com o front já publicado.
+         * Clientes antigos ainda podem enviar `products`, porém
+         * esse campo NÃO participa mais da autorização/liberação.
+         */
+        products: z
+          .array(productSchema)
+          .min(1)
+          .max(6)
+          .optional(),
       })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
-    const { fetchChargeStatus } = await import("./checkout-native.server");
     try {
-      const status = await fetchChargeStatus(data.paymentId);
-      if (!status.confirmed) return { confirmed: false, status: status.status, consultationCredits: [] };
-      let granted = true;
-      const consultationCredits: ConsultationCredit[] = [];
-      for (const p of data.products) {
-        const res = await fulfill(p.productType, p.productId, context, data.paymentId);
-        if (res.credit) consultationCredits.push(res.credit);
-        granted = granted && res.ok;
+      const {
+        assertCheckoutPaymentOwnership,
+        getAuthoritativeCheckoutProducts,
+      } = await import(
+        "./checkout-payment-snapshot.server"
+      );
+
+      /*
+       * Uma única consulta autoritativa:
+       * - busca a cobrança direto no Asaas;
+       * - valida externalReference;
+       * - prova que o pagamento pertence ao usuário logado.
+       */
+      const owned =
+        await assertCheckoutPaymentOwnership(
+          data.paymentId,
+          context.userId,
+        );
+
+      const paymentStatus = String(
+        owned.payment?.status || "UNKNOWN",
+      );
+
+      const confirmed = [
+        "RECEIVED",
+        "CONFIRMED",
+        "RECEIVED_IN_CASH",
+      ].includes(paymentStatus);
+
+      if (!confirmed) {
+        return {
+          confirmed: false,
+          status: paymentStatus,
+          consultationCredits: [],
+        };
       }
-      return { confirmed: true, status: status.status, granted, consultationCredits };
+
+      /*
+       * Fonte de verdade:
+       * 1. payments.metadata criado na Etapa 2;
+       * 2. pending_checkouts.metadata;
+       * 3. externalReference somente para cobranças antigas.
+       *
+       * data.products enviado pelo browser é ignorado.
+       */
+      const trustedProducts =
+        await getAuthoritativeCheckoutProducts(
+          data.paymentId,
+          context.userId,
+          owned.parsed,
+        );
+
+      if (trustedProducts.length === 0) {
+        return {
+          confirmed: true,
+          status: paymentStatus,
+          granted: false,
+          message:
+            "Pagamento confirmado, mas o pedido não pôde ser reconstruído com segurança.",
+          consultationCredits: [],
+        };
+      }
+
+      /*
+       * Curso/e-book passam pelo pipeline central:
+       * acesso + confirmação + pagamento +
+       * admin/push + e-mail + auditoria.
+       *
+       * Fidelize/consultoria permanecem no fluxo
+       * especializado atual nesta release.
+       */
+      const standardOnly =
+        trustedProducts.every(
+          (product) =>
+            product.productType === "course" ||
+            product.productType === "ebook",
+        );
+
+      if (standardOnly) {
+        const {
+          finalizeStandardPaidSale,
+        } = await import(
+          "./sale-finalization.server"
+        );
+
+        const finalized =
+          await finalizeStandardPaidSale({
+            payment: owned.payment,
+            userId: context.userId,
+            products: trustedProducts,
+            source: "polling",
+          });
+
+        return {
+          confirmed: true,
+          status: paymentStatus,
+          granted: finalized.ok,
+          consultationCredits: [],
+        };
+      }
+
+      let granted = true;
+      const consultationCredits:
+        ConsultationCredit[] = [];
+
+      for (const product of trustedProducts) {
+        const result = await fulfill(
+          product.productType,
+          product.productId,
+          context,
+          data.paymentId,
+          product.value,
+        );
+
+        if (result.credit) {
+          consultationCredits.push(
+            result.credit,
+          );
+        }
+
+        granted = granted && result.ok;
+      }
+
+      return {
+        confirmed: true,
+        status: paymentStatus,
+        granted,
+        consultationCredits,
+      };
     } catch (error: any) {
-      return { confirmed: false, status: "UNKNOWN", message: error?.message, consultationCredits: [] };
+      console.error(
+        "[Checkout] Falha no polling seguro:",
+        error?.message || error,
+      );
+
+      return {
+        confirmed: false,
+        status: "UNKNOWN",
+        message:
+          error?.message ||
+          "Não foi possível verificar o pagamento.",
+        consultationCredits: [],
+      };
     }
   });
+
 
 export type ConsultationCredit = {
   id: string;

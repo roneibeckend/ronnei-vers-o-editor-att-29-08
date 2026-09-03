@@ -8,7 +8,10 @@ import {
   resolveUserFromPayment,
 } from "@/lib/asaas.server";
 import { raiseOpsAlert } from "@/lib/ops-alerts.server";
-import { triggerEmailEvent } from "@/lib/resend.server";
+import {
+  isEmailCapacityError,
+  triggerEmailEvent,
+} from "@/lib/resend.server";
 
 /** Limites por execução — garantem que a rotina sempre termina. */
 const MAX_PAYMENTS_PER_RUN = 100;
@@ -68,6 +71,22 @@ async function recordDivergence(entry: {
   issue: string;
   details: Record<string, any>;
 }) {
+  const { data: existing, error: existingError } = await supabaseAdmin
+    .from("payment_reconciliations")
+    .select("status")
+    .eq("external_id", entry.externalId)
+    .maybeSingle();
+
+  if (existingError) {
+    console.error("[ops] Falha ao consultar divergência:", existingError.message);
+    return false;
+  }
+
+  // "ignored" é a marca persistente usada pelo botão Arquivar.
+  if (existing?.status === "ignored") {
+    return false;
+  }
+
   const { error } = await supabaseAdmin.from("payment_reconciliations").upsert(
     {
       external_id: entry.externalId,
@@ -80,6 +99,7 @@ async function recordDivergence(entry: {
       payment_status: entry.paymentStatus,
       issue: entry.issue,
       status: "pending",
+      resolved_at: null,
       details: entry.details as any,
     },
     { onConflict: "external_id" },
@@ -109,7 +129,7 @@ export async function reconcileAsaas(): Promise<OpsRecoveryResult["reconciliatio
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const payments: any[] = [];
 
-  for (const status of ["CONFIRMED", "RECEIVED"]) {
+  for (const status of PAID_STATUSES) {
     if (payments.length >= MAX_PAYMENTS_PER_RUN) break;
     const url = `${baseUrl}/payments?status=${status}&limit=50&offset=0&paymentDate%5Bge%5D=${since}`;
     const res = await asaasFetchJson(url, { headers: asaasHeaders(apiKey) });
@@ -194,35 +214,288 @@ export async function reconcileAsaas(): Promise<OpsRecoveryResult["reconciliatio
       continue;
     }
 
-    const granted = await hasAccess(ref.productType, ref.productId, userId);
-    if (granted) {
-      // Se havia divergência registrada antes, marca como resolvida.
-      await supabaseAdmin
-        .from("payment_reconciliations")
-        .update({ status: "fixed", resolved_at: new Date().toISOString() })
-        .eq("external_id", externalId)
-        .eq("status", "pending");
+    /*
+     * Produtos especializados continuam sob os próprios fluxos.
+     * Esta autocura é deliberadamente limitada a curso/e-book.
+     */
+    const standardProduct =
+      ref.productType === "course" ||
+      ref.productType === "ebook";
+
+    if (!standardProduct) {
       continue;
     }
 
-    const exists = await productExists(ref.productType, ref.productId);
-    summary.divergences += 1;
-    if (
-      await recordDivergence({
-        externalId,
-        userId,
-        email: payment.customerEmail || null,
-        name: payment.customerName || null,
-        productId: ref.productId,
-        productType: ref.productType,
-        amount,
-        paymentStatus: payment.status,
-        issue: exists ? "pagamento_sem_matricula" : "produto_inexistente",
-        details: { externalReference: payment.externalReference },
-      })
-    ) {
-      summary.recorded += 1;
+    /*
+     * Produto removido nunca deve ser recriado ou matriculado
+     * artificialmente. Continua como exceção humana.
+     */
+    const exists = await productExists(
+      ref.productType,
+      ref.productId,
+    );
+
+    if (!exists) {
+      summary.divergences += 1;
+
+      if (
+        await recordDivergence({
+          externalId,
+          userId,
+          email:
+            payment.customerEmail || null,
+          name:
+            payment.customerName || null,
+          productId: ref.productId,
+          productType: ref.productType,
+          amount,
+          paymentStatus: payment.status,
+          issue: "produto_inexistente",
+          details: {
+            externalReference:
+              payment.externalReference,
+          },
+        })
+      ) {
+        summary.recorded += 1;
+      }
+
+      continue;
     }
+
+    const grantedBefore =
+      await hasAccess(
+        ref.productType,
+        ref.productId,
+        userId,
+      );
+
+    /*
+     * Vendas recentes precisam da cadeia COMPLETA.
+     *
+     * É justamente aqui que recuperamos o cenário:
+     *   pagamento OK
+     *   matrícula OK
+     *   admin/push/e-mail ausentes.
+     */
+    const paymentDate =
+      payment.confirmedDate ||
+      payment.paymentDate ||
+      payment.dateCreated ||
+      null;
+
+    const paymentTs = paymentDate
+      ? new Date(paymentDate).getTime()
+      : NaN;
+
+    const recent72h =
+      !Number.isFinite(paymentTs) ||
+      Date.now() - paymentTs <=
+        72 * 60 * 60 * 1000;
+
+    if (recent72h) {
+      try {
+        const {
+          getAuthoritativeCheckoutProducts,
+        } = await import(
+          "@/lib/checkout-payment-snapshot.server"
+        );
+
+        const recovered =
+          await getAuthoritativeCheckoutProducts(
+            externalId,
+            userId,
+            ref,
+          );
+
+        const standardProducts =
+          recovered.filter(
+            (item) =>
+              item.productType === "course" ||
+              item.productType === "ebook",
+          );
+
+        /*
+         * Cobranças antigas podem não ter snapshot.
+         * O externalReference assinado pelo nosso servidor
+         * continua sendo fallback para o produto principal.
+         */
+        if (
+          !standardProducts.some(
+            (item) =>
+              item.productType ===
+                ref.productType &&
+              item.productId ===
+                ref.productId,
+          )
+        ) {
+          standardProducts.unshift({
+            productType:
+              ref.productType as
+                | "course"
+                | "ebook",
+            productId: ref.productId,
+            value: amount,
+          });
+        }
+
+        const {
+          finalizeStandardPaidSale,
+        } = await import(
+          "@/lib/sale-finalization.server"
+        );
+
+        await finalizeStandardPaidSale({
+          payment,
+          userId,
+          products: standardProducts,
+          source: "reconciliation",
+        });
+
+        const grantedAfter =
+          await hasAccess(
+            ref.productType,
+            ref.productId,
+            userId,
+          );
+
+        if (!grantedAfter) {
+          throw new Error(
+            "Matrícula ausente após autocorreção.",
+          );
+        }
+
+        /*
+         * Se havia divergência anterior, encerra.
+         */
+        await supabaseAdmin
+          .from("payment_reconciliations")
+          .update({
+            status: "fixed",
+            resolved_at:
+              new Date().toISOString(),
+          })
+          .eq("external_id", externalId)
+          .eq("status", "pending");
+
+        console.log(
+          `[ops] Venda ${externalId} autocorrigida pelo pipeline central.`,
+        );
+
+        continue;
+      } catch (err: any) {
+        summary.divergences += 1;
+
+        const message = String(
+          err?.message ||
+            err ||
+            "erro desconhecido",
+        ).slice(0, 500);
+
+        if (
+          await recordDivergence({
+            externalId,
+            userId,
+            email:
+              payment.customerEmail || null,
+            name:
+              payment.customerName || null,
+            productId: ref.productId,
+            productType: ref.productType,
+            amount,
+            paymentStatus:
+              payment.status,
+            issue:
+              grantedBefore
+                ? "venda_incompleta"
+                : "pagamento_sem_matricula",
+            details: {
+              externalReference:
+                payment.externalReference,
+              recovery_error: message,
+            },
+          })
+        ) {
+          summary.recorded += 1;
+        }
+
+        console.error(
+          `[ops] Falha na autocorreção da venda ${externalId}:`,
+          message,
+        );
+
+        continue;
+      }
+    }
+
+    /*
+     * Pagamentos mais antigos:
+     *
+     * corrigimos acesso, se necessário, mas não produzimos
+     * Push/e-mail histórico inesperado ao cliente/admin.
+     */
+    if (!grantedBefore) {
+      const repaired =
+        await grantAccess(
+          ref.productType,
+          ref.productId,
+          userId,
+        );
+
+      const verified =
+        repaired &&
+        await hasAccess(
+          ref.productType,
+          ref.productId,
+          userId,
+        );
+
+      if (!verified) {
+        summary.divergences += 1;
+
+        if (
+          await recordDivergence({
+            externalId,
+            userId,
+            email:
+              payment.customerEmail || null,
+            name:
+              payment.customerName || null,
+            productId: ref.productId,
+            productType: ref.productType,
+            amount,
+            paymentStatus:
+              payment.status,
+            issue:
+              "pagamento_sem_matricula",
+            details: {
+              externalReference:
+                payment.externalReference,
+              recovery_error:
+                "Falha ao reparar acesso histórico.",
+            },
+          })
+        ) {
+          summary.recorded += 1;
+        }
+
+        continue;
+      }
+
+      console.log(
+        `[ops] Acesso histórico ${externalId} reparado sem comunicação retroativa.`,
+      );
+    }
+
+    await supabaseAdmin
+      .from("payment_reconciliations")
+      .update({
+        status: "fixed",
+        resolved_at:
+          new Date().toISOString(),
+      })
+      .eq("external_id", externalId)
+      .eq("status", "pending");
   }
 
   // 3) Assinaturas ativas sem acesso liberado
@@ -234,20 +507,91 @@ export async function reconcileAsaas(): Promise<OpsRecoveryResult["reconciliatio
     const ref = parseExternalReference(sub.externalReference);
     if (!ref?.productType || !ref?.productId || !ref?.userId) continue;
     summary.checked += 1;
-    if (await hasAccess(ref.productType, ref.productId, ref.userId)) continue;
+    if (
+      await hasAccess(
+        ref.productType,
+        ref.productId,
+        ref.userId,
+      )
+    ) {
+      continue;
+    }
+
+    const standardSubscription =
+      ref.productType === "course" ||
+      ref.productType === "ebook";
+
+    const subscriptionProductExists =
+      standardSubscription
+        ? await productExists(
+            ref.productType,
+            ref.productId,
+          )
+        : false;
+
+    if (
+      standardSubscription &&
+      subscriptionProductExists
+    ) {
+      const repaired =
+        await grantAccess(
+          ref.productType,
+          ref.productId,
+          ref.userId,
+        );
+
+      const verified =
+        repaired &&
+        await hasAccess(
+          ref.productType,
+          ref.productId,
+          ref.userId,
+        );
+
+      if (verified) {
+        await supabaseAdmin
+          .from("payment_reconciliations")
+          .update({
+            status: "fixed",
+            resolved_at:
+              new Date().toISOString(),
+          })
+          .eq(
+            "external_id",
+            `sub_${sub.id}`,
+          )
+          .eq("status", "pending");
+
+        console.log(
+          `[ops] Assinatura ${sub.id} teve o acesso reparado automaticamente.`,
+        );
+
+        continue;
+      }
+    }
+
     summary.divergences += 1;
+
     if (
       await recordDivergence({
         externalId: `sub_${sub.id}`,
         userId: ref.userId,
-        email: sub.customerEmail || null,
-        name: sub.customerName || null,
+        email:
+          sub.customerEmail || null,
+        name:
+          sub.customerName || null,
         productId: ref.productId,
         productType: ref.productType,
-        amount: Number(sub.value || 0),
-        paymentStatus: "ACTIVE_SUBSCRIPTION",
-        issue: "assinatura_sem_matricula",
-        details: { subscriptionId: sub.id },
+        amount: Number(
+          sub.value || 0,
+        ),
+        paymentStatus:
+          "ACTIVE_SUBSCRIPTION",
+        issue:
+          "assinatura_sem_matricula",
+        details: {
+          subscriptionId: sub.id,
+        },
       })
     ) {
       summary.recorded += 1;
@@ -350,29 +694,96 @@ export async function retryFailedEmails(): Promise<OpsRecoveryResult["emails"]> 
         .eq("id", row.id);
       summary.sent += 1;
     } catch (err: any) {
-      const exhausted = attempts >= MAX_EMAIL_ATTEMPTS;
-      const backoff = RETRY_BACKOFF_MINUTES[Math.min(attempts, RETRY_BACKOFF_MINUTES.length - 1)];
+      const capacityLimited =
+        isEmailCapacityError(err);
+
+      /*
+       * Quota/rate-limit não consome tentativa.
+       */
+      const effectiveAttempts =
+        capacityLimited
+          ? Number(row.attempts || 0)
+          : attempts;
+
+      const exhausted =
+        !capacityLimited &&
+        effectiveAttempts >=
+          MAX_EMAIL_ATTEMPTS;
+
+      const backoff =
+        RETRY_BACKOFF_MINUTES[
+          Math.min(
+            effectiveAttempts,
+            RETRY_BACKOFF_MINUTES.length - 1,
+          )
+        ];
+
+      const nextRetryAt =
+        exhausted
+          ? null
+          : new Date(
+              Date.now() +
+              (
+                capacityLimited
+                  ? 12 * 60 * 60_000
+                  : backoff * 60_000
+              ),
+            ).toISOString();
+
       await supabaseAdmin
         .from("email_logs")
         .update({
-          status: exhausted ? "failed_permanent" : "failed",
-          attempts,
-          error_message: err?.message || "Falha desconhecida no envio.",
-          next_retry_at: exhausted ? null : new Date(Date.now() + backoff * 60_000).toISOString(),
-          resolved_at: exhausted ? new Date().toISOString() : null,
+          status:
+            exhausted
+              ? "failed_permanent"
+              : "failed",
+          attempts:
+            effectiveAttempts,
+          error_message:
+            err?.message ||
+            "Falha desconhecida no envio.",
+          next_retry_at:
+            nextRetryAt,
+          resolved_at:
+            exhausted
+              ? new Date().toISOString()
+              : null,
         })
         .eq("id", row.id);
 
+      if (capacityLimited) {
+        console.warn(
+          `[ops] Capacidade do provedor esgotada; e-mail ${row.id} adiado sem consumir tentativa.`,
+        );
+
+        summary.failed += 1;
+        continue;
+      }
+
       if (exhausted) {
         summary.exhausted += 1;
-        // Nunca alertar sobre o próprio e-mail de alerta (evita laço infinito).
-        if (payload.event !== "ops_alert") {
+
+        if (
+          payload.event !==
+          "ops_alert"
+        ) {
           await raiseOpsAlert({
-            type: "email_failed",
-            dedupKey: `email_failed:${payload.event}:${payload.to}`,
-            title: "E-mail crítico não entregue",
-            message: `O e-mail "${payload.event}" para ${payload.to} falhou após ${MAX_EMAIL_ATTEMPTS} tentativas: ${err?.message || "erro desconhecido"}`,
-            details: { email_log_id: row.id, event: payload.event },
+            type:
+              "email_failed",
+            dedupKey:
+              `email_failed:${payload.event}:${payload.to}`,
+            title:
+              "E-mail crítico não entregue",
+            message:
+              `O e-mail "${payload.event}" para ${payload.to} ` +
+              `falhou após ${MAX_EMAIL_ATTEMPTS} tentativas: ` +
+              `${err?.message || "erro desconhecido"}`,
+            details: {
+              email_log_id:
+                row.id,
+              event:
+                payload.event,
+            },
           });
         }
       } else {

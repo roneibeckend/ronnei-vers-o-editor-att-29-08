@@ -108,9 +108,8 @@ function sanitizeTag(value: string) {
 /** URL pública absoluta da logo (lockup da identidade) usada nos e-mails. */
 export const EMAIL_LOGO_URL =
   (
-    // Somente um domínio explicitamente informado sobrepõe o host estável de assets:
-    // SITE_URL pode apontar para um domínio ainda sem DNS, o que quebra as imagens.
-    process.env['EMAIL_ASSET_BASE_URL'] || 'https://skewer-success-engine.lovable.app'
+    process.env['EMAIL_ASSET_BASE_URL'] ||
+    'https://ronneinaveia.com.br'
   ).replace(/\/$/, '') + '/email-lockup.png';
 
 /**
@@ -198,7 +197,14 @@ export async function sendResendEmail(params: {
           last_validation_at: new Date().toISOString()
         }).eq('from_email', config.fromEmail);
       }
-      throw new Error(friendlyMessage);
+      const providerError: any = new Error(friendlyMessage);
+      providerError.status = response.status;
+      providerError.code = String(
+        data?.name ||
+        data?.code ||
+        "",
+      );
+      throw providerError;
     }
 
 
@@ -238,6 +244,41 @@ export function renderTemplate(content: string, variables: Record<string, any>) 
     const cleanKey = key.trim();
     return variables[cleanKey] !== undefined ? variables[cleanKey] : match;
   });
+}
+
+/**
+ * Identifica indisponibilidade temporária de capacidade
+ * do provedor de e-mail.
+ *
+ * Esses erros NÃO devem consumir tentativas definitivas
+ * da fila de recuperação.
+ */
+export function isEmailCapacityError(
+  error: any,
+) {
+  const status = Number(
+    error?.status || 0,
+  );
+
+  const message = String(
+    error?.message ||
+    error ||
+    "",
+  );
+
+  const code = String(
+    error?.code || "",
+  );
+
+  return (
+    status === 429 ||
+    /daily email sending quota/i.test(message) ||
+    /sending quota/i.test(message) ||
+    /quota exceeded/i.test(message) ||
+    /rate.?limit/i.test(message) ||
+    /too many requests/i.test(message) ||
+    /rate.?limit/i.test(code)
+  );
 }
 
 /**
@@ -341,33 +382,103 @@ export async function triggerEmailEvent(params: {
       ]
     });
   } catch (err: any) {
-    console.error(`[Email] Falha ao disparar evento ${params.event}:`, err);
-    // Enfileira para reprocessamento automático (até 3 tentativas) pela rotina de recuperação.
+    console.error(
+      `[Email] Falha ao disparar evento ${params.event}:`,
+      err,
+    );
+
+    const capacityLimited =
+      isEmailCapacityError(err);
+
+    /*
+     * Quota/rate-limit:
+     * espera 12h e não fica criando novas filas.
+     *
+     * Erro comum:
+     * mantém retry inicial de 5 minutos.
+     */
+    const retryDelayMs =
+      capacityLimited
+        ? 12 * 60 * 60_000
+        : 5 * 60_000;
+
     if (!params._retry) {
       try {
-        await supabaseAdmin.from('email_logs').insert({
-          recipient_email: params.to,
-          template_name: params.event,
-          status: 'failed',
-          attempts: 0,
-          error_message: err?.message || 'Falha desconhecida no envio.',
-          next_retry_at: new Date(Date.now() + 5 * 60_000).toISOString(),
-          retry_payload: {
-            event: params.event,
-            to: params.to,
-            data: params.data || {},
-            idempotency_key: params.idempotencyKey || null,
-          } as any,
-          idempotency_key: params.idempotencyKey || null,
-        });
+        let alreadyQueued = false;
+
+        if (params.idempotencyKey) {
+          const { data: queued } =
+            await supabaseAdmin
+              .from('email_logs')
+              .select('id')
+              .eq(
+                'idempotency_key',
+                params.idempotencyKey,
+              )
+              .in(
+                'status',
+                ['failed', 'error'],
+              )
+              .is(
+                'resolved_at',
+                null,
+              )
+              .limit(1)
+              .maybeSingle();
+
+          alreadyQueued =
+            Boolean(queued?.id);
+        }
+
+        if (!alreadyQueued) {
+          await supabaseAdmin
+            .from('email_logs')
+            .insert({
+              recipient_email:
+                params.to,
+              template_name:
+                params.event,
+              status: 'failed',
+              attempts: 0,
+              error_message:
+                err?.message ||
+                'Falha desconhecida no envio.',
+              next_retry_at:
+                new Date(
+                  Date.now() +
+                  retryDelayMs,
+                ).toISOString(),
+              retry_payload: {
+                event:
+                  params.event,
+                to:
+                  params.to,
+                data:
+                  params.data || {},
+                idempotency_key:
+                  params.idempotencyKey ||
+                  null,
+              } as any,
+              idempotency_key:
+                params.idempotencyKey ||
+                null,
+            });
+        } else {
+          console.log(
+            `[Email] Evento ${params.event} já está na fila: ${params.idempotencyKey}`,
+          );
+        }
       } catch (queueError) {
-        console.error('[Email] Falha ao enfileirar reenvio:', queueError);
+        console.error(
+          '[Email] Falha ao enfileirar reenvio:',
+          queueError,
+        );
       }
     }
+
     throw err;
   }
 }
-
 
 
 /**
@@ -382,35 +493,146 @@ export async function triggerEmailOnce(params: {
   idempotencyKey: string;
 }) {
   try {
-    const { data: existing } = await supabaseAdmin
-      .from('email_logs')
-      .select('id')
-      .eq('idempotency_key', params.idempotencyKey)
-      .eq('status', 'sent')
-      .maybeSingle();
+    const { data: existing } =
+      await supabaseAdmin
+        .from('email_logs')
+        .select(
+          'id,status,resolved_at',
+        )
+        .eq(
+          'idempotency_key',
+          params.idempotencyKey,
+        )
+        .in(
+          'status',
+          ['sent', 'failed', 'error'],
+        )
+        .order(
+          'created_at',
+          { ascending: false },
+        )
+        .limit(1)
+        .maybeSingle();
 
-    if (existing) {
-      console.log(`[Email] Evento ${params.event} ignorado (já enviado): ${params.idempotencyKey}`);
-      return { success: true, skipped: true as const };
+    if (existing?.status === 'sent') {
+      console.log(
+        `[Email] Evento ${params.event} ignorado (já enviado): ${params.idempotencyKey}`,
+      );
+
+      return {
+        success: true,
+        skipped: true as const,
+      };
+    }
+
+    if (
+      existing &&
+      (
+        existing.status === 'failed' ||
+        existing.status === 'error'
+      ) &&
+      !existing.resolved_at
+    ) {
+      console.log(
+        `[Email] Evento ${params.event} já está na fila: ${params.idempotencyKey}`,
+      );
+
+      return {
+        success: false,
+        queued: true as const,
+        skipped: true as const,
+      };
     }
   } catch (checkError) {
-    console.warn('[Email] Falha ao checar idempotência:', checkError);
+    console.warn(
+      '[Email] Falha ao checar idempotência:',
+      checkError,
+    );
   }
 
-  const result = await triggerEmailEvent(params);
+  const result =
+    await triggerEmailEvent(params);
 
+  /*
+   * sendResendEmail já registrou o envio aceito.
+   * Apenas anexamos a chave de idempotência
+   * ao mesmo registro do provider.
+   */
   try {
-    await supabaseAdmin.from('email_logs').insert({
-      recipient_email: params.to,
-      template_name: params.event,
-      status: 'sent',
-      idempotency_key: params.idempotencyKey,
-      provider_message_id: (result as any)?.id || null,
-      payload: { event: params.event } as any,
-    });
+    const providerId =
+      (result as any)?.id || null;
+
+    let providerLogId:
+      string | null = null;
+
+    if (providerId) {
+      const { data: providerLog } =
+        await supabaseAdmin
+          .from('email_logs')
+          .select('id')
+          .eq(
+            'provider_message_id',
+            providerId,
+          )
+          .order(
+            'created_at',
+            { ascending: false },
+          )
+          .limit(1)
+          .maybeSingle();
+
+      providerLogId =
+        providerLog?.id || null;
+    }
+
+    if (providerLogId) {
+      await supabaseAdmin
+        .from('email_logs')
+        .update({
+          template_name:
+            params.event,
+          idempotency_key:
+            params.idempotencyKey,
+          payload: {
+            event: params.event,
+          } as any,
+        })
+        .eq(
+          'id',
+          providerLogId,
+        );
+    } else {
+      /*
+       * Fallback somente se o log original
+       * do provider não tiver sido persistido.
+       */
+      await supabaseAdmin
+        .from('email_logs')
+        .insert({
+          recipient_email:
+            params.to,
+          template_name:
+            params.event,
+          status: 'sent',
+          idempotency_key:
+            params.idempotencyKey,
+          provider_message_id:
+            providerId,
+          payload: {
+            event: params.event,
+          } as any,
+        });
+    }
   } catch (logError) {
-    console.warn('[Email] Falha ao registrar idempotência:', logError);
+    console.warn(
+      '[Email] Falha ao registrar idempotência:',
+      logError,
+    );
   }
 
-  return { success: true, skipped: false as const, ...(result as any) };
+  return {
+    success: true,
+    skipped: false as const,
+    ...(result as any),
+  };
 }
