@@ -205,25 +205,55 @@ export const importEbookFromFile = createServerFn({ method: "POST" })
         throw new Error("Nenhum conteúdo estruturado encontrado no arquivo.");
       }
 
-      const { data: module, error: moduleError } = await supabaseAdmin
+      // Descobre a ordem inicial dos módulos já existentes
+      const { data: existingModules } = await supabaseAdmin
         .from('ebook_modules')
-        .insert({
+        .select('order_index')
+        .eq('ebook_id', data.ebook_id);
+      const baseOrder = (existingModules || []).reduce(
+        (max: number, m: any) => Math.max(max, (m.order_index ?? 0) + 1),
+        0
+      );
+
+      // Monta a lista de módulos na ordem em que aparecem no arquivo
+      const moduleTitles: string[] = [];
+      for (const section of processedSections) {
+        const title = section.module_title || "Conteúdo Importado";
+        if (!moduleTitles.includes(title)) moduleTitles.push(title);
+      }
+
+      const moduleIdByTitle = new Map<string, string>();
+      for (let i = 0; i < moduleTitles.length; i++) {
+        const { data: createdModule, error: moduleError } = await supabaseAdmin
+          .from('ebook_modules')
+          .insert({
+            ebook_id: data.ebook_id,
+            title: moduleTitles[i],
+            order_index: baseOrder + i
+          })
+          .select()
+          .maybeSingle();
+
+        if (moduleError || !createdModule) {
+          throw new Error("Erro ao criar módulo: " + (moduleError?.message || "Módulo não retornado após inserção"));
+        }
+        moduleIdByTitle.set(moduleTitles[i], createdModule.id);
+      }
+
+      const orderInModule = new Map<string, number>();
+      const chaptersToInsert = processedSections.map((section: ProcessedSection) => {
+        const moduleTitle = section.module_title || "Conteúdo Importado";
+        const next = orderInModule.get(moduleTitle) ?? 0;
+        orderInModule.set(moduleTitle, next + 1);
+        return {
           ebook_id: data.ebook_id,
-          title: "Conteúdo Importado",
-          order_index: 0
-        })
-        .select()
-        .maybeSingle();
+          module_id: moduleIdByTitle.get(moduleTitle)!,
+          title: section.title,
+          content: sanitizeRichHtml(section.content),
+          order_index: next
+        };
+      });
 
-      if (moduleError || !module) throw new Error("Erro ao criar módulo: " + (moduleError?.message || "Módulo não retornado após inserção"));
-
-      const chaptersToInsert = processedSections.map((section: ProcessedSection) => ({
-        ebook_id: data.ebook_id,
-        module_id: module.id,
-        title: section.title,
-        content: sanitizeRichHtml(section.content),
-        order_index: section.order_index
-      }));
 
       // Inserção em lotes (batching) com verificação de erro individual para maior resiliência
       const chunkSize = 15; // Reduzido ligeiramente para evitar sobrecarga de payload
