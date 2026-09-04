@@ -19,47 +19,85 @@ interface ProcessedSection {
   title: string;
   content: string;
   order_index: number;
+  module_title?: string;
 }
+
+const MODULE_HINT = /^(m[oó]dulo|module|parte|part|unidade)\b/i;
 
 async function processDocxContent(buffer: Buffer): Promise<ProcessedSection[]> {
   try {
     const result = await mammoth.convertToHtml({ buffer });
     const html = result.value;
-    
+
     if (!html || html.trim().length === 0) {
       throw new Error("O arquivo Word parece estar vazio ou não pôde ser lido.");
     }
 
-    // Split by common chapter/section patterns in HTML
-    // Mammoth generates <h2> or <h1> for titles usually, or we can look for specific text
-    let sections = html.split(/<h[1-3][^>]*>/i);
-    
-    // If no headers, try to split by bold text or common keywords
-    if (sections.length <= 1) {
-      sections = html.split(/<p><strong>(?=(?:CAPÍTULO|MÓDULO|PARTE|CHAPTER|MODULE|SECTION)\s+\d+)/i);
+    // Captura cada título (h1-h3) e o conteúdo que vem depois dele
+    const headingRe = /<h([1-3])[^>]*>([\s\S]*?)<\/h\1>/gi;
+    const blocks: { level: number; title: string; content: string }[] = [];
+    let match: RegExpExecArray | null;
+    let lastEnd = -1;
+    let lastIndex = 0;
+
+    while ((match = headingRe.exec(html)) !== null) {
+      if (blocks.length > 0) {
+        blocks[blocks.length - 1].content = html.slice(lastEnd, match.index).trim();
+      }
+      const title = match[2].replace(/<[^>]+>/g, "").trim();
+      blocks.push({ level: Number(match[1]), title, content: "" });
+      lastEnd = match.index + match[0].length;
+      lastIndex = lastEnd;
     }
 
-    return sections
-      .map((s: string) => s.trim())
-      .filter((s: string) => s.length > 20)
-      .slice(0, 100)
-      .map((content: string, index: number) => {
-        // Clean up HTML tags for the title
-        const titleMatch = content.match(/^([^<]+)/);
-        const title = titleMatch ? titleMatch[1].trim() : `Seção ${index + 1}`;
-        const body = content.replace(/^[^<]+/, '').trim();
-        
-        return {
-          title: title.length < 100 ? title : `Capítulo ${index + 1}`,
-          content: body || content, // Preserve HTML from mammoth
-          order_index: index
-        };
+    if (blocks.length === 0) {
+      // Sem títulos: cai no comportamento antigo (um único bloco)
+      return [{ title: "Conteúdo importado", content: html, order_index: 0 }];
+    }
+
+    blocks[blocks.length - 1].content = html.slice(lastIndex).trim();
+
+    const hasModuleHeadings = blocks.some((b) => MODULE_HINT.test(b.title));
+    const hasH1 = blocks.some((b) => b.level === 1);
+
+    const sections: ProcessedSection[] = [];
+    let currentModule: string | undefined;
+    let skippedCover = false;
+
+    for (const block of blocks) {
+      const isModule = hasModuleHeadings
+        ? MODULE_HINT.test(block.title)
+        : hasH1 && block.level === 1;
+
+      if (isModule) {
+        currentModule = block.title;
+        continue;
+      }
+
+      // Ignora capa/subtítulo antes do primeiro módulo quando não há texto real
+      const plain = block.content.replace(/<[^>]+>/g, "").trim();
+      if (!currentModule && !skippedCover && plain.length < 200) {
+        skippedCover = true;
+        continue;
+      }
+      if (plain.length === 0) continue;
+
+      sections.push({
+        title: block.title || `Capítulo ${sections.length + 1}`,
+        content: block.content,
+        order_index: sections.length,
+        module_title: currentModule,
       });
+    }
+
+    return sections.slice(0, 200);
   } catch (error: any) {
     console.error("DOCX processing error:", error);
+    if (error?.message?.includes("vazio")) throw error;
     throw new Error("Falha ao processar o arquivo Word. Verifique se o arquivo não está corrompido.");
   }
 }
+
 
 async function processPdfContent(buffer: Buffer): Promise<ProcessedSection[]> {
   let rawText = "";
@@ -167,25 +205,55 @@ export const importEbookFromFile = createServerFn({ method: "POST" })
         throw new Error("Nenhum conteúdo estruturado encontrado no arquivo.");
       }
 
-      const { data: module, error: moduleError } = await supabaseAdmin
+      // Descobre a ordem inicial dos módulos já existentes
+      const { data: existingModules } = await supabaseAdmin
         .from('ebook_modules')
-        .insert({
+        .select('order_index')
+        .eq('ebook_id', data.ebook_id);
+      const baseOrder = (existingModules || []).reduce(
+        (max: number, m: any) => Math.max(max, (m.order_index ?? 0) + 1),
+        0
+      );
+
+      // Monta a lista de módulos na ordem em que aparecem no arquivo
+      const moduleTitles: string[] = [];
+      for (const section of processedSections) {
+        const title = section.module_title || "Conteúdo Importado";
+        if (!moduleTitles.includes(title)) moduleTitles.push(title);
+      }
+
+      const moduleIdByTitle = new Map<string, string>();
+      for (let i = 0; i < moduleTitles.length; i++) {
+        const { data: createdModule, error: moduleError } = await supabaseAdmin
+          .from('ebook_modules')
+          .insert({
+            ebook_id: data.ebook_id,
+            title: moduleTitles[i],
+            order_index: baseOrder + i
+          })
+          .select()
+          .maybeSingle();
+
+        if (moduleError || !createdModule) {
+          throw new Error("Erro ao criar módulo: " + (moduleError?.message || "Módulo não retornado após inserção"));
+        }
+        moduleIdByTitle.set(moduleTitles[i], createdModule.id);
+      }
+
+      const orderInModule = new Map<string, number>();
+      const chaptersToInsert = processedSections.map((section: ProcessedSection) => {
+        const moduleTitle = section.module_title || "Conteúdo Importado";
+        const next = orderInModule.get(moduleTitle) ?? 0;
+        orderInModule.set(moduleTitle, next + 1);
+        return {
           ebook_id: data.ebook_id,
-          title: "Conteúdo Importado",
-          order_index: 0
-        })
-        .select()
-        .maybeSingle();
+          module_id: moduleIdByTitle.get(moduleTitle)!,
+          title: section.title,
+          content: sanitizeRichHtml(section.content),
+          order_index: next
+        };
+      });
 
-      if (moduleError || !module) throw new Error("Erro ao criar módulo: " + (moduleError?.message || "Módulo não retornado após inserção"));
-
-      const chaptersToInsert = processedSections.map((section: ProcessedSection) => ({
-        ebook_id: data.ebook_id,
-        module_id: module.id,
-        title: section.title,
-        content: sanitizeRichHtml(section.content),
-        order_index: section.order_index
-      }));
 
       // Inserção em lotes (batching) com verificação de erro individual para maior resiliência
       const chunkSize = 15; // Reduzido ligeiramente para evitar sobrecarga de payload
