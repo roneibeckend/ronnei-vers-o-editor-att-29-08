@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, Sparkles, X, Loader2 } from 'lucide-react';
+import { ShoppingCart, Sparkles, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEnrollments } from '@/hooks/use-enrollments';
 import { toast } from 'sonner';
@@ -343,13 +343,6 @@ export function PostPurchaseOffer({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl glass border-white/10 p-0 overflow-hidden sm:rounded-3xl w-[92vw] sm:w-full fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-h-[90vh] flex flex-col outline-none z-[9999]">
         <div className="relative p-4 sm:p-8 flex flex-col h-full overflow-hidden">
-          <button 
-            onClick={onClose}
-            className="absolute right-4 top-4 text-white/40 hover:text-white transition-colors z-10"
-          >
-            <X className="h-6 w-6" />
-          </button>
-
           <DialogHeader className="mb-6 shrink-0">
             <div className="flex items-center gap-2 text-gold mb-2">
               <Sparkles className="h-5 w-5 fill-current" />
