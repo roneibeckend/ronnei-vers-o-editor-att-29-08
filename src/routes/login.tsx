@@ -776,16 +776,16 @@ export function LoginPage({ initialMode = "login" }: { initialMode?: Mode }) {
             {isSignup ? (
               <>
                 Já tem conta?{" "}
-                <button className="text-gold hover:underline" onClick={() => setMode("login")}>
+                <Link className="text-gold hover:underline" to="/login">
                   Entrar
-                </button>
+                </Link>
               </>
             ) : (
               <>
                 Ainda não é aluno?{" "}
-                <button className="text-gold hover:underline" onClick={() => setMode("signup")}>
+                <Link className="text-gold hover:underline" to="/cadastro">
                   Criar conta grátis
-                </button>
+                </Link>
               </>
             )}
           </p>
