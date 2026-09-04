@@ -18,6 +18,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as InicioRouteImport } from './routes/inicio'
 import { Route as GoogleRouteImport } from './routes/google'
 import { Route as FidelizeRouteImport } from './routes/fidelize'
+import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -134,6 +135,11 @@ const GoogleRoute = GoogleRouteImport.update({
 const FidelizeRoute = FidelizeRouteImport.update({
   id: '/fidelize',
   path: '/fidelize',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CadastroRoute = CadastroRouteImport.update({
+  id: '/cadastro',
+  path: '/cadastro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -510,6 +516,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
+  '/cadastro': typeof CadastroRoute
   '/fidelize': typeof FidelizeRoute
   '/google': typeof GoogleRoute
   '/inicio': typeof InicioRoute
@@ -591,6 +598,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/cadastro': typeof CadastroRoute
   '/fidelize': typeof FidelizeRoute
   '/google': typeof GoogleRoute
   '/inicio': typeof InicioRoute
@@ -673,6 +681,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
+  '/cadastro': typeof CadastroRoute
   '/fidelize': typeof FidelizeRoute
   '/google': typeof GoogleRoute
   '/inicio': typeof InicioRoute
@@ -758,6 +767,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/app'
+    | '/cadastro'
     | '/fidelize'
     | '/google'
     | '/inicio'
@@ -839,6 +849,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/cadastro'
     | '/fidelize'
     | '/google'
     | '/inicio'
@@ -920,6 +931,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/app'
+    | '/cadastro'
     | '/fidelize'
     | '/google'
     | '/inicio'
@@ -1004,6 +1016,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   AppRoute: typeof AppRouteWithChildren
+  CadastroRoute: typeof CadastroRoute
   FidelizeRoute: typeof FidelizeRoute
   GoogleRoute: typeof GoogleRoute
   InicioRoute: typeof InicioRoute
@@ -1094,6 +1107,13 @@ declare module '@tanstack/react-router' {
       path: '/fidelize'
       fullPath: '/fidelize'
       preLoaderRoute: typeof FidelizeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cadastro': {
+      id: '/cadastro'
+      path: '/cadastro'
+      fullPath: '/cadastro'
+      preLoaderRoute: typeof CadastroRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -1759,6 +1779,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   AppRoute: AppRouteWithChildren,
+  CadastroRoute: CadastroRoute,
   FidelizeRoute: FidelizeRoute,
   GoogleRoute: GoogleRoute,
   InicioRoute: InicioRoute,
