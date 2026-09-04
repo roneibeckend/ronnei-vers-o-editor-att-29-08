@@ -73,7 +73,7 @@ export function initPixel(): void {
 
 /** Dispara um evento padrão do Pixel (Meta). GA4 recebe tudo via GTM/dataLayer. */
 export function trackEvent(
-  event: "PageView" | "InitiateCheckout" | "Lead" | "ViewContent" | "Purchase" | "AddToCart",
+  event: "PageView" | "InitiateCheckout" | "Lead" | "ViewContent" | "Purchase" | "AddToCart" | "CompleteRegistration",
   params?: Record<string, any>
 ): void {
   if (typeof window === "undefined") return;
@@ -84,6 +84,36 @@ export function trackEvent(
     console.warn("[pixel] fbq error", err);
   }
 
+}
+
+/** Registra uma nova conta uma única vez por usuário neste navegador. */
+export function trackCompleteRegistration(
+  userId: string,
+  method: "email" | "google" | "facebook" | "apple" | string = "email",
+): void {
+  if (typeof window === "undefined" || !userId) return;
+
+  const marker = `rnv_complete_registration_${userId}`;
+  try {
+    if (localStorage.getItem(marker)) return;
+  } catch {
+    /* O rastreamento ainda pode funcionar sem localStorage. */
+  }
+
+  initPixel();
+  if (!window.fbq) return;
+
+  window.fbq("track", "CompleteRegistration", {
+    content_name: "Cadastro Ronnei na Veia",
+    method,
+    status: "completed",
+  });
+
+  try {
+    localStorage.setItem(marker, "1");
+  } catch {
+    /* noop */
+  }
 }
 
 /** Helper específico para o CTA principal. */

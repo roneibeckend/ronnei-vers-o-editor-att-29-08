@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { validatePassword } from "@/lib/password-validation";
 import { checkSession } from "@/lib/session-guard";
 import { gtmLogin, gtmSignUp, gtmRememberAuthMethod } from "@/lib/gtm";
+import { trackCompleteRegistration } from "@/lib/pixel";
 import {
   Dialog,
   DialogContent,
@@ -59,7 +60,7 @@ const ENABLE_GOOGLE_LOGIN = true;
 const ENABLE_FACEBOOK_LOGIN = false;
 const ENABLE_APPLE_LOGIN = false;
 
-function LoginPage() {
+export function LoginPage({ initialMode = "login" }: { initialMode?: Mode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -74,7 +75,7 @@ function LoginPage() {
     }
     navigate({ to: target, replace });
   };
-  const [mode, setMode] = useState<Mode>("login");
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -317,6 +318,9 @@ function LoginPage() {
           setMode("login");
           return;
         }
+
+        // Conta confirmada pelo Supabase: registra a conversão uma única vez.
+        trackCompleteRegistration(data.user.id, "email");
 
         // Boas-vindas jamais bloqueiam autenticação.
         void import("@/lib/email-triggers.functions")

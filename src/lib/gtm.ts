@@ -6,6 +6,8 @@
  * Este módulo só expõe helpers de dataLayer, seguros em SSR.
  */
 
+import { trackCompleteRegistration } from "./pixel";
+
 export const GTM_ID = "GTM-M376JTZP";
 
 type DataLayerEvent = Record<string, unknown> & { event: string };
@@ -90,7 +92,10 @@ export function gtmTrackAuthenticatedUser(user: {
   const method: GtmAuthMethod = provider === "email" ? "email" : provider;
   const createdAt = user.created_at ? new Date(user.created_at).getTime() : 0;
   const isNew = createdAt > 0 && Date.now() - createdAt < 2 * 60 * 1000;
-  if (isNew) gtmSignUp(method, `${user.id}`);
+  if (isNew) {
+    gtmSignUp(method, `${user.id}`);
+    trackCompleteRegistration(user.id, method);
+  }
   gtmLogin(method, `${user.id}:${Math.floor(Date.now() / 60000)}`);
 }
 
