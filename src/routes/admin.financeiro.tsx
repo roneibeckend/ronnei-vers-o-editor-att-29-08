@@ -17,6 +17,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 
 import { getFinancialSummary } from "@/lib/finance.functions";
+import {
+  getFinancialConfig,
+  saveFinancialConfig,
+} from "@/lib/financial-config.functions";
 import { FinanceOutflowStatement } from "@/components/admin/FinanceOutflowStatement";
 import { toast } from "sonner";
 
@@ -41,8 +45,11 @@ function FinancePage() {
   const [revenue, setRevenue] = useState<number>(0);
   const [costs, setCosts] = useState<Cost[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
+  const [configVersion, setConfigVersion] = useState<string | null>(null);
 
   const fetchFinancialSummary = useServerFn(getFinancialSummary);
+  const fetchFinancialConfig = useServerFn(getFinancialConfig);
+  const saveFinancialConfigFn = useServerFn(saveFinancialConfig);
 
   const getDates = (p: string) => {
     const now = new Date();
@@ -76,65 +83,105 @@ function FinancePage() {
       const dates = getDates(period);
 
       
-      const [settingsRes, costsRes, partnersRes, autoRevenue] = await Promise.all([
-        supabase.from("financial_settings").select("*").maybeSingle(),
-        supabase.from("financial_costs").select("*").order("created_at"),
-        supabase.from("financial_partners").select("*").order("created_at"),
-        fetchFinancialSummary({ data: { startDate: dates.start, endDate: dates.end } })
+      const [configRaw, autoRevenue] = await Promise.all([
+        fetchFinancialConfig(),
+        fetchFinancialSummary({
+          data: { startDate: dates.start, endDate: dates.end },
+        }),
       ]);
 
-      if (settingsRes.data) {
-        setRevenue(autoRevenue.totalNetRevenue || Number(settingsRes.data.manual_revenue));
-      }
-      if (costsRes.data) setCosts(costsRes.data.map(c => ({ id: c.id, label: c.label, value: Number(c.value) })));
-      if (partnersRes.data) setPartners(partnersRes.data.map(p => ({ 
-        id: p.id, 
-        name: p.name, 
-        percent: Number(p.percent),
-        user_id: p.user_id
-      })));
+      const config = configRaw as any;
+
+      setRevenue(
+        Number(autoRevenue.totalNetRevenue) ||
+          Number(config.manualRevenue || 0),
+      );
+
+      setConfigVersion(config.version ?? null);
+
+      setCosts(
+        (config.costs ?? []).map((c: any) => ({
+          id: c.id,
+          label: c.label,
+          value: Number(c.value) || 0,
+        })),
+      );
+
+      setPartners(
+        (config.partners ?? []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          percent: Number(p.percent) || 0,
+          user_id: p.user_id ?? null,
+        })),
+      );
 
       return {
-        revenue: settingsRes.data,
-        costs: costsRes.data,
-        partners: partnersRes.data
+        revenue: autoRevenue,
+        config,
       };
     }
   });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // 1. Save revenue
-      const { error: settingsError } = await supabase
-        .from("financial_settings")
-        .upsert({ 
-          id: '00000000-0000-0000-0000-000000000000', 
-          manual_revenue: revenue,
-          updated_at: new Date().toISOString()
-        });
-      if (settingsError) throw settingsError;
-
-      // 2. Save costs (Replace all)
-      await supabase.from("financial_costs").delete().neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
-      const { error: costsError } = await supabase
-        .from("financial_costs")
-        .insert(costs.map(c => ({ label: c.label, value: c.value })));
-      if (costsError) throw costsError;
-
-      // 3. Save partners (Replace all)
-      await supabase.from("financial_partners").delete().neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
-      const { error: partnersError } = await supabase
-        .from("financial_partners")
-        .insert(partners.map(p => ({ name: p.name, percent: p.percent, user_id: p.user_id })));
-      if (partnersError) throw partnersError;
+      return await saveFinancialConfigFn({
+        data: {
+          expectedVersion: configVersion,
+          costs: costs.map((c) => ({
+            id: c.id,
+            label: c.label.trim(),
+            value: Number(c.value) || 0,
+          })),
+          partners: partners.map((p) => ({
+            id: p.id,
+            name: p.name.trim(),
+            percent: Number(p.percent) || 0,
+            user_id: p.user_id ?? null,
+          })),
+        },
+      });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["financial-config"] });
-      toast.success("Configurações financeiras salvas com sucesso!");
+
+    onSuccess: (result: any) => {
+      setConfigVersion(result?.version ?? null);
+
+      if (Array.isArray(result?.costs)) {
+        setCosts(
+          result.costs.map((c: any) => ({
+            id: c.id,
+            label: c.label,
+            value: Number(c.value) || 0,
+          })),
+        );
+      }
+
+      if (Array.isArray(result?.partners)) {
+        setPartners(
+          result.partners.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            percent: Number(p.percent) || 0,
+            user_id: p.user_id ?? null,
+          })),
+        );
+      }
+
+      queryClient.invalidateQueries({
+        queryKey: ["financial-config"],
+      });
+
+      toast.success(
+        "Configurações financeiras salvas e confirmadas no banco!",
+      );
     },
+
     onError: (error: any) => {
-      toast.error("Erro ao salvar configurações: " + error.message);
-    }
+      toast.error(
+        error?.message ||
+          "Não foi possível salvar as configurações financeiras.",
+      );
+    },
   });
 
   const totalCost = useMemo(() => costs.reduce((s, c) => s + (c.value || 0), 0), [costs]);
