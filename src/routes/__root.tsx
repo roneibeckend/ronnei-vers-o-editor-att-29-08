@@ -468,7 +468,7 @@ function RootComponent() {
         if ("requestIdleCallback" in window) {
           (window as any).requestIdleCallback(startPixel, { timeout: 12000 });
         } else {
-          pixelTimer = window.setTimeout(startPixel, 12000);
+          pixelTimer = (window as Window).setTimeout(startPixel, 12000);
         }
       };
 

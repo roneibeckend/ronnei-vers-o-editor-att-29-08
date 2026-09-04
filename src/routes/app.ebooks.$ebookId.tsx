@@ -496,6 +496,7 @@ function EbookReaderPage() {
         affiliateRef: getAffiliateRef() || null,
         extraItems: products.slice(1).map((p: any) => ({ productId: p.productId, productType: p.productType, discountPercent: discount })),
         couponCode: appliedCoupon?.code || localStorage.getItem('pending_coupon_code') || null,
+        couponDiscount: appliedCoupon?.discountAmount ?? null,
       });
     } catch (error: any) {
       console.error("Erro ao processar compra:", error);

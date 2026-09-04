@@ -19,6 +19,8 @@ export interface CheckoutProduct {
   /** Itens adicionais (order bump/upsell) cobrados na mesma transação. */
   extraItems?: { productId: string; productType: CheckoutProductType; discountPercent?: number }[];
   couponCode?: string | null;
+  /** Desconto do cupom já validado no servidor (apenas prévia; o servidor recalcula). */
+  couponDiscount?: number | null;
   onSuccess?: (() => void) | null;
 }
 
