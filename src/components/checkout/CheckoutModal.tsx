@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { useCheckout, type CheckoutProduct } from "@/hooks/use-checkout";
 import { createNativeCheckout, getCheckoutProfile, getNativeCheckoutStatus } from "@/lib/checkout-native.functions";
 import { formatCpf, cpfDigits } from "@/lib/cpf";
+import { computeCheckoutPreview } from "@/lib/checkout-preview";
 import { gtmPurchase } from "@/lib/gtm";
 
 type Method = "PIX" | "CREDIT_CARD" | "BOLETO";
@@ -221,7 +222,15 @@ function CheckoutBody({ product, onClose }: { product: CheckoutProduct; onClose:
     }
   };
 
-  const price = Number(charge?.value ?? product.value ?? 0);
+  // Prévia: subtotal do pedido menos o desconto do cupom já validado no servidor.
+  // Após criar a cobrança, mostramos o valor autoritativo devolvido pelo backend.
+  const preview = computeCheckoutPreview({
+    subtotal: Number(product.value ?? 0),
+    couponDiscount: product.couponDiscount,
+    couponCode: product.couponCode,
+  });
+  const price = charge ? Number(charge.value ?? 0) : preview.total;
+  const isFree = !charge && preview.isFree;
 
   return (
     <div className="grid max-h-[92vh] grid-cols-1 overflow-y-auto md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
@@ -258,14 +267,26 @@ function CheckoutBody({ product, onClose }: { product: CheckoutProduct; onClose:
           </ul>
         )}
 
-        {price > 0 && (
-          <div className="rounded-2xl border bg-background/60 p-4">
+        {(price > 0 || preview.hasDiscount) && (
+          <div className="space-y-2 rounded-2xl border bg-background/60 p-4">
+            {preview.hasDiscount && !charge && (
+              <>
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span className="line-through">{brl(preview.subtotal)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm font-semibold text-emerald-500">
+                  <span>Cupom {preview.couponCode}</span>
+                  <span>-{brl(preview.discount)}</span>
+                </div>
+              </>
+            )}
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
               {product.recurring || product.productType === "fidelize" ? "Total mensal" : "Total"}
             </p>
-            <p className="mt-1 text-3xl font-black">
+            <p className="text-3xl font-black">
               {brl(price)}
-              {(product.recurring || product.productType === "fidelize") && (
+              {(product.recurring || product.productType === "fidelize") && !isFree && (
                 <span className="ml-1 text-sm font-normal text-muted-foreground">/mês</span>
               )}
             </p>
@@ -292,6 +313,7 @@ function CheckoutBody({ product, onClose }: { product: CheckoutProduct; onClose:
           </div>
         ) : (
           <>
+            {!isFree && (
             <div className="mb-6 grid grid-cols-3 gap-1 rounded-2xl bg-muted p-1">
               {METHODS.map((m) => {
                 const Icon = m.icon;
@@ -308,6 +330,7 @@ function CheckoutBody({ product, onClose }: { product: CheckoutProduct; onClose:
                 );
               })}
             </div>
+            )}
 
             {charge && method === "PIX" && charge.pix ? (
               <div className="space-y-4 text-center">
@@ -376,7 +399,7 @@ function CheckoutBody({ product, onClose }: { product: CheckoutProduct; onClose:
                   />
                 </div>
 
-                {method === "CREDIT_CARD" && (
+                {method === "CREDIT_CARD" && !isFree && (
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="sm:col-span-2">
                       <Field
@@ -410,7 +433,13 @@ function CheckoutBody({ product, onClose }: { product: CheckoutProduct; onClose:
 
                 <Button className="w-full" size="lg" onClick={handleSubmit} disabled={loading}>
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  {method === "PIX" ? "Gerar PIX" : method === "BOLETO" ? "Gerar boleto" : "Pagar com cartão"}
+                  {isFree
+                    ? "Liberar acesso com cupom"
+                    : method === "PIX"
+                      ? "Gerar PIX"
+                      : method === "BOLETO"
+                        ? "Gerar boleto"
+                        : "Pagar com cartão"}
                 </Button>
                 <p className="text-center text-xs text-muted-foreground">
                   Confirmação automática · Ativação imediata
