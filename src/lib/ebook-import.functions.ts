@@ -4,6 +4,11 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sanitizeRichHtml } from "@/lib/sanitize-html";
 import * as pdf from "pdf-parse";
 import * as mammoth from "mammoth";
+import {
+  isModuleTitle,
+  normalizeImportStructure,
+  type ImportSection,
+} from "@/lib/ebook-import-structure";
 
 // Using require for pdf-parse if default import fails or to handle type mismatch
 // @ts-ignore
@@ -15,14 +20,7 @@ try {
   console.error("Critical: Failed to initialize pdf-parse", e);
 }
 
-interface ProcessedSection {
-  title: string;
-  content: string;
-  order_index: number;
-  module_title?: string;
-}
-
-const MODULE_HINT = /^(m[oó]dulo|module|parte|part|unidade)\b/i;
+type ProcessedSection = ImportSection;
 
 async function processDocxContent(buffer: Buffer): Promise<ProcessedSection[]> {
   try {
@@ -57,7 +55,7 @@ async function processDocxContent(buffer: Buffer): Promise<ProcessedSection[]> {
 
     blocks[blocks.length - 1].content = html.slice(lastIndex).trim();
 
-    const hasModuleHeadings = blocks.some((b) => MODULE_HINT.test(b.title));
+    const hasModuleHeadings = blocks.some((b) => isModuleTitle(b.title));
     const hasH1 = blocks.some((b) => b.level === 1);
 
     const sections: ProcessedSection[] = [];
@@ -66,7 +64,7 @@ async function processDocxContent(buffer: Buffer): Promise<ProcessedSection[]> {
 
     for (const block of blocks) {
       const isModule = hasModuleHeadings
-        ? MODULE_HINT.test(block.title)
+        ? isModuleTitle(block.title)
         : hasH1 && block.level === 1;
 
       if (isModule) {
@@ -199,6 +197,8 @@ export const importEbookFromFile = createServerFn({ method: "POST" })
         throw new Error("Formato de arquivo não suportado. Use PDF ou DOCX.");
       }
 
+      processedSections = normalizeImportStructure(processedSections);
+
       console.log(`[importEbookFromFile] Conteúdo extraído: ${processedSections.length} seções em ${Date.now() - startTime}ms`);
 
       if (processedSections.length === 0) {
@@ -245,9 +245,13 @@ export const importEbookFromFile = createServerFn({ method: "POST" })
         const moduleTitle = section.module_title || "Conteúdo Importado";
         const next = orderInModule.get(moduleTitle) ?? 0;
         orderInModule.set(moduleTitle, next + 1);
+        const moduleId = moduleIdByTitle.get(moduleTitle);
+        if (!moduleId) {
+          throw new Error(`Módulo não encontrado durante a importação: ${moduleTitle}`);
+        }
         return {
           ebook_id: data.ebook_id,
-          module_id: moduleIdByTitle.get(moduleTitle)!,
+          module_id: moduleId,
           title: section.title,
           content: sanitizeRichHtml(section.content),
           order_index: next
@@ -275,6 +279,7 @@ export const importEbookFromFile = createServerFn({ method: "POST" })
       return { 
         success: true, 
         chapters_count: processedSections.length,
+        modules_count: moduleTitles.length,
         duration_ms: duration
       };
     } catch (err: any) {
