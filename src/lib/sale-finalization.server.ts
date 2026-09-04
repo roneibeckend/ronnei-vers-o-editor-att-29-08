@@ -174,6 +174,8 @@ export async function finalizeStandardPaidSale(input: {
   // 2. Não confiamos apenas no retorno da função.
   // Conferimos se a matrícula realmente existe.
   for (const product of products) {
+    // hasAccess cobre apenas conteúdos com matrícula (cursos/e-books).
+    if (product.productType !== "course" && product.productType !== "ebook") continue;
     const verified = await hasAccess(
       product.productType,
       product.productId,
