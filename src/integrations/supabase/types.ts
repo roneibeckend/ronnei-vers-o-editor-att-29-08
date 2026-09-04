@@ -4232,6 +4232,10 @@ export type Database = {
         Args: { p_content: string; p_ticket_id: string }
         Returns: undefined
       }
+      save_financial_config_v2: {
+        Args: { p_costs?: Json; p_expected_version?: string; p_partners?: Json }
+        Returns: Json
+      }
       trigger_consultation_followups: { Args: never; Returns: undefined }
       trigger_consultation_recordings: { Args: never; Returns: undefined }
       trigger_consultation_reminders: { Args: never; Returns: undefined }
