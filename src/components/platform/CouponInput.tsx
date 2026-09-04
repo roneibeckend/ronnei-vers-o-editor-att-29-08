@@ -73,13 +73,33 @@ export function CouponInput({
         return;
       }
 
-      onApplied({
+      const nextCoupon: AppliedCoupon = {
         code: String(result.code ?? trimmed.toUpperCase()),
         discountType: result.discountType ?? "percentage",
         discountValue: Number(result.discountValue) || 0,
         discountAmount: Number(result.discountAmount) || 0,
         finalAmount: result.finalAmount != null ? Number(result.finalAmount) : (amount ?? 0),
-      });
+      };
+
+      onApplied(nextCoupon);
+
+      // Mantém uma prévia validada para o checkout global.
+      // O backend continua recalculando o cupom antes da cobrança.
+      if (typeof window !== "undefined") {
+        localStorage.setItem("pending_coupon_code", nextCoupon.code);
+        localStorage.setItem(
+          "pending_coupon_preview",
+          JSON.stringify({
+            code: nextCoupon.code,
+            productId: productId ?? null,
+            productType: productType ?? null,
+            discountAmount: nextCoupon.discountAmount,
+            finalAmount: nextCoupon.finalAmount,
+            validatedAt: Date.now(),
+          }),
+        );
+      }
+
       setError(null);
     } catch (err: any) {
       setError(err?.message || "Não foi possível validar o cupom.");
@@ -93,6 +113,11 @@ export function CouponInput({
     onApplied(null);
     setCode("");
     setError(null);
+
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("pending_coupon_code");
+      localStorage.removeItem("pending_coupon_preview");
+    }
   };
 
   if (applied) {
