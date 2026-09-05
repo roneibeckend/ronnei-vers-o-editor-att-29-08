@@ -1,6 +1,8 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   isEmailCapacityError,
+  isEmailSendingDisabledError,
+  isEmailSendingEnabled,
   triggerEmailEvent,
 } from "@/lib/resend.server";
 
@@ -143,8 +145,37 @@ async function processRecipient(row: ClaimedRecipient) {
 
     if (error) throw new Error(error.message);
 
-    return { sent: true, failed: false, capacityLimited: false };
+    return {
+      sent: true,
+      failed: false,
+      capacityLimited: false,
+      sendingDisabled: false,
+    };
   } catch (error: any) {
+    const sendingDisabled =
+      isEmailSendingDisabledError(error);
+
+    if (sendingDisabled) {
+      await db
+        .from("content_email_recipients")
+        .update({
+          status: "queued",
+          attempts: currentAttempts,
+          last_error:
+            error?.message ||
+            "Envios de e-mail desativados.",
+          next_retry_at: null,
+        })
+        .eq("id", row.recipient_id);
+
+      return {
+        sent: false,
+        failed: false,
+        capacityLimited: false,
+        sendingDisabled: true,
+      };
+    }
+
     const capacityLimited = isEmailCapacityError(error);
     const effectiveAttempts = capacityLimited ? currentAttempts : nextAttempts;
     const exhausted = !capacityLimited && effectiveAttempts >= MAX_ATTEMPTS;
@@ -169,11 +200,27 @@ async function processRecipient(row: ClaimedRecipient) {
       })
       .eq("id", row.recipient_id);
 
-    return { sent: false, failed: true, capacityLimited };
+    return {
+      sent: false,
+      failed: true,
+      capacityLimited,
+      sendingDisabled: false,
+    };
   }
 }
 
 export async function processContentEmailCampaignBatch(limit = BATCH_SIZE) {
+  if (!(await isEmailSendingEnabled())) {
+    return {
+      processed: 0,
+      sent: 0,
+      failed: 0,
+      capacityLimited: false,
+      sendingDisabled: true,
+      campaignId: null,
+    };
+  }
+
   const { data, error } = await db.rpc("claim_content_email_recipients", {
     p_limit: limit,
   });
@@ -188,6 +235,7 @@ export async function processContentEmailCampaignBatch(limit = BATCH_SIZE) {
       sent: 0,
       failed: 0,
       capacityLimited: false,
+      sendingDisabled: false,
       campaignId: null,
     };
   }
@@ -197,6 +245,7 @@ export async function processContentEmailCampaignBatch(limit = BATCH_SIZE) {
   let sent = 0;
   let failed = 0;
   let capacityLimited = false;
+  let sendingDisabled = false;
 
   for (let index = 0; index < claimed.length; index += CONCURRENCY) {
     const group = claimed.slice(index, index + CONCURRENCY);
@@ -205,6 +254,39 @@ export async function processContentEmailCampaignBatch(limit = BATCH_SIZE) {
     processed += group.length;
     sent += results.filter((r) => r.sent).length;
     failed += results.filter((r) => r.failed).length;
+
+    if (results.some((r) => r.sendingDisabled)) {
+      sendingDisabled = true;
+
+      const remaining =
+        claimed.slice(index + group.length);
+
+      if (remaining.length > 0) {
+        await db
+          .from("content_email_recipients")
+          .update({
+            status: "queued",
+            next_retry_at: null,
+          })
+          .in(
+            "id",
+            remaining.map(
+              (item) => item.recipient_id,
+            ),
+          )
+          .eq("status", "processing");
+      }
+
+      await db
+        .from("content_email_campaigns")
+        .update({
+          last_error:
+            "Envios de e-mail desativados. Campanha aguardando reativação.",
+        })
+        .eq("id", campaignId);
+
+      break;
+    }
 
     if (results.some((r) => r.capacityLimited)) {
       capacityLimited = true;
@@ -235,5 +317,13 @@ export async function processContentEmailCampaignBatch(limit = BATCH_SIZE) {
 
   const summary = await refreshCampaignSummary(campaignId);
 
-  return { processed, sent, failed, capacityLimited, campaignId, summary };
+  return {
+    processed,
+    sent,
+    failed,
+    capacityLimited,
+    sendingDisabled,
+    campaignId,
+    summary,
+  };
 }

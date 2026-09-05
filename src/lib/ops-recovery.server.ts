@@ -10,6 +10,8 @@ import {
 import { raiseOpsAlert } from "@/lib/ops-alerts.server";
 import {
   isEmailCapacityError,
+  isEmailSendingDisabledError,
+  isEmailSendingEnabled,
   triggerEmailEvent,
 } from "@/lib/resend.server";
 
@@ -660,6 +662,14 @@ function parseRetryPayload(raw: any): RetryPayload | null {
 
 export async function retryFailedEmails(): Promise<OpsRecoveryResult["emails"]> {
   const summary = { processed: 0, sent: 0, failed: 0, exhausted: 0 };
+
+  if (!(await isEmailSendingEnabled())) {
+    console.log(
+      "[ops] Fila de e-mails pausada: envios desativados pelo administrador.",
+    );
+    return summary;
+  }
+
   const nowIso = new Date().toISOString();
 
   const { data: pending } = await supabaseAdmin
@@ -694,6 +704,32 @@ export async function retryFailedEmails(): Promise<OpsRecoveryResult["emails"]> 
         .eq("id", row.id);
       summary.sent += 1;
     } catch (err: any) {
+      const sendingDisabled =
+        isEmailSendingDisabledError(err);
+
+      if (sendingDisabled) {
+        await supabaseAdmin
+          .from("email_logs")
+          .update({
+            status: "failed",
+            attempts:
+              Number(row.attempts || 0),
+            error_message:
+              err?.message ||
+              "Envios de e-mail desativados.",
+            next_retry_at: null,
+            resolved_at: null,
+          })
+          .eq("id", row.id);
+
+        console.log(
+          "[ops] Reenvio interrompido: envios desativados pelo administrador.",
+        );
+
+        summary.failed += 1;
+        break;
+      }
+
       const capacityLimited =
         isEmailCapacityError(err);
 

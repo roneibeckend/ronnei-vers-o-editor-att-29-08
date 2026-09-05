@@ -4,17 +4,52 @@ import { validateEmailData } from "@/emails/catalog";
 
 
 
-export async function getResendConfig() {
-  const { data: settings } = await supabaseAdmin
+export const EMAIL_SENDING_DISABLED_CODE =
+  "EMAIL_SENDING_DISABLED";
+
+export function isEmailSendingDisabledError(error: any) {
+  return String(error?.code || "") === EMAIL_SENDING_DISABLED_CODE;
+}
+
+export async function isEmailSendingEnabled() {
+  const { data, error } = await supabaseAdmin
     .from("email_settings")
-    .select("*")
+    .select("is_enabled")
+    .order("created_at", { ascending: true })
+    .limit(1)
     .maybeSingle();
 
-  // Se explicitamente desabilitado, lançamos erro, EXCETO se estivermos apenas configurando/validando
-  // (a lógica de envio real chama esta função, então o check de is_enabled é importante)
-  if (settings && settings.is_enabled === false) {
-    // Nota: Deixamos o erro para o fluxo de envio real. 
-    // Para fins de configuração, retornamos a config mesmo se is_enabled for false.
+  if (error) {
+    throw new Error(
+      `Não foi possível consultar o estado dos e-mails: ${error.message}`,
+    );
+  }
+
+  return data?.is_enabled !== false;
+}
+
+
+export async function getResendConfig() {
+  const { data: settings, error: settingsError } =
+    await supabaseAdmin
+      .from("email_settings")
+      .select("*")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+  if (settingsError) {
+    throw new Error(
+      `Não foi possível consultar as configurações de e-mail: ${settingsError.message}`,
+    );
+  }
+
+  if (settings?.is_enabled === false) {
+    const disabledError: any = new Error(
+      "Envios de e-mail estão desativados nas configurações administrativas.",
+    );
+    disabledError.code = EMAIL_SENDING_DISABLED_CODE;
+    throw disabledError;
   }
 
   const { data: integration, error } = await supabaseAdmin
@@ -222,6 +257,10 @@ export async function sendResendEmail(params: {
 
     return { success: true, id: data.id };
   } catch (error: any) {
+    if (isEmailSendingDisabledError(error)) {
+      throw error;
+    }
+
     console.error('[Resend] Erro ao enviar email:', error);
     try {
       await supabaseAdmin.from('email_logs').insert({
@@ -382,25 +421,36 @@ export async function triggerEmailEvent(params: {
       ]
     });
   } catch (err: any) {
-    console.error(
-      `[Email] Falha ao disparar evento ${params.event}:`,
-      err,
-    );
+    const sendingDisabled =
+      isEmailSendingDisabledError(err);
+
+    if (!sendingDisabled) {
+      console.error(
+        `[Email] Falha ao disparar evento ${params.event}:`,
+        err,
+      );
+    }
 
     const capacityLimited =
       isEmailCapacityError(err);
 
     /*
+     * Desativação administrativa:
+     * preserva o evento para o próximo ops_recovery após reativação,
+     * sem consumir tentativa.
+     *
      * Quota/rate-limit:
-     * espera 12h e não fica criando novas filas.
+     * espera 12h e não consome tentativa definitiva.
      *
      * Erro comum:
      * mantém retry inicial de 5 minutos.
      */
     const retryDelayMs =
-      capacityLimited
-        ? 12 * 60 * 60_000
-        : 5 * 60_000;
+      sendingDisabled
+        ? 0
+        : capacityLimited
+          ? 12 * 60 * 60_000
+          : 5 * 60_000;
 
     if (!params._retry) {
       try {
@@ -444,10 +494,12 @@ export async function triggerEmailEvent(params: {
                 err?.message ||
                 'Falha desconhecida no envio.',
               next_retry_at:
-                new Date(
-                  Date.now() +
-                  retryDelayMs,
-                ).toISOString(),
+                sendingDisabled
+                  ? null
+                  : new Date(
+                      Date.now() +
+                      retryDelayMs,
+                    ).toISOString(),
               retry_payload: {
                 event:
                   params.event,
