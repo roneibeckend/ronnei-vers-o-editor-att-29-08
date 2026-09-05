@@ -81,6 +81,7 @@ import { Route as ApiPublicFidelizeHealthRouteImport } from './routes/api/public
 import { Route as ApiPublicDriveVideoRouteImport } from './routes/api/public/drive-video'
 import { Route as ApiPublicDailyUpdatesReportRouteImport } from './routes/api/public/daily-updates-report'
 import { Route as ApiPublicDailyFinancialReportRouteImport } from './routes/api/public/daily-financial-report'
+import { Route as ApiPublicContentEmailCampaignsRouteImport } from './routes/api/public/content-email-campaigns'
 import { Route as ApiPublicConsultoriaPresencaRouteImport } from './routes/api/public/consultoria-presenca'
 import { Route as ApiPublicConsultationRemindersRouteImport } from './routes/api/public/consultation-reminders'
 import { Route as ApiPublicConsultationRecordingsRouteImport } from './routes/api/public/consultation-recordings'
@@ -454,6 +455,12 @@ const ApiPublicDailyFinancialReportRoute =
     path: '/api/public/daily-financial-report',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicContentEmailCampaignsRoute =
+  ApiPublicContentEmailCampaignsRouteImport.update({
+    id: '/api/public/content-email-campaigns',
+    path: '/api/public/content-email-campaigns',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicConsultoriaPresencaRoute =
   ApiPublicConsultoriaPresencaRouteImport.update({
     id: '/api/public/consultoria-presenca',
@@ -576,6 +583,7 @@ export interface FileRoutesByFullPath {
   '/api/public/consultation-recordings': typeof ApiPublicConsultationRecordingsRoute
   '/api/public/consultation-reminders': typeof ApiPublicConsultationRemindersRoute
   '/api/public/consultoria-presenca': typeof ApiPublicConsultoriaPresencaRoute
+  '/api/public/content-email-campaigns': typeof ApiPublicContentEmailCampaignsRoute
   '/api/public/daily-financial-report': typeof ApiPublicDailyFinancialReportRoute
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
@@ -656,6 +664,7 @@ export interface FileRoutesByTo {
   '/api/public/consultation-recordings': typeof ApiPublicConsultationRecordingsRoute
   '/api/public/consultation-reminders': typeof ApiPublicConsultationRemindersRoute
   '/api/public/consultoria-presenca': typeof ApiPublicConsultoriaPresencaRoute
+  '/api/public/content-email-campaigns': typeof ApiPublicContentEmailCampaignsRoute
   '/api/public/daily-financial-report': typeof ApiPublicDailyFinancialReportRoute
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
@@ -741,6 +750,7 @@ export interface FileRoutesById {
   '/api/public/consultation-recordings': typeof ApiPublicConsultationRecordingsRoute
   '/api/public/consultation-reminders': typeof ApiPublicConsultationRemindersRoute
   '/api/public/consultoria-presenca': typeof ApiPublicConsultoriaPresencaRoute
+  '/api/public/content-email-campaigns': typeof ApiPublicContentEmailCampaignsRoute
   '/api/public/daily-financial-report': typeof ApiPublicDailyFinancialReportRoute
   '/api/public/daily-updates-report': typeof ApiPublicDailyUpdatesReportRoute
   '/api/public/drive-video': typeof ApiPublicDriveVideoRoute
@@ -827,6 +837,7 @@ export interface FileRouteTypes {
     | '/api/public/consultation-recordings'
     | '/api/public/consultation-reminders'
     | '/api/public/consultoria-presenca'
+    | '/api/public/content-email-campaigns'
     | '/api/public/daily-financial-report'
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
@@ -907,6 +918,7 @@ export interface FileRouteTypes {
     | '/api/public/consultation-recordings'
     | '/api/public/consultation-reminders'
     | '/api/public/consultoria-presenca'
+    | '/api/public/content-email-campaigns'
     | '/api/public/daily-financial-report'
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
@@ -991,6 +1003,7 @@ export interface FileRouteTypes {
     | '/api/public/consultation-recordings'
     | '/api/public/consultation-reminders'
     | '/api/public/consultoria-presenca'
+    | '/api/public/content-email-campaigns'
     | '/api/public/daily-financial-report'
     | '/api/public/daily-updates-report'
     | '/api/public/drive-video'
@@ -1033,6 +1046,7 @@ export interface RootRouteChildren {
   ApiPublicConsultationRecordingsRoute: typeof ApiPublicConsultationRecordingsRoute
   ApiPublicConsultationRemindersRoute: typeof ApiPublicConsultationRemindersRoute
   ApiPublicConsultoriaPresencaRoute: typeof ApiPublicConsultoriaPresencaRoute
+  ApiPublicContentEmailCampaignsRoute: typeof ApiPublicContentEmailCampaignsRoute
   ApiPublicDailyFinancialReportRoute: typeof ApiPublicDailyFinancialReportRoute
   ApiPublicDailyUpdatesReportRoute: typeof ApiPublicDailyUpdatesReportRoute
   ApiPublicDriveVideoRoute: typeof ApiPublicDriveVideoRoute
@@ -1550,6 +1564,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicDailyFinancialReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/content-email-campaigns': {
+      id: '/api/public/content-email-campaigns'
+      path: '/api/public/content-email-campaigns'
+      fullPath: '/api/public/content-email-campaigns'
+      preLoaderRoute: typeof ApiPublicContentEmailCampaignsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/consultoria-presenca': {
       id: '/api/public/consultoria-presenca'
       path: '/api/public/consultoria-presenca'
@@ -1796,6 +1817,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicConsultationRecordingsRoute: ApiPublicConsultationRecordingsRoute,
   ApiPublicConsultationRemindersRoute: ApiPublicConsultationRemindersRoute,
   ApiPublicConsultoriaPresencaRoute: ApiPublicConsultoriaPresencaRoute,
+  ApiPublicContentEmailCampaignsRoute: ApiPublicContentEmailCampaignsRoute,
   ApiPublicDailyFinancialReportRoute: ApiPublicDailyFinancialReportRoute,
   ApiPublicDailyUpdatesReportRoute: ApiPublicDailyUpdatesReportRoute,
   ApiPublicDriveVideoRoute: ApiPublicDriveVideoRoute,

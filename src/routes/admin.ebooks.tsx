@@ -47,6 +47,7 @@ import { VideoPlayer } from "@/components/platform/VideoPlayer";
 
 import { VisualChapterEditor } from "@/components/admin/VisualChapterEditor";
 import { WorkloadHoursField } from "@/components/admin/WorkloadHoursField";
+import { ContentEmailCampaignHistory } from "@/components/admin/ContentEmailCampaignHistory";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -221,8 +222,8 @@ function AdminEbooksPage() {
   const previewNotification = useServerFn(previewNewContentNotification);
   const [notifyingId, setNotifyingId] = useState<string | null>(null);
 
-  async function handleNotify(ebook: any, force = false) {
-    setNotifyingId(ebook.id);
+  async function handleNotify(item: any, force = false) {
+    setNotifyingId(item.id);
 
     try {
       let shouldForce = force;
@@ -231,7 +232,7 @@ function AdminEbooksPage() {
         const preview: any = await previewNotification({
           data: {
             contentType: "ebook",
-            contentId: ebook.id,
+            contentId: item.id,
           },
         });
 
@@ -244,8 +245,16 @@ function AdminEbooksPage() {
         }
 
         const message = preview.alreadySent
-          ? `Este eBook já foi anunciado anteriormente.\n\nAlunos elegíveis agora: ${preview.recipients}\n\nDeseja REENVIAR o e-mail para esses alunos?`
-          : `Deseja avisar os alunos sobre este eBook?\n\nAlunos elegíveis: ${preview.recipients}\n\nSomente alunos cadastrados que não desativaram notificações por e-mail serão incluídos.`;
+          ? `Este eBook já foi anunciado anteriormente.
+
+Alunos elegíveis agora: ${preview.recipients}
+
+Deseja criar uma NOVA campanha somente para esses alunos?`
+          : `Deseja avisar os alunos sobre este eBook?
+
+Alunos elegíveis: ${preview.recipients}
+
+Os e-mails serão colocados em uma fila e enviados em lotes controlados.`;
 
         if (!confirm(message)) {
           return;
@@ -257,24 +266,27 @@ function AdminEbooksPage() {
       const res: any = await notifyContent({
         data: {
           contentType: "ebook",
-          contentId: ebook.id,
+          contentId: item.id,
           force: shouldForce,
         },
       });
 
-      if (res?.alreadySent) {
+      if (res?.alreadyQueued) {
         toast.error(
-          "Este eBook já foi anunciado. Atualize a página antes de tentar reenviar.",
+          "Já existe uma campanha em andamento para este conteúdo.",
         );
-      } else if (res?.success) {
+      } else if (res?.alreadySent) {
+        toast.error(
+          "Este conteúdo já foi anunciado. Atualize a página antes de tentar novamente.",
+        );
+      } else if (res?.success && res?.queued) {
         toast.success(
-          `E-mail enviado para ${res.sentCount} de ${res.recipients} alunos.`,
+          `Campanha criada para ${res.recipients} alunos. O envio será feito em lotes e pode ser acompanhado no histórico.`,
         );
       } else {
         toast.error(
-          "Nenhum e-mail enviado. " +
-            (res?.error ||
-              "Verifique as configurações de e-mail."),
+          res?.error ||
+            "Não foi possível criar a campanha de e-mail.",
         );
       }
     } catch (e: any) {
@@ -340,6 +352,8 @@ function AdminEbooksPage() {
           <Plus className="h-4 w-4" /> Adicionar Novo E-book
         </button>
       </div>
+
+      <ContentEmailCampaignHistory contentType="ebook" />
 
       <div className="flex flex-col md:flex-row gap-4 items-center bg-[#111] p-4 rounded-xl border border-white/5">
         <div className="relative flex-1 w-full">
