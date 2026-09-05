@@ -1,6 +1,6 @@
 // Google Drive (server-only): base para gravações e materiais das consultorias.
 
-import { googleFetch } from "@/lib/google-oauth.server";
+import { getConnectionStatus, googleFetch } from "@/lib/google-oauth.server";
 import { getGoogleSettings } from "@/lib/google-calendar.server";
 
 const DRIVE_BASE = "https://www.googleapis.com/drive/v3";
@@ -162,15 +162,70 @@ export async function checkRecordingsFolder(
   }
 }
 
-/** Link de compartilhamento somente leitura para um arquivo. */
-export async function shareFileReadonly(fileId: string) {
-  await googleFetch("drive.permissions.create", `${DRIVE_BASE}/files/${encodeURIComponent(fileId)}/permissions`, {
-    method: "POST",
-    body: JSON.stringify({ role: "reader", type: "anyone" }),
-  });
+export const GOOGLE_DRIVE_WRITE_SCOPE_REQUIRED =
+  "GOOGLE_DRIVE_WRITE_SCOPE_REQUIRED";
+
+export function isGoogleDriveWriteScopeError(error: any) {
+  return String(error?.code || "") === GOOGLE_DRIVE_WRITE_SCOPE_REQUIRED;
+}
+
+/**
+ * Compartilha uma gravação somente com o aluno destinatário.
+ *
+ * Gravações do Google Meet são criadas pelo próprio Google, não pelo nosso app.
+ * Por isso drive.file permite ler/criar arquivos do app, mas não alterar a ACL
+ * dessas gravações. Para automatizar a entrega privada é necessário o escopo
+ * completo drive, e a permissão criada é user/reader para um e-mail específico.
+ */
+export async function shareFileReadonly(fileId: string, recipientEmail: string) {
+  const email = String(recipientEmail || "").trim().toLowerCase();
+  if (!email || !email.includes("@")) {
+    throw new Error("A consultoria não possui um e-mail válido para compartilhar a gravação.");
+  }
+
+  const connection = await getConnectionStatus();
+  if (!connection.hasDriveWriteScope) {
+    const error: any = new Error(
+      "A conta Google está conectada para leitura, mas ainda não autorizou o compartilhamento automático de gravações. " +
+        "Em Admin → Integrações → Google, clique em “Reconectar conta” e aceite a permissão do Google Drive.",
+    );
+    error.code = GOOGLE_DRIVE_WRITE_SCOPE_REQUIRED;
+    throw error;
+  }
+
+  const permissions = await googleFetch<any>(
+    "drive.permissions.list",
+    `${DRIVE_BASE}/files/${encodeURIComponent(fileId)}/permissions?` +
+      "fields=permissions(id,type,role,emailAddress)&supportsAllDrives=true",
+  );
+
+  const alreadyShared = (permissions?.permissions ?? []).some(
+    (permission: any) =>
+      permission?.type === "user" &&
+      permission?.role === "reader" &&
+      String(permission?.emailAddress || "").trim().toLowerCase() === email,
+  );
+
+  if (!alreadyShared) {
+    await googleFetch(
+      "drive.permissions.create",
+      `${DRIVE_BASE}/files/${encodeURIComponent(fileId)}/permissions?` +
+        "sendNotificationEmail=false&supportsAllDrives=true&fields=id,type,role,emailAddress",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          role: "reader",
+          type: "user",
+          emailAddress: email,
+        }),
+      },
+    );
+  }
+
   const file = await googleFetch<any>(
     "drive.files.get",
     `${DRIVE_BASE}/files/${encodeURIComponent(fileId)}?fields=id,name,mimeType,webViewLink,createdTime,size`,
   );
+
   return mapFile(file);
 }

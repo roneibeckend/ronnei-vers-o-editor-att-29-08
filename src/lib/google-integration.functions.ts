@@ -173,5 +173,16 @@ export const testGoogleIntegration = createServerFn({ method: "POST" })
       drive = { ok: false, error: err?.message ?? "Falha no Drive" };
     }
 
-    return { calendar, drive };
+    const { getConnectionStatus } = await import("@/lib/google-oauth.server");
+    const status = await getConnectionStatus();
+
+    return {
+      calendar,
+      drive,
+      permissions: {
+        driveReadReady: status.hasDriveReadScope,
+        driveWriteReady: status.hasDriveWriteScope,
+        missingScopes: status.missingScopes,
+      },
+    };
   });

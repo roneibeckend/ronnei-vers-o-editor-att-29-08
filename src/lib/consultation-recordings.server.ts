@@ -206,8 +206,13 @@ export async function matchRecording(row: RecordingRow): Promise<
 async function deliverRecording(row: RecordingRow, consultation: Candidate, reason: string) {
   const { shareFileReadonly } = await import("@/lib/google-drive.server");
 
-  // Compartilhamento seguro somente leitura
-  const shared = await shareFileReadonly(row.file_id);
+  const recipientEmail = String(consultation.client_email || "").trim();
+  if (!recipientEmail) {
+    throw new Error("A consultoria não possui e-mail do aluno para compartilhar a gravação.");
+  }
+
+  // Compartilhamento privado: somente o aluno recebe papel reader no arquivo.
+  const shared = await shareFileReadonly(row.file_id, recipientEmail);
   const url = shared.webViewLink || row.web_view_link || `https://drive.google.com/file/d/${row.file_id}/view`;
 
   // Vincula ao agendamento e libera na área do aluno
@@ -328,9 +333,30 @@ export async function syncConsultationRecordings(options: { fileId?: string } = 
 
       await deliverRecording(row, match.consultation, match.reason);
       linked++;
-    } catch (err) {
+    } catch (err: any) {
       failed++;
       const message = (err as Error)?.message ?? "Erro desconhecido";
+
+      if (String(err?.code || "") === "GOOGLE_DRIVE_WRITE_SCOPE_REQUIRED") {
+        // Falha administrativa/configuração: não gastar as 8 tentativas da gravação.
+        await supabaseAdmin
+          .from("consultation_recordings")
+          .update({
+            status: "error",
+            error_message: message,
+            next_attempt_at: new Date(Date.now() + 6 * 3600_000).toISOString(),
+          })
+          .eq("id", row.id);
+
+        await auditConsultation({
+          consultationId: row.consultation_id,
+          action: "recording_delivery_waiting_google_permission",
+          status: "warn",
+          details: { fileId: row.file_id, error: message },
+        });
+        continue;
+      }
+
       await scheduleRetry(row, message, "error");
       await auditConsultation({
         consultationId: row.consultation_id,

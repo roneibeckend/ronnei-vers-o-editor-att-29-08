@@ -12,6 +12,9 @@ export const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/calendar.readonly",
   "https://www.googleapis.com/auth/drive.file",
   "https://www.googleapis.com/auth/drive.readonly",
+  // Necessário para alterar a ACL de gravações do Google Meet que não foram
+  // criadas pelo app. O compartilhamento será feito por aluno, nunca "anyone".
+  "https://www.googleapis.com/auth/drive",
 ] as const;
 
 export const GOOGLE_CALLBACK_PATH = "/api/public/google/oauth/callback";
@@ -304,10 +307,12 @@ export async function exchangeCodeAndStore(code: string, redirectUri: string, us
     grantedScopes.includes("https://www.googleapis.com/auth/calendar");
   const hasDriveReadScope = grantedScopes.includes("https://www.googleapis.com/auth/drive.readonly") ||
     grantedScopes.includes("https://www.googleapis.com/auth/drive");
-  if (!hasCalendarListScope || !hasDriveReadScope) {
+  const hasDriveWriteScope = grantedScopes.includes("https://www.googleapis.com/auth/drive");
+  if (!hasCalendarListScope || !hasDriveReadScope || !hasDriveWriteScope) {
     const missing = [
       hasCalendarListScope ? null : "Google Calendar (leitura de agendas)",
       hasDriveReadScope ? null : "Google Drive (leitura de arquivos)",
+      hasDriveWriteScope ? null : "Google Drive (compartilhamento automático das gravações)",
     ].filter((scope): scope is string => Boolean(scope));
     throw new Error(
       `O Google não concedeu todas as permissões solicitadas: ${missing.join(" e ")}. ` +
@@ -531,6 +536,7 @@ export type GoogleConnectionStatus = {
   hasCalendarListScope: boolean;
   hasDriveScope: boolean;
   hasDriveReadScope: boolean;
+  hasDriveWriteScope: boolean;
   missingScopes: string[];
 };
 
@@ -541,9 +547,11 @@ export async function getConnectionStatus(): Promise<GoogleConnectionStatus> {
     scopes.includes("https://www.googleapis.com/auth/calendar");
   const hasDriveReadScope = scopes.includes("https://www.googleapis.com/auth/drive.readonly") ||
     scopes.includes("https://www.googleapis.com/auth/drive");
+  const hasDriveWriteScope = scopes.includes("https://www.googleapis.com/auth/drive");
   const missingScopes = [
     hasCalendarListScope ? null : "calendar.readonly",
     hasDriveReadScope ? null : "drive.readonly",
+    hasDriveWriteScope ? null : "drive (compartilhamento automático)",
   ].filter((scope): scope is string => Boolean(scope));
   return {
     clientConfigured: await googleClientConfigured(),
@@ -559,6 +567,7 @@ export async function getConnectionStatus(): Promise<GoogleConnectionStatus> {
     hasCalendarListScope,
     hasDriveScope: scopes.includes("https://www.googleapis.com/auth/drive.file") || hasDriveReadScope,
     hasDriveReadScope,
+    hasDriveWriteScope,
     missingScopes,
   };
 }

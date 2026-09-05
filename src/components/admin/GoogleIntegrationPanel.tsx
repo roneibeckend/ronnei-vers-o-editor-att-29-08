@@ -53,7 +53,7 @@ const CHECKLIST = [
   {
     title: "Escopos autorizados",
     detail:
-      "openid, email, profile, .../auth/calendar.events, .../auth/calendar.readonly, .../auth/drive.file e .../auth/drive.readonly — exatamente os que a plataforma solicita.",
+      "openid, email, profile, Calendar e Google Drive. Para entregar gravações privadas automaticamente, a plataforma também solicita .../auth/drive, necessário para conceder acesso somente ao aluno correspondente.",
   },
   {
     title: "Credencial OAuth do tipo Aplicativo da Web",
@@ -61,7 +61,7 @@ const CHECKLIST = [
   },
   {
     title: "URIs de redirecionamento autorizados",
-    detail: "Adicione as três URLs de callback listadas abaixo (produção, preview e domínio estável).",
+    detail: "Adicione as duas URLs de callback listadas abaixo (produção e preview estável).",
   },
 ];
 
@@ -217,7 +217,15 @@ export function GoogleIntegrationPanel() {
     mutationFn: () => runTest(),
     onSuccess: (result: any) => {
       setTestResult(result);
-      toast.success("Teste concluído: evento e link do Meet criados com sucesso.");
+      if (result?.drive?.ok && result?.permissions?.driveWriteReady) {
+        toast.success("Google validado: Calendar, Meet, leitura e entrega privada pelo Drive.");
+      } else if (!result?.permissions?.driveWriteReady) {
+        toast.warning("Calendar/Meet e leitura do Drive estão OK. Reconecte a conta para autorizar a entrega privada das gravações.", {
+          duration: 8000,
+        });
+      } else {
+        toast.warning("Calendar/Meet testados, mas o Drive precisa de atenção.", { duration: 7000 });
+      }
       queryClient.invalidateQueries({ queryKey: ["google-integration"] });
     },
     onError: (err: any) => {
@@ -281,7 +289,8 @@ export function GoogleIntegrationPanel() {
               <StatusBadge ok={Boolean(status?.clientConfigured)} label={status?.clientConfigured ? "Credenciais OK" : "Secrets pendentes"} />
               <StatusBadge ok={connected} label={connected ? "Conectado" : status?.status === "revoked" ? "Acesso revogado" : "Não conectado"} />
               <StatusBadge ok={Boolean(status?.hasCalendarScope)} label="Calendar" />
-              <StatusBadge ok={Boolean(status?.hasDriveScope)} label="Drive" />
+              <StatusBadge ok={Boolean(status?.hasDriveReadScope)} label="Drive leitura" />
+              <StatusBadge ok={Boolean(status?.hasDriveWriteScope)} label="Drive entrega" />
             </div>
           </div>
         </CardHeader>
@@ -365,7 +374,8 @@ export function GoogleIntegrationPanel() {
               </AlertTitle>
               <AlertDescription className="text-[11px] text-white/70">
                 A conta conectada não concedeu: {missingScopes.join(" e ")}. Use “Reconectar conta” nesta
-                página e aceite todas as permissões para listar agendas e ler a pasta de gravações.
+                página e aceite todas as permissões. O escopo de compartilhamento é necessário para liberar
+                cada gravação somente ao aluno correspondente, sem tornar o arquivo público.
               </AlertDescription>
             </Alert>
           )}
@@ -474,6 +484,12 @@ export function GoogleIntegrationPanel() {
                   <HardDrive className="h-3 w-3" />{" "}
                   {testResult.drive?.ok ? `Drive acessível (${testResult.drive.email})` : `Drive: ${testResult.drive?.error}`}
                 </p>
+                <p className="flex items-center gap-1">
+                  <ShieldCheck className="h-3 w-3" />{" "}
+                  {testResult.permissions?.driveWriteReady
+                    ? "Entrega privada das gravações: autorizada"
+                    : "Entrega privada das gravações: reconecte a conta Google"}
+                </p>
               </AlertDescription>
             </Alert>
           )}
@@ -509,7 +525,7 @@ export function GoogleIntegrationPanel() {
             <HardDrive className="h-4 w-4 text-[#ff6a00]" /> Google Drive — gravações
           </CardTitle>
           <CardDescription className="text-[11px] text-white/50">
-            Cole a URL completa da pasta ou somente o ID e teste a leitura dos últimos cinco arquivos.
+            Cole a URL completa da pasta ou somente o ID. A plataforma lê as gravações e, na entrega, compartilha cada arquivo apenas com o e-mail do aluno correspondente.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
