@@ -864,14 +864,33 @@ export async function retryEmailNow(id: string) {
 
 export async function scanCriticalAlerts(): Promise<OpsRecoveryResult["alerts"]> {
   let created = 0;
-  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  // O lease do claim é 5 min. Após 15 min em processing, o processamento expirou.
+  const staleBefore = new Date(
+    Date.now() - 15 * 60 * 1000,
+  ).toISOString();
+
+  await supabaseAdmin
+    .from("asaas_webhook_events")
+    .update({
+      status: "failed",
+      processed_at: new Date().toISOString(),
+      last_error:
+        "Processamento interrompido: lease do webhook expirou antes da conclusão.",
+    })
+    .eq("status", "processing")
+    .lt("claimed_at", staleBefore);
+
+  const sevenDaysAgo = new Date(
+    Date.now() - 7 * 24 * 60 * 60 * 1000,
+  ).toISOString();
 
   // Webhooks do Asaas com falha
   const { data: webhookFailures } = await supabaseAdmin
     .from("asaas_webhook_events")
     .select("event_id, payment_id, event_type, last_error, status")
     .eq("status", "failed")
-    .gte("claimed_at", dayAgo)
+    .gte("claimed_at", sevenDaysAgo)
     .limit(20);
 
   for (const evt of webhookFailures || []) {

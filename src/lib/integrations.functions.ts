@@ -3,6 +3,36 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+async function writeIntegrationLog(input: {
+  integrationName: string;
+  status: "success" | "error" | "info";
+  message: string;
+  latency?: string | null;
+  httpCode?: number | null;
+  endpoint?: string | null;
+  environment?: string | null;
+  responseBody?: Record<string, any> | null;
+  details?: Record<string, any> | null;
+  userId?: string | null;
+}) {
+  try {
+    await supabaseAdmin.from("integration_logs").insert({
+      integration_name: input.integrationName,
+      status: input.status,
+      message: input.message,
+      latency: input.latency ?? null,
+      http_code: input.httpCode ?? null,
+      endpoint: input.endpoint ?? null,
+      environment: input.environment ?? null,
+      response_body: input.responseBody ?? null,
+      details: input.details ?? null,
+      user_id: input.userId ?? null,
+    });
+  } catch (error) {
+    console.warn("[Integrações] Falha ao registrar histórico:", error);
+  }
+}
+
 export const getResendIntegration = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -99,6 +129,19 @@ export const saveIntegration = createServerFn({ method: "POST" })
       if (error) throw error;
     }
 
+    await writeIntegrationLog({
+      integrationName: data.category,
+      status: "info",
+      message: "Configurações da integração salvas pelo administrador.",
+      environment:
+        String(data.settings?.environment || "") === "sandbox" ||
+        String(data.settings?.testMode) === "true"
+          ? "sandbox"
+          : "production",
+      details: { action: "save", enabled: data.status },
+      userId: context.userId,
+    });
+
     return { success: true };
   });
 
@@ -142,18 +185,43 @@ export const testIntegrationConnection = createServerFn({ method: "POST" })
     environment: z.string().optional()
   }).parse(data))
   .handler(async ({ data, context }) => {
-    const { data: isAdmin } = await context.supabase.rpc('has_role', { 
-      _user_id: context.userId, 
-      _role: 'admin' 
+    const { data: isAdmin } = await context.supabase.rpc('has_role', {
+      _user_id: context.userId,
+      _role: 'admin'
     });
     if (!isAdmin) throw new Error("Proibido");
 
     const start = Date.now();
+    const environment = data.environment || 'production';
+
+    const finalize = async (result: any) => {
+      await writeIntegrationLog({
+        integrationName: data.category,
+        status:
+          result.supported === false
+            ? "info"
+            : result.success
+              ? "success"
+              : "error",
+        message: result.message,
+        latency: result.latency ?? `${Date.now() - start}ms`,
+        httpCode: result.httpCode ?? null,
+        endpoint: result.endpoint ?? null,
+        environment: result.environment ?? environment,
+        responseBody:
+          result.responseBody && typeof result.responseBody === "object"
+            ? result.responseBody
+            : null,
+        details: {
+          action: "connection_test",
+          supported: result.supported !== false,
+        },
+        userId: context.userId,
+      });
+      return result;
+    };
 
     if (data.category === 'resend') {
-      // A chave pode ter acabado de ser digitada no formulário.
-      // Caso contrário, resolve a credencial já salva DIRETAMENTE no servidor.
-      // Nunca é necessário devolver o segredo ao navegador.
       let apiKey =
         typeof data.credentials?.apiKey === 'string' &&
         data.credentials.apiKey.trim()
@@ -166,9 +234,7 @@ export const testIntegrationConnection = createServerFn({ method: "POST" })
           .select('credentials')
           .eq('category', 'resend');
 
-        if (data.id) {
-          query = query.eq('id', data.id);
-        }
+        if (data.id) query = query.eq('id', data.id);
 
         const { data: savedIntegration } = await query.maybeSingle();
         const savedCredentials =
@@ -182,27 +248,23 @@ export const testIntegrationConnection = createServerFn({ method: "POST" })
         }
       }
 
-      if (!apiKey) {
-        apiKey = process.env['RESEND_API_KEY'] || '';
-      }
+      if (!apiKey) apiKey = process.env['RESEND_API_KEY'] || '';
 
       if (!apiKey || !apiKey.startsWith('re_')) {
-        return {
+        return await finalize({
           success: false,
-          message: "API Key do Resend não encontrada ou inválida. Insira uma chave começando com 're_'.",
+          supported: true,
+          message: "API Key do Resend não encontrada ou inválida.",
           latency: `${Date.now() - start}ms`,
           httpCode: 400,
-          environment: data.environment || 'production',
+          environment,
           timestamp: new Date().toISOString(),
           endpoint: 'https://api.resend.com/emails',
           responseBody: null
-        };
+        });
       }
 
       try {
-        // O Resend não possui "dry_run" documentado no endpoint /emails.
-        // Para validar uma chave de Sending Access sem atingir um cliente real,
-        // usamos o endereço oficial de testes entregue pelo próprio Resend.
         const { data: emailSettings } = await supabaseAdmin
           .from('email_settings')
           .select('from_email, from_name')
@@ -232,80 +294,128 @@ export const testIntegrationConnection = createServerFn({ method: "POST" })
             to: ['delivered+ronnei-integration-test@resend.dev'],
             subject: 'Teste de integração Resend — Ronnei na Veia',
             html: '<p>Teste técnico de integração concluído.</p>',
-            tags: [
-              {
-                name: 'event',
-                value: 'integration_test'
-              }
-            ]
+            tags: [{ name: 'event', value: 'integration_test' }]
           })
         });
 
+        const body = await response.json().catch(() => ({}));
         const latency = `${Date.now() - start}ms`;
-        const responseBody = await response.json().catch(() => ({}));
-
-        if (response.status === 401) {
-          return {
-            success: false,
-            message: responseBody.name === 'restricted_api_key'
-              ? 'Chave de API restrita: válida apenas para envio, não para testes de domínio.'
-              : 'API Key do Resend inválida (401).',
-            latency,
-            httpCode: 401,
-            environment: data.environment || 'production',
-            timestamp: new Date().toISOString(),
-            endpoint: 'https://api.resend.com/emails',
-            responseBody
-          };
-        }
 
         if (!response.ok) {
-          return {
+          return await finalize({
             success: false,
-            message: responseBody.message || `Erro na API Resend: ${response.status}`,
+            supported: true,
+            message: body?.message || `Erro na API Resend: ${response.status}`,
             latency,
             httpCode: response.status,
-            environment: data.environment || 'production',
+            environment,
             timestamp: new Date().toISOString(),
             endpoint: 'https://api.resend.com/emails',
-            responseBody
-          };
+            responseBody: {
+              name: body?.name || null,
+              message: body?.message || null
+            }
+          });
         }
 
-        return {
+        return await finalize({
           success: true,
+          supported: true,
           message: "Conexão com Resend validada com sucesso!",
           latency,
           httpCode: response.status,
-          environment: data.environment || 'production',
+          environment,
           timestamp: new Date().toISOString(),
           endpoint: 'https://api.resend.com/emails',
-          responseBody
-        };
+          responseBody: { accepted: true, id: body?.id || null }
+        });
       } catch (error: any) {
-        return {
+        return await finalize({
           success: false,
-          message: error.message || "Erro inesperado ao testar conexão com Resend.",
+          supported: true,
+          message: error?.message || "Erro inesperado ao testar Resend.",
           latency: `${Date.now() - start}ms`,
           httpCode: 500,
-          environment: data.environment || 'production',
+          environment,
           timestamp: new Date().toISOString(),
           endpoint: 'https://api.resend.com/emails',
           responseBody: null
-        };
+        });
       }
     }
 
-    return {
-      success: true,
-      message: "Conexão testada com sucesso!",
+    if (data.category === 'asaas') {
+      try {
+        const {
+          getAsaasConfig,
+          asaasFetchJson,
+          asaasHeaders,
+          asaasErrorMessage,
+        } = await import("@/lib/asaas.server");
+
+        const config = await getAsaasConfig();
+        const endpoint = `${config.baseUrl}/customers?limit=1&offset=0`;
+        const response = await asaasFetchJson(
+          endpoint,
+          { method: "GET", headers: asaasHeaders(config.apiKey) },
+          1,
+        );
+        const latency = `${Date.now() - start}ms`;
+        const resolvedEnvironment = config.isTestMode ? "sandbox" : "production";
+
+        if (!response.ok) {
+          return await finalize({
+            success: false,
+            supported: true,
+            message: asaasErrorMessage(response),
+            latency,
+            httpCode: response.status,
+            environment: resolvedEnvironment,
+            timestamp: new Date().toISOString(),
+            endpoint,
+            responseBody: { authenticated: false, provider: "asaas" }
+          });
+        }
+
+        return await finalize({
+          success: true,
+          supported: true,
+          message: "Conexão com Asaas validada diretamente na API.",
+          latency,
+          httpCode: response.status,
+          environment: resolvedEnvironment,
+          timestamp: new Date().toISOString(),
+          endpoint,
+          responseBody: { authenticated: true, provider: "asaas" }
+        });
+      } catch (error: any) {
+        return await finalize({
+          success: false,
+          supported: true,
+          message: error?.message || "Falha ao testar a integração Asaas.",
+          latency: `${Date.now() - start}ms`,
+          httpCode: 500,
+          environment,
+          timestamp: new Date().toISOString(),
+          endpoint: "Asaas API",
+          responseBody: null
+        });
+      }
+    }
+
+    return await finalize({
+      success: false,
+      supported: false,
+      message:
+        `Teste real ainda não implementado para "${data.category}". ` +
+        "Nenhuma conexão externa foi simulada.",
       latency: `${Date.now() - start}ms`,
-      httpCode: 200,
-      environment: data.environment || 'production',
+      httpCode: 501,
+      environment,
       timestamp: new Date().toISOString(),
-      endpoint: `https://api.${data.category}.com/v1/verify`,
-      responseBody: { status: "active", version: "1.0.0" }
-    };
+      endpoint: "Não executado",
+      responseBody: { status: "not_implemented", simulated: false }
+    });
   });
 
 /**
@@ -400,14 +510,22 @@ export const getIntegrationHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => z.object({
     category: z.string(),
-    limit: z.number().optional()
+    limit: z.number().int().min(1).max(100).optional()
   }).parse(data))
-  .handler(async ({ context }) => {
-    const { data: isAdmin } = await context.supabase.rpc('has_role', { 
-      _user_id: context.userId, 
-      _role: 'admin' 
+  .handler(async ({ data, context }) => {
+    const { data: isAdmin } = await context.supabase.rpc('has_role', {
+      _user_id: context.userId,
+      _role: 'admin'
     });
     if (!isAdmin) throw new Error("Proibido");
 
-    return [];
+    const { data: logs, error } = await supabaseAdmin
+      .from("integration_logs")
+      .select("id,integration_name,status,message,latency,http_code,endpoint,environment,response_body,details,created_at")
+      .eq("integration_name", data.category)
+      .order("created_at", { ascending: false })
+      .limit(data.limit ?? 10);
+
+    if (error) throw new Error(error.message);
+    return logs ?? [];
   });

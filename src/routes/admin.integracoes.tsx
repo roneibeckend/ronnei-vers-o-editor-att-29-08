@@ -87,11 +87,18 @@ interface Integration {
 }
 
 const WEBHOOKS = [
-  { name: 'Mercado Pago (Aprovado)', url: '/api/public/webhooks/mercadopago/success', category: 'mercadopago' },
-  { name: 'Mercado Pago (Recusado)', url: '/api/public/webhooks/mercadopago/refused', category: 'mercadopago' },
-  { name: 'Asaas Webhook', url: '/api/public/webhooks/asaas', category: 'asaas' },
-  { name: 'Stripe Webhook', url: '/api/public/webhooks/stripe', category: 'stripe' },
-  { name: 'OpenAI Callback', url: '/api/public/webhooks/openai', category: 'openai' },
+  {
+    name: 'Asaas Webhook',
+    url: '/api/public/webhooks/asaas',
+    category: 'asaas',
+    note: 'Endpoint implementado e usado para pagamentos e assinaturas.'
+  },
+  {
+    name: 'Fidelize Webhook',
+    url: '/api/public/webhooks/fidelize',
+    category: 'fidelize',
+    note: 'Endpoint implementado para eventos do Fidelize.'
+  },
 ];
 
 /**
@@ -126,12 +133,10 @@ const GUIDES: Record<string, string[]> = {
     "Cole a chave no campo 'API Key' abaixo e clique em 'Salvar'."
   ],
   mercadopago: [
-    "Acesse o painel do Mercado Pago Developers.",
-    "Vá em 'Suas aplicações' e selecione ou crie uma nova aplicação.",
-    "Clique em 'Credenciais de produção' no menu lateral.",
-    "Copie o 'Access Token' e a 'Public Key'.",
-    "Configure os Webhooks apontando para as URLs da aba 'Webhooks' deste painel.",
-    "Ative a aplicação e realize um teste de conexão."
+    "A integração Mercado Pago está cadastrada no painel, mas o fluxo operacional completo não está implementado nesta versão.",
+    "Não existe endpoint público de webhook Mercado Pago ativo no código atual.",
+    "Não interprete o cadastro de credenciais como validação de conexão.",
+    "Use Asaas para o fluxo de pagamentos atualmente operacional."
   ],
   asaas: [
     "Acesse sua conta Asaas e vá em 'Minha Conta' -> 'Integrações'.",
@@ -142,11 +147,10 @@ const GUIDES: Record<string, string[]> = {
     "Marque os eventos de pagamento desejados no Asaas e salve.",
   ],
   stripe: [
-    "Acesse o Dashboard da Stripe e vá em 'Developers' -> 'API Keys'.",
-    "Copie a 'Secret Key' (sk_...) e a 'Publishable Key' (pk_...).",
-    "Para Webhooks: vá em 'Webhooks', adicione um endpoint com a URL da aba 'Webhooks'.",
-    "Selecione os eventos 'checkout.session.completed' e 'invoice.paid'.",
-    "Copie o 'Signing Secret' do Webhook se necessário para validação."
+    "A integração Stripe está cadastrada no painel, mas o fluxo operacional completo não está implementado nesta versão.",
+    "Não existe endpoint público de webhook Stripe ativo no código atual.",
+    "Não interprete o cadastro de credenciais como validação de conexão.",
+    "Use Asaas para o fluxo de pagamentos atualmente operacional."
   ],
   resend: [
     "Acesse resend.com e faça login no seu dashboard.",
@@ -281,7 +285,9 @@ function IntegrationsPage() {
         }
       });
       setTestResult(result);
-      if (result.success) {
+      if (result.supported === false) {
+        toast.info(result.message, { duration: 7000 });
+      } else if (result.success) {
         toast.success(result.message);
       } else {
         toast.error(result.message);
@@ -319,6 +325,11 @@ function IntegrationsPage() {
     if (i.category === 'fidelize') return false; // possui aba dedicada
     return i.type === activeCategory;
   }) || [];
+
+  const resendSummary = integrations?.find((item) => item.category === 'resend');
+  const resendConfigured = Boolean(
+    resendSummary?.status && credentialStatus?.resend?.apiKey
+  );
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
@@ -447,8 +458,15 @@ function IntegrationsPage() {
                     <div className="p-2 rounded-lg bg-[#ff6a00] text-black">
                       <Mail className="h-4 w-4" />
                     </div>
-                    <Badge variant="outline" className="text-[8px] uppercase tracking-widest border-none text-emerald-400 bg-emerald-400/10">
-                      ✅ Conectado
+                    <Badge
+                      variant="outline"
+                      className={`text-[8px] uppercase tracking-widest border-none ${
+                        resendConfigured
+                          ? 'text-emerald-400 bg-emerald-400/10'
+                          : 'text-amber-400 bg-amber-400/10'
+                      }`}
+                    >
+                      {resendConfigured ? '✅ Configurado' : '⚠ Configuração pendente'}
                     </Badge>
                   </div>
                   <h4 className="font-bold text-sm text-white uppercase tracking-tight">Resend (API)</h4>
@@ -474,10 +492,25 @@ function IntegrationsPage() {
                  </div>
                </CardHeader>
                <CardContent className="space-y-4">
+                 <Alert className="bg-emerald-500/5 border-emerald-500/20">
+                   <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                   <AlertTitle className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">
+                     Somente rotas existentes
+                   </AlertTitle>
+                   <AlertDescription className="text-[10px] text-white/50">
+                     Esta lista mostra apenas endpoints realmente implementados no código publicado.
+                   </AlertDescription>
+                 </Alert>
+
                  {WEBHOOKS.map((webhook, idx) => (
                    <div key={idx} className="p-3 bg-black/40 border border-white/5 rounded-lg group">
                      <div className="flex items-center justify-between mb-2">
-                       <span className="text-[10px] font-bold text-white/60 uppercase">{webhook.name}</span>
+                       <div className="flex items-center gap-2">
+                         <span className="text-[10px] font-bold text-white/60 uppercase">{webhook.name}</span>
+                         <Badge variant="outline" className="text-[7px] border-emerald-500/20 text-emerald-400">
+                           Rota ativa
+                         </Badge>
+                       </div>
                        <Button variant="ghost" size="icon" onClick={() => handleCopy(webhook.url)} className="h-6 w-6 opacity-0 group-hover:opacity-100 transition">
                          <Copy className="h-3 w-3" />
                        </Button>
@@ -485,6 +518,7 @@ function IntegrationsPage() {
                      <code className="text-[9px] text-[#ff6a00] break-all bg-orange-500/5 p-1.5 rounded block">
                        {webhook.url}
                      </code>
+                     <p className="text-[9px] text-white/30 mt-2 leading-relaxed">{webhook.note}</p>
                    </div>
                  ))}
                </CardContent>
@@ -812,7 +846,7 @@ function IntegrationsPage() {
                         <Info className="h-4 w-4 text-[#ff6a00]" />
                         <AlertTitle className="text-xs font-bold uppercase tracking-widest text-[#ff6a00]">Dica de Segurança</AlertTitle>
                         <AlertDescription className="text-[11px] text-white/60">
-                          Nunca compartilhe suas chaves privadas. O sistema criptografa todos os dados sensíveis antes do armazenamento.
+                          Nunca compartilhe suas chaves privadas. Credenciais salvas não são devolvidas ao navegador; o painel trabalha com campos mascarados e acesso administrativo.
                         </AlertDescription>
                       </Alert>
                     </CardContent>
@@ -890,10 +924,9 @@ function IntegrationsPage() {
           <ShieldCheck className="h-6 w-6" />
         </div>
         <div className="text-left">
-          <h4 className="font-display text-sm font-bold uppercase tracking-wide text-white">Arquitetura de Segurança de Camada Militar</h4>
+          <h4 className="font-display text-sm font-bold uppercase tracking-wide text-white">Proteção de Credenciais e Auditoria</h4>
           <p className="text-xs text-white/40 mt-1 leading-relaxed">
-            Suas credenciais são protegidas por criptografia de nível industrial no banco de dados. 
-            Todas as chaves sensíveis são mascaradas no frontend e os logs de auditoria registram cada interação técnica para conformidade total.
+            Chaves privadas salvas não são retornadas ao frontend. O painel mascara credenciais e o histórico técnico registra testes e alterações executados pelo administrador sem gravar os segredos.
           </p>
         </div>
       </div>
