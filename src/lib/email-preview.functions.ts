@@ -10,7 +10,6 @@ async function assertAdmin(context: any) {
   if (!isAdmin) throw new Error("Forbidden: Admin access required");
 }
 
-/** Renderiza a prévia (assunto + HTML) de um evento com variáveis reais. */
 export const previewEmailTemplate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
@@ -24,22 +23,26 @@ export const previewEmailTemplate = createServerFn({ method: "POST" })
   .handler(async ({ data: { event, data }, context }) => {
     await assertAdmin(context);
 
-    const { renderEmailTemplate } = await import("@/emails/templates");
     const { validateEmailData } = await import("@/emails/catalog");
-
-    const rendered = renderEmailTemplate(event, data);
-    if (!rendered) throw new Error(`Template não encontrado para o evento "${event}".`);
+    const { resolveRuntimeEmailTemplate } = await import(
+      "./email-template-resolver.server"
+    );
 
     const validation = validateEmailData(event, data);
+    const rendered = await resolveRuntimeEmailTemplate(event, data);
+
     return {
       subject: rendered.subject,
       html: rendered.html,
       text: rendered.text,
       validation,
+      source: rendered.source,
+      templateId: rendered.templateId,
+      overrideEnabled: rendered.overrideEnabled,
+      hasCodeTemplate: rendered.hasCodeTemplate,
     };
   });
 
-/** Envia um e-mail de teste real do evento, bloqueando dados incompletos. */
 export const sendTemplateTestEmail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
@@ -56,6 +59,7 @@ export const sendTemplateTestEmail = createServerFn({ method: "POST" })
 
     const { validateEmailData } = await import("@/emails/catalog");
     const validation = validateEmailData(event, data);
+
     if (!validation.valid) {
       throw new Error(validation.message ?? "Campos obrigatórios ausentes.");
     }
@@ -70,13 +74,10 @@ export const sendTemplateTestEmail = createServerFn({ method: "POST" })
     if (!result?.success || !result.id) {
       throw new Error("O provedor não confirmou o envio do e-mail de teste.");
     }
+
     return { success: true, id: result.id };
   });
 
-/**
- * Envia um teste real usando o HTML de um modelo salvo no banco (editor de modelos),
- * embrulhado no layout premium da marca — nunca envia texto genérico.
- */
 export const sendRawTestEmail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
@@ -101,21 +102,21 @@ export const sendRawTestEmail = createServerFn({ method: "POST" })
 
     const result = await sendResendEmail({
       to,
-      subject: `[TESTE] ${renderedSubject}`,
-      html: wrapCustomHtml({ heading: renderedSubject, bodyHtml: renderedHtml }),
+      subject: `[TESTE/RASCUNHO] ${renderedSubject}`,
+      html: wrapCustomHtml({
+        heading: renderedSubject,
+        bodyHtml: renderedHtml,
+      }),
       tags: [{ name: "event", value: "modelo_customizado" }],
     });
 
     if (!result?.success || !result.id) {
       throw new Error("O provedor não confirmou o envio do e-mail de teste.");
     }
+
     return { success: true, id: result.id };
   });
 
-/**
- * Renderiza o HTML final (dentro do layout premium da marca) de um modelo salvo/editado,
- * exatamente como o destinatário receberá.
- */
 export const previewRawTemplate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
@@ -139,6 +140,9 @@ export const previewRawTemplate = createServerFn({ method: "POST" })
 
     return {
       subject: renderedSubject,
-      html: wrapCustomHtml({ heading: renderedSubject, bodyHtml: renderedHtml }),
+      html: wrapCustomHtml({
+        heading: renderedSubject,
+        bodyHtml: renderedHtml,
+      }),
     };
   });

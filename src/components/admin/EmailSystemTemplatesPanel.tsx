@@ -10,18 +10,31 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { EMAIL_CATALOG, sampleDataFor, validateEmailData } from "@/emails/catalog";
 import { previewEmailTemplate, sendTemplateTestEmail } from "@/lib/email-preview.functions";
+import { getEmailTemplates, setEmailTemplateProductionOverride } from "@/lib/email-templates.functions";
 
 export function EmailSystemTemplatesPanel() {
   const previewFn = useServerFn(previewEmailTemplate);
   const sendTestFn = useServerFn(sendTemplateTestEmail);
+  const getTemplatesFn = useServerFn(getEmailTemplates);
+  const setOverrideFn = useServerFn(setEmailTemplateProductionOverride);
 
   const [event, setEvent] = useState(EMAIL_CATALOG[0]!.event);
   const [values, setValues] = useState<Record<string, string>>(() => sampleDataFor(EMAIL_CATALOG[0]!.event));
-  const [preview, setPreview] = useState<{ subject: string; html: string; text?: string } | null>(null);
+  const [preview, setPreview] = useState<{
+    subject: string;
+    html: string;
+    text?: string;
+    source: "database_override" | "code" | "database_fallback" | "generic_fallback";
+    templateId: string | null;
+    overrideEnabled: boolean;
+    hasCodeTemplate: boolean;
+  } | null>(null);
   const [viewMode, setViewMode] = useState<"visual" | "html" | "texto">("visual");
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [testEmail, setTestEmail] = useState("");
+  const [dbTemplates, setDbTemplates] = useState<any[]>([]);
+  const [isTogglingOverride, setIsTogglingOverride] = useState(false);
 
   const entry = useMemo(() => EMAIL_CATALOG.find((e) => e.event === event)!, [event]);
   const validation = useMemo(() => validateEmailData(event, values), [event, values]);
@@ -31,7 +44,15 @@ export function EmailSystemTemplatesPanel() {
       setIsLoading(true);
       try {
         const result = await previewFn({ data: { event: ev, data } });
-        setPreview({ subject: result.subject, html: result.html, text: result.text });
+        setPreview({
+          subject: result.subject,
+          html: result.html,
+          text: result.text,
+          source: result.source,
+          templateId: result.templateId,
+          overrideEnabled: result.overrideEnabled,
+          hasCodeTemplate: result.hasCodeTemplate,
+        });
       } catch (err: any) {
         setPreview(null);
         toast.error("Erro ao gerar prévia: " + (err?.message ?? "desconhecido"));
@@ -48,6 +69,74 @@ export function EmailSystemTemplatesPanel() {
     void loadPreview(event, data);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event]);
+
+  const refreshDbTemplates = useCallback(async () => {
+    try {
+      const rows = await getTemplatesFn();
+      setDbTemplates(Array.isArray(rows) ? rows : []);
+    } catch (err: any) {
+      toast.error("Erro ao carregar modelos editáveis: " + (err?.message ?? "desconhecido"));
+    }
+  }, [getTemplatesFn]);
+
+  useEffect(() => {
+    void refreshDbTemplates();
+  }, [refreshDbTemplates]);
+
+  const matchingDbTemplate = useMemo(
+    () => dbTemplates.find((item) => item?.name === event) ?? null,
+    [dbTemplates, event],
+  );
+
+  const sourceLabel = useMemo(() => {
+    if (!preview) return "Carregando fonte...";
+    if (preview.source === "database_override") return "Banco · override ativo em produção";
+    if (preview.source === "code") return "Código · fonte atual da produção";
+    if (preview.source === "database_fallback") return "Banco · fallback (não existe versão em código)";
+    return "Layout genérico · nenhum template específico";
+  }, [preview]);
+
+  const handleToggleOverride = async () => {
+    if (!matchingDbTemplate?.id) {
+      toast.error(`Não existe modelo de banco com o nome exato "${event}".`);
+      return;
+    }
+
+    const next = !Boolean(matchingDbTemplate.is_production_override);
+
+    if (
+      next &&
+      typeof window !== "undefined" &&
+      !window.confirm(
+        `Ativar o modelo de banco "${event}" na PRODUÇÃO? A partir deste momento ele terá prioridade sobre o template em código.`,
+      )
+    ) {
+      return;
+    }
+
+    setIsTogglingOverride(true);
+    try {
+      await setOverrideFn({
+        data: {
+          id: matchingDbTemplate.id,
+          enabled: next,
+        },
+      });
+
+      toast.success(
+        next
+          ? "Override de banco ativado na produção."
+          : "Override desativado. A produção voltou à prioridade padrão.",
+      );
+
+      await refreshDbTemplates();
+      await loadPreview(event, values);
+    } catch (err: any) {
+      toast.error("Falha ao alterar fonte de produção: " + (err?.message ?? "desconhecido"));
+    } finally {
+      setIsTogglingOverride(false);
+    }
+  };
 
   const handleSendTest = async () => {
     if (!testEmail) {
@@ -119,6 +208,61 @@ export function EmailSystemTemplatesPanel() {
           <div className="space-y-1">
             <p className="text-[10px] uppercase font-bold tracking-widest text-white/40">Variáveis do evento</p>
             <p className="text-[10px] text-white/30 leading-relaxed">{entry.description}</p>
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-[9px] uppercase font-bold tracking-widest text-white/30">Fonte que a produção usa agora</p>
+                <p className="text-[11px] font-bold text-white mt-1">{sourceLabel}</p>
+              </div>
+
+              {matchingDbTemplate && (
+                <Badge
+                  variant="outline"
+                  className={`text-[8px] uppercase ${
+                    matchingDbTemplate.is_production_override
+                      ? "border-emerald-500/30 text-emerald-300"
+                      : "border-white/10 text-white/40"
+                  }`}
+                >
+                  {matchingDbTemplate.is_production_override ? "Banco ativo" : "Banco em rascunho"}
+                </Badge>
+              )}
+            </div>
+
+            {matchingDbTemplate ? (
+              <>
+                {!matchingDbTemplate.is_production_override && preview?.source === "code" && (
+                  <p className="text-[10px] leading-relaxed text-amber-300/80">
+                    Existe uma versão editável no banco, mas ela NÃO altera a produção enquanto o override estiver desligado.
+                  </p>
+                )}
+
+                <Button
+                  type="button"
+                  onClick={handleToggleOverride}
+                  disabled={isTogglingOverride}
+                  variant="outline"
+                  className="w-full border-white/10 text-white/70 uppercase text-[9px] font-bold h-9"
+                >
+                  {isTogglingOverride ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
+                  ) : matchingDbTemplate.is_production_override ? (
+                    <RefreshCw className="h-3.5 w-3.5 mr-2" />
+                  ) : (
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-2" />
+                  )}
+                  {matchingDbTemplate.is_production_override
+                    ? "Desativar override e voltar à prioridade padrão"
+                    : "Ativar este modelo de banco na produção"}
+                </Button>
+              </>
+            ) : (
+              <p className="text-[10px] leading-relaxed text-white/35">
+                Não existe modelo editável no banco com o nome exato <code>{event}</code>. A produção continua usando a fonte indicada acima.
+              </p>
+            )}
           </div>
 
           <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">

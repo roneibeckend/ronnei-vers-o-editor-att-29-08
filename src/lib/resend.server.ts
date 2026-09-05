@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { renderEmailTemplate } from "@/emails/templates";
+import { resolveRuntimeEmailTemplate } from "@/lib/email-template-resolver.server";
 import { validateEmailData } from "@/emails/catalog";
 
 
@@ -353,72 +353,41 @@ export async function triggerEmailEvent(params: {
   }
 
   try {
-    // 1) Templates premium definidos em código (src/emails) têm prioridade.
-    const coded = renderEmailTemplate(params.event, params.data);
-    if (coded) {
+    const resolved =
+      await resolveRuntimeEmailTemplate(
+        params.event,
+        params.data,
+      );
 
-      return await sendResendEmail({
-        to: params.to,
-        subject: params.data?.subject || coded.subject,
-        html: coded.html,
-        text: coded.text,
-        tags: [
-          { name: 'event', value: params.event },
-          ...(params.idempotencyKey ? [{ name: 'idempotency_key', value: params.idempotencyKey }] : [])
-        ]
-      });
-    }
-
-    // 2) Fallback: template salvo no banco (editável pelo admin).
-    const { data: template, error } = await supabaseAdmin
-      .from('email_templates')
-      .select('*')
-      .eq('name', params.event)
-      .maybeSingle();
-
-    if (error || !template) {
-      console.warn(`[Email] Template não encontrado para o evento: ${params.event}. Usando layout padrão da marca.`);
-      // Fallback com o layout premium da marca (nunca envia e-mail "cru")
-      const { renderEmailLayout, renderEmailText, LINKS } = await import("@/emails/layout");
-      const fallbackOptions = {
-        preview: String(params.data?.subject || `Notificação ${params.event}`),
-        heading: String(params.data?.heading || params.data?.subject || 'Notificação'),
-        greeting: params.data?.name ? `Olá, ${params.data.name}` : undefined,
-        blocks: [
-          {
-            type: 'text' as const,
-            text: String(
-              params.data?.message || params.data?.mensagem || params.data?.html ||
-              'Você tem uma nova notificação na sua área de membros.'
-            )
-          }
-        ],
-        cta: { label: 'Acessar minha área', url: String(params.data?.link || LINKS.dashboard) }
-      };
-      return await sendResendEmail({
-        to: params.to,
-        subject: params.data.subject || `Notificação: ${params.event}`,
-        html: renderEmailLayout(fallbackOptions),
-        text: renderEmailText(fallbackOptions),
-        tags: params.idempotencyKey ? [{ name: 'idempotency_key', value: params.idempotencyKey }] : undefined
-      });
-
-    }
-
-    const renderedSubject = renderTemplate(template.subject, params.data);
-    const renderedHtml = renderTemplate(template.content_html, params.data);
-    const renderedText = template.content_text ? renderTemplate(template.content_text, params.data) : undefined;
-
+    console.log(
+      `[Email] Template ${params.event} resolvido por ${resolved.source}.`,
+    );
 
     return await sendResendEmail({
       to: params.to,
-      subject: renderedSubject,
-      html: renderedHtml,
-      text: renderedText,
+      subject:
+        params.data?.subject ||
+        resolved.subject,
+      html: resolved.html,
+      text: resolved.text,
       tags: [
-        { name: 'event', value: params.event },
-        ...(params.idempotencyKey ? [{ name: 'idempotency_key', value: params.idempotencyKey }] : [])
-      ]
+        {
+          name: "event",
+          value: params.event,
+        },
+        {
+          name: "template_source",
+          value: resolved.source,
+        },
+        ...(params.idempotencyKey
+          ? [
+              {
+                name: "idempotency_key",
+                value: params.idempotencyKey,
+              },
+            ]
+          : []),
+      ],
     });
   } catch (err: any) {
     const sendingDisabled =
