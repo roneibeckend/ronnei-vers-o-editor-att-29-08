@@ -48,6 +48,7 @@ import { VideoPlayer } from "@/components/platform/VideoPlayer";
 import { VisualChapterEditor } from "@/components/admin/VisualChapterEditor";
 import { WorkloadHoursField } from "@/components/admin/WorkloadHoursField";
 import { ContentEmailCampaignHistory } from "@/components/admin/ContentEmailCampaignHistory";
+import { ContentEmailCampaignConfirmModal } from "@/components/admin/ContentEmailCampaignConfirmModal";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -221,53 +222,60 @@ function AdminEbooksPage() {
   const notifyContent = useServerFn(notifyNewContent);
   const previewNotification = useServerFn(previewNewContentNotification);
   const [notifyingId, setNotifyingId] = useState<string | null>(null);
+  const [campaignConfirm, setCampaignConfirm] = useState<null | {
+    item: any;
+    recipients: number;
+    alreadySent: boolean;
+  }>(null);
+  const [isCreatingCampaign, setIsCreatingCampaign] = useState(false);
 
-  async function handleNotify(item: any, force = false) {
+  async function handleNotify(item: any) {
     setNotifyingId(item.id);
 
     try {
-      let shouldForce = force;
-
-      if (!force) {
-        const preview: any = await previewNotification({
-          data: {
-            contentType: "ebook",
-            contentId: item.id,
-          },
-        });
-
-        if (!preview?.canSend) {
-          toast.error(
-            preview?.reason ||
-              "Este eBook não pode ser anunciado por e-mail.",
-          );
-          return;
-        }
-
-        const message = preview.alreadySent
-          ? `Este eBook já foi anunciado anteriormente.
-
-Alunos elegíveis agora: ${preview.recipients}
-
-Deseja criar uma NOVA campanha somente para esses alunos?`
-          : `Deseja avisar os alunos sobre este eBook?
-
-Alunos elegíveis: ${preview.recipients}
-
-Os e-mails serão colocados em uma fila e enviados em lotes controlados.`;
-
-        if (!confirm(message)) {
-          return;
-        }
-
-        shouldForce = Boolean(preview.alreadySent);
-      }
-
-      const res: any = await notifyContent({
+      const preview: any = await previewNotification({
         data: {
           contentType: "ebook",
           contentId: item.id,
-          force: shouldForce,
+        },
+      });
+
+      if (!preview?.canSend) {
+        toast.error(
+          preview?.reason ||
+            "Este eBook não pode ser anunciado por e-mail.",
+        );
+        return;
+      }
+
+      setCampaignConfirm({
+        item,
+        recipients: Number(preview.recipients) || 0,
+        alreadySent: Boolean(preview.alreadySent),
+      });
+    } catch (e: any) {
+      toast.error(
+        "Erro ao preparar campanha: " +
+          (e?.message || e),
+      );
+    } finally {
+      setNotifyingId(null);
+    }
+  }
+
+  async function confirmCampaign() {
+    if (!campaignConfirm || isCreatingCampaign) return;
+
+    const current = campaignConfirm;
+    setIsCreatingCampaign(true);
+    setNotifyingId(current.item.id);
+
+    try {
+      const res: any = await notifyContent({
+        data: {
+          contentType: "ebook",
+          contentId: current.item.id,
+          force: current.alreadySent,
         },
       });
 
@@ -275,14 +283,17 @@ Os e-mails serão colocados em uma fila e enviados em lotes controlados.`;
         toast.error(
           "Já existe uma campanha em andamento para este conteúdo.",
         );
+        setCampaignConfirm(null);
       } else if (res?.alreadySent) {
         toast.error(
           "Este conteúdo já foi anunciado. Atualize a página antes de tentar novamente.",
         );
+        setCampaignConfirm(null);
       } else if (res?.success && res?.queued) {
         toast.success(
           `Campanha criada para ${res.recipients} alunos. O envio será feito em lotes e pode ser acompanhado no histórico.`,
         );
+        setCampaignConfirm(null);
       } else {
         toast.error(
           res?.error ||
@@ -291,10 +302,11 @@ Os e-mails serão colocados em uma fila e enviados em lotes controlados.`;
       }
     } catch (e: any) {
       toast.error(
-        "Erro ao avisar alunos: " +
+        "Erro ao criar campanha: " +
           (e?.message || e),
       );
     } finally {
+      setIsCreatingCampaign(false);
       setNotifyingId(null);
     }
   }
@@ -352,6 +364,21 @@ Os e-mails serão colocados em uma fila e enviados em lotes controlados.`;
           <Plus className="h-4 w-4" /> Adicionar Novo E-book
         </button>
       </div>
+
+      <ContentEmailCampaignConfirmModal
+        open={Boolean(campaignConfirm)}
+        contentType="ebook"
+        contentTitle={campaignConfirm?.item?.title || ""}
+        recipients={campaignConfirm?.recipients || 0}
+        alreadySent={Boolean(campaignConfirm?.alreadySent)}
+        isSubmitting={isCreatingCampaign}
+        onOpenChange={(open) => {
+          if (!open && !isCreatingCampaign) {
+            setCampaignConfirm(null);
+          }
+        }}
+        onConfirm={confirmCampaign}
+      />
 
       <ContentEmailCampaignHistory contentType="ebook" />
 
