@@ -200,18 +200,44 @@ export const testIntegrationConnection = createServerFn({ method: "POST" })
       }
 
       try {
+        // O Resend não possui "dry_run" documentado no endpoint /emails.
+        // Para validar uma chave de Sending Access sem atingir um cliente real,
+        // usamos o endereço oficial de testes entregue pelo próprio Resend.
+        const { data: emailSettings } = await supabaseAdmin
+          .from('email_settings')
+          .select('from_email, from_name')
+          .maybeSingle();
+
+        const fromEmail =
+          typeof emailSettings?.from_email === 'string' &&
+          emailSettings.from_email.trim()
+            ? emailSettings.from_email.trim()
+            : 'onboarding@resend.dev';
+
+        const fromName =
+          typeof emailSettings?.from_name === 'string' &&
+          emailSettings.from_name.trim()
+            ? emailSettings.from_name.trim()
+            : 'Ronnei na Veia';
+
         const response = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
+            'Authorization': `Bearer ${apiKey}`,
+            'User-Agent': 'RonneiNaVeia-Integration-Test/1.0'
           },
           body: JSON.stringify({
-            from: 'onboarding@resend.dev',
-            to: 'test@resend.dev',
-            subject: 'Validation',
-            html: 'Validation',
-            dry_run: true
+            from: `${fromName} <${fromEmail}>`,
+            to: ['delivered+ronnei-integration-test@resend.dev'],
+            subject: 'Teste de integração Resend — Ronnei na Veia',
+            html: '<p>Teste técnico de integração concluído.</p>',
+            tags: [
+              {
+                name: 'event',
+                value: 'integration_test'
+              }
+            ]
           })
         });
 

@@ -1381,10 +1381,11 @@ function ResendConfigTab({ integration: initialIntegration }: { integration: Int
   };
 
   const handleTest = async () => {
-    if (!integration?.credentials.apiKey) {
-      toast.error("Insira a API Key antes de testar.");
-      return;
-    }
+    // A credencial salva não fica mais disponível no navegador.
+    // O backend resolve, nesta ordem:
+    // 1. chave nova digitada;
+    // 2. chave já salva no banco;
+    // 3. variável de ambiente.
     try {
       setIsTesting(true);
       setTestResult(null);
