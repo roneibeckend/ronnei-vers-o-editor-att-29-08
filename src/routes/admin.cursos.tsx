@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { notifyNewContent } from "@/lib/content-notify.functions";
+import {
+  notifyNewContent,
+  previewNewContentNotification,
+} from "@/lib/content-notify.functions";
 import { useState, useEffect } from "react";
 import { 
   Plus, 
@@ -122,24 +125,70 @@ function AdminCursosPage() {
   }
 
   const notifyContent = useServerFn(notifyNewContent);
+  const previewNotification = useServerFn(previewNewContentNotification);
   const [notifyingId, setNotifyingId] = useState<string | null>(null);
 
   async function handleNotify(course: any, force = false) {
     setNotifyingId(course.id);
+
     try {
-      const res: any = await notifyContent({ data: { contentType: "course", contentId: course.id, force } });
-      if (res?.alreadySent) {
-        if (confirm("Este curso já foi anunciado por e-mail. Deseja enviar novamente para todos os alunos?")) {
-          setNotifyingId(null);
-          return handleNotify(course, true);
+      let shouldForce = force;
+
+      if (!force) {
+        const preview: any = await previewNotification({
+          data: {
+            contentType: "course",
+            contentId: course.id,
+          },
+        });
+
+        if (!preview?.canSend) {
+          toast.error(
+            preview?.reason ||
+              "Este curso não pode ser anunciado por e-mail.",
+          );
+          return;
         }
+
+        const message = preview.alreadySent
+          ? `Este curso já foi anunciado anteriormente.\n\nAlunos elegíveis agora: ${preview.recipients}\n\nDeseja REENVIAR o e-mail para esses alunos?`
+          : `Deseja avisar os alunos sobre este curso?\n\nAlunos elegíveis: ${preview.recipients}\n\nSomente alunos cadastrados que não desativaram notificações por e-mail serão incluídos.`;
+
+        if (!confirm(message)) {
+          return;
+        }
+
+        shouldForce = Boolean(preview.alreadySent);
+      }
+
+      const res: any = await notifyContent({
+        data: {
+          contentType: "course",
+          contentId: course.id,
+          force: shouldForce,
+        },
+      });
+
+      if (res?.alreadySent) {
+        toast.error(
+          "Este curso já foi anunciado. Atualize a página antes de tentar reenviar.",
+        );
       } else if (res?.success) {
-        toast.success(`E-mail enviado para ${res.sentCount} de ${res.recipients} alunos.`);
+        toast.success(
+          `E-mail enviado para ${res.sentCount} de ${res.recipients} alunos.`,
+        );
       } else {
-        toast.error("Nenhum e-mail enviado. " + (res?.error || "Verifique as configurações de e-mail."));
+        toast.error(
+          "Nenhum e-mail enviado. " +
+            (res?.error ||
+              "Verifique as configurações de e-mail."),
+        );
       }
     } catch (e: any) {
-      toast.error("Erro ao avisar alunos: " + (e?.message || e));
+      toast.error(
+        "Erro ao avisar alunos: " +
+          (e?.message || e),
+      );
     } finally {
       setNotifyingId(null);
     }
