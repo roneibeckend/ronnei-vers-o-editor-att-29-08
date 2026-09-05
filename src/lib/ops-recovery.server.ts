@@ -894,6 +894,67 @@ export async function scanCriticalAlerts(): Promise<OpsRecoveryResult["alerts"]>
     .limit(20);
 
   for (const evt of webhookFailures || []) {
+    /*
+     * Se o pagamento já foi arquivado/corrigido na Reconciliação,
+     * a falha técnica antiga não deve voltar como alerta crítico.
+     *
+     * Também encerramos o evento para que ele não seja reavaliado
+     * em todas as execuções futuras do ops_recovery.
+     */
+    if (evt.payment_id) {
+      const { data: closedReconciliation } =
+        await supabaseAdmin
+          .from("payment_reconciliations")
+          .select("status, resolved_at")
+          .eq("external_id", evt.payment_id)
+          .in("status", ["ignored", "fixed"])
+          .maybeSingle();
+
+      if (closedReconciliation) {
+        const nowIso = new Date().toISOString();
+
+        await supabaseAdmin
+          .from("asaas_webhook_events")
+          .update({
+            status: "ignored",
+            processed_at: nowIso,
+            last_error:
+              `Evento encerrado sem alerta: reconciliação ${closedReconciliation.status}.`,
+          })
+          .eq("event_id", evt.event_id)
+          .eq("status", "failed");
+
+        await supabaseAdmin
+          .from("ops_alerts")
+          .update({
+            resolved_at: nowIso,
+          })
+          .eq(
+            "dedup_key",
+            `webhook_failed:${evt.event_id}`,
+          )
+          .is("resolved_at", null);
+
+        await supabaseAdmin
+          .from("admin_notifications")
+          .update({
+            read: true,
+            read_at: nowIso,
+          })
+          .eq(
+            "dedup_key",
+            `ops:webhook_failed:${evt.event_id}`,
+          )
+          .eq("read", false);
+
+        console.log(
+          `[ops] Webhook ${evt.event_id} encerrado sem alerta: pagamento ${evt.payment_id} já está ${closedReconciliation.status} na reconciliação.`,
+        );
+
+        continue;
+      }
+    }
+
     const ok = await raiseOpsAlert({
       type: "webhook_failed",
       dedupKey: `webhook_failed:${evt.event_id}`,
