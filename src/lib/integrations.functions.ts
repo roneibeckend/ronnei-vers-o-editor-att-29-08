@@ -14,7 +14,7 @@ export const getResendIntegration = createServerFn({ method: "GET" })
 
     const { data, error } = await supabaseAdmin
       .from('integrations')
-      .select('*')
+      .select('id, name, category, status, settings, type, updated_at, credentials')
       .eq('category', 'resend')
       .maybeSingle();
 
@@ -27,8 +27,16 @@ export const getResendIntegration = createServerFn({ method: "GET" })
       name: data.name,
       category: data.category,
       status: data.status ?? false,
-      credentials: (data.credentials || {}) as Record<string, string>,
-      settings: (data.settings || {}) as Record<string, string>,
+      // Segurança: nunca devolve o segredo salvo ao navegador.
+      // O backend preserva a credencial existente quando o campo é enviado vazio.
+      credentials: {} as Record<string, string>,
+      settings: {
+        ...((data.settings || {}) as Record<string, string>),
+        hasApiKey: Boolean(
+          typeof (data.credentials as any)?.apiKey === 'string' &&
+          (data.credentials as any).apiKey.trim().length > 3
+        ) as any
+      },
       type: data.type as 'ia' | 'payment',
       updated_at: data.updated_at || undefined
     };
@@ -143,8 +151,42 @@ export const testIntegrationConnection = createServerFn({ method: "POST" })
     const start = Date.now();
 
     if (data.category === 'resend') {
-      const apiKey = data.credentials?.apiKey || process.env['RESEND_API_KEY'];
-      if (!apiKey || typeof apiKey !== 'string' || !apiKey.startsWith('re_')) {
+      // A chave pode ter acabado de ser digitada no formulário.
+      // Caso contrário, resolve a credencial já salva DIRETAMENTE no servidor.
+      // Nunca é necessário devolver o segredo ao navegador.
+      let apiKey =
+        typeof data.credentials?.apiKey === 'string' &&
+        data.credentials.apiKey.trim()
+          ? data.credentials.apiKey.trim()
+          : '';
+
+      if (!apiKey) {
+        let query = supabaseAdmin
+          .from('integrations')
+          .select('credentials')
+          .eq('category', 'resend');
+
+        if (data.id) {
+          query = query.eq('id', data.id);
+        }
+
+        const { data: savedIntegration } = await query.maybeSingle();
+        const savedCredentials =
+          (savedIntegration?.credentials || {}) as Record<string, unknown>;
+
+        if (
+          typeof savedCredentials.apiKey === 'string' &&
+          savedCredentials.apiKey.trim()
+        ) {
+          apiKey = savedCredentials.apiKey.trim();
+        }
+      }
+
+      if (!apiKey) {
+        apiKey = process.env['RESEND_API_KEY'] || '';
+      }
+
+      if (!apiKey || !apiKey.startsWith('re_')) {
         return {
           success: false,
           message: "API Key do Resend não encontrada ou inválida. Insira uma chave começando com 're_'.",
