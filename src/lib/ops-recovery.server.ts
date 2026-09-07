@@ -51,6 +51,26 @@ async function hasAccess(productType: string, productId: string, userId: string)
       .maybeSingle();
     return Boolean(data);
   }
+
+  if (productType === "fidelize") {
+    const { data } = await supabaseAdmin
+      .from("fidelize_provisioning_logs")
+      .select("id, status, lifecycle_status, subscription_status")
+      .eq("user_id", userId)
+      .eq("plan", productId)
+      .eq("status", "success")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!data) return false;
+
+    const lifecycle = String((data as any).lifecycle_status || "").toLowerCase();
+    const subscription = String((data as any).subscription_status || "").toLowerCase();
+
+    return lifecycle !== "canceled" && subscription !== "canceled";
+  }
+
   return false;
 }
 

@@ -42,6 +42,11 @@ function normalizeFidelizeLoginUrl(value: unknown): string | null {
       url.host = "afidelize.app";
     }
 
+    if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+      url.protocol = "https:";
+      url.host = "afidelize.app";
+    }
+
     return url.toString();
   } catch {
     return value.trim();
@@ -54,6 +59,45 @@ function normalizeModules(response: any, plan: FidelizePlan): string[] {
     return raw.map((m: any) => (typeof m === "string" ? m : m?.name || m?.label || String(m)));
   }
   return FIDELIZE_PLAN_CATALOG[plan].modules;
+}
+
+function sanitizeProvisioningResponse(value: unknown) {
+  if (!value || typeof value !== "object") return value;
+
+  const safe = { ...(value as Record<string, any>) };
+
+  delete safe.temporary_password;
+  delete safe.autologin_token;
+  delete safe.autologin_url;
+  delete safe.login_url;
+
+  return safe;
+}
+
+async function waitForProvisioningOrder(
+  supabaseAdmin: any,
+  orderId: string,
+  attempts = 24,
+) {
+  let latest: any = null;
+
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const { data } = await supabaseAdmin
+      .from("fidelize_provisioning_logs")
+      .select("id, status, tenant_id, login_url, error_message")
+      .eq("order_id", orderId)
+      .maybeSingle();
+
+    latest = data || latest;
+
+    if (latest && latest.status !== "pending") {
+      return latest;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+
+  return latest;
 }
 
 /**
@@ -75,7 +119,34 @@ export async function provisionFidelizeAccount(input: ProvisionInput): Promise<P
     .maybeSingle();
 
   if (existing && (existing as any).status === "success") {
-    return { success: true, status: "skipped" };
+    return { success: true, status: "skipped", logId: (existing as any).id };
+  }
+
+  if (existing && (existing as any).status === "pending") {
+    const settled = await waitForProvisioningOrder(
+      supabaseAdmin,
+      input.orderId,
+    );
+
+    if (settled?.status === "success") {
+      return {
+        success: true,
+        status: "skipped",
+        logId: settled.id,
+        tenantId: settled.tenant_id ?? null,
+        loginUrl: settled.login_url ?? null,
+      };
+    }
+
+    if (settled?.status === "pending") {
+      return {
+        success: false,
+        status: "skipped",
+        logId: settled.id,
+        error:
+          "Provisionamento Fidelize já está em andamento para este pagamento.",
+      };
+    }
   }
 
   const config = await getFidelizeConfig();
@@ -110,12 +181,51 @@ export async function provisionFidelizeAccount(input: ProvisionInput): Promise<P
       .update({ ...logRow, updated_at: new Date().toISOString() } as never)
       .eq("id", logId);
   } else {
-    const { data: created } = await supabaseAdmin
+    const { data: created, error: createError } = await supabaseAdmin
       .from("fidelize_provisioning_logs")
       .insert(logRow as never)
       .select("id")
       .maybeSingle();
-    logId = (created as any)?.id ?? null;
+
+    if (createError) {
+      if (String((createError as any)?.code || "") === "23505") {
+        const settled = await waitForProvisioningOrder(
+          supabaseAdmin,
+          input.orderId,
+        );
+
+        if (settled?.status === "success") {
+          return {
+            success: true,
+            status: "skipped",
+            logId: settled.id,
+            tenantId: settled.tenant_id ?? null,
+            loginUrl: settled.login_url ?? null,
+          };
+        }
+
+        if (settled?.status === "pending") {
+          return {
+            success: false,
+            status: "skipped",
+            logId: settled.id,
+            error:
+              "Provisionamento Fidelize já está em andamento para este pagamento.",
+          };
+        }
+
+        logId = settled?.id ?? null;
+      } else {
+        return {
+          success: false,
+          status: "failed",
+          error:
+            `Falha ao registrar provisionamento Fidelize: ${createError.message}`,
+        };
+      }
+    } else {
+      logId = (created as any)?.id ?? null;
+    }
   }
 
   // 3. Chamada ao endpoint de provisionamento.
@@ -136,13 +246,19 @@ export async function provisionFidelizeAccount(input: ProvisionInput): Promise<P
   const ok = (call.success && response?.success !== false) || alreadyExists;
   const modules = normalizeModules(response, input.plan);
 
+  const publicLoginUrl =
+    normalizeFidelizeLoginUrl(response?.login_url) ||
+    (alreadyExists ? "https://afidelize.app/" : null);
+
   const update = {
     tenant_id: response?.tenant_id ?? null,
     fidelize_user_id: response?.user_id ?? null,
-    login_url: normalizeFidelizeLoginUrl(response?.login_url),
+    login_url: publicLoginUrl,
     slug: response?.slug ?? null,
     modules: modules as never,
-    response_payload: (call.data ?? { raw: call.rawBody }) as never,
+    response_payload: sanitizeProvisioningResponse(
+      call.data ?? { raw: call.rawBody },
+    ) as never,
     status: ok ? "success" : "failed",
     error_message: ok ? null : rawMessage || "Falha no provisionamento da Fidelize.",
     duration_ms: call.durationMs,
@@ -200,7 +316,11 @@ export async function provisionFidelizeAccount(input: ProvisionInput): Promise<P
         name: input.name,
         plan: fidelizePlanLabel(input.plan),
         login: response?.login || input.email,
-        temporary_password: response?.temporary_password || "",
+        temporary_password:
+          response?.temporary_password ||
+          (alreadyExists
+            ? 'Use sua senha atual ou a opção "Esqueci minha senha".'
+            : ""),
         login_url: update.login_url || "",
         modules: modules.join(", "),
       },

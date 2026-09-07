@@ -27,14 +27,42 @@ export type FidelizeCallResult<T = unknown> = {
 const MAX_BODY_LOG = 2000;
 
 function redact(value: unknown): unknown {
-  if (typeof value !== "object" || value === null) return value;
-  const clone: Record<string, unknown> = { ...(value as Record<string, unknown>) };
-  for (const key of Object.keys(clone)) {
-    if (/(api[-_]?key|authorization|token|secret|password)/i.test(key)) {
-      clone[key] = "***redacted***";
-    }
+  if (Array.isArray(value)) {
+    return value.map((item) => redact(item));
   }
+
+  if (typeof value !== "object" || value === null) {
+    return value;
+  }
+
+  const clone: Record<string, unknown> = {};
+
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (
+      /(api[-_]?key|authorization|token|secret|password|login[-_]?url|autologin[-_]?url|magic[-_]?link)/i.test(
+        key,
+      )
+    ) {
+      clone[key] = "***redacted***";
+      continue;
+    }
+
+    clone[key] = redact(item);
+  }
+
   return clone;
+}
+
+function redactRawBody(rawBody: string) {
+  if (!rawBody) return "";
+
+  try {
+    return JSON.stringify(redact(JSON.parse(rawBody))).slice(0, MAX_BODY_LOG);
+  } catch {
+    return rawBody
+      .replace(/("(?:temporary_password|autologin_token|login_url|autologin_url)"\s*:\s*)"[^"]*"/gi, '$1"***redacted***"')
+      .slice(0, MAX_BODY_LOG);
+  }
 }
 
 function normalizeBaseUrl(url: string) {
@@ -161,7 +189,7 @@ export async function fidelizeRequest<T = unknown>(
       endpoint: url.pathname + url.search,
       method,
       data: parsed,
-      rawBody: rawBody.slice(0, MAX_BODY_LOG),
+      rawBody: redactRawBody(rawBody),
       apiVersion:
         response.headers.get("x-api-version") ||
         response.headers.get("api-version") ||
